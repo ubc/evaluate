@@ -1,0 +1,11 @@
+/* this css only gets shown on the admin side of things */
+
+.hide{
+	display: none;	
+}
+.evaluate-type-shell {
+	margin:0 0 20px 20px;
+}
+#preview{
+	display: none;
+}
