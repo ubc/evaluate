@@ -1,6 +1,6 @@
 <?php 
 
-
+$evaluation_setting_varification_count = 0;
 class Evaluate_Admin {
 	
   	
@@ -36,7 +36,8 @@ class Evaluate_Admin {
 		<div class="wrap">
 			<div id="icon-options-general" class="icon32"></div>
 				<h2>Evaluation <a class="add-new-h2" href="#add">Add New</a></h2>
-				<?php settings_errors(); 
+				<?php 
+				settings_errors(); 
 				
 				switch( $_GET['do'] ) {
 					/*
@@ -70,14 +71,14 @@ class Evaluate_Admin {
 		// what do you want to delete?
 		
 		delete_option( 'evaluate_settings' );
+		delete_option( 'evaluate_mettrics' );
 	
 	}
 	
 	public static function display_page() {
-	
-		$options = get_option( 'evaluate_settings' ); 
+		$options = get_option( 'evaluate_mettrics' ); 
 		
-		if( $options ):
+		if( !empty( $options ) ):
 		
 		?>
 		<table class="widefat">
@@ -89,16 +90,17 @@ class Evaluate_Admin {
 				</tr>
 			</thead>
 			<tbody>
-		<?php foreach( $options as $option ): 
-		var_dump($option['post_type']);
+		<?php 
+		
+		foreach( $options as $id => $option ): 
 		?>
 		<tr>
 			<td class="row-title"><label for="tablecell"><?php echo $option['name']; ?></label></td>
 			<td><?php echo $option['type']; ?></td>
 			<td><?php 
+			
 				if( is_array( $option['post_type'] ) ):
-				foreach( $option['post_type'] as $post_type )
-					implode(  ', ', $option['post_type']); 
+					echo implode(  ', ', $option['post_type']); 
 				endif;
 			?>
 			</td>
@@ -117,7 +119,8 @@ class Evaluate_Admin {
 		
 		else: ?>
 		<div class="updated settings-error" id="setting-error-settings_updated"> 
-<p><strong>You don't have any way for people to evaluate your content yet. Create a new metric.</strong></p></div>
+			<p><strong>You don't have any way for people to evaluate your content yet. Create a new metric.</strong></p>
+		</div>
 		
 		<?php 
 		
@@ -133,7 +136,7 @@ class Evaluate_Admin {
 		
 		<form method="post" action="options.php" id="add">
 			<?php settings_fields('evaluate_settings_group'); ?>
-			<?php $options = get_option('evaluate_settings'); ?>
+			<?php $options = get_option( 'evaluate_mettrics' ); ?>
 			<table class="form-table">
 				<tr valign="top"><th scope="row"><label for="name">Name</label></th>
 					<td><input name="evaluate_settings[name]" type="text" value="" class="regular-text" />
@@ -219,32 +222,69 @@ class Evaluate_Admin {
 	}
 	
 	public static function sanitize_evaluate_settings( $settings ) {
-		// var_dump( $settings );
+		global $evaluation_setting_varification_count; 
+		$evaluation_setting_varification_count++;
+		// var_dump( is_array( $settings['post_type'] ),$settings['post_type']  );
 		
-		if( is_array( $settings['post_type'] ) ):
-			$post_types = array();
-			foreach($settings['post_type'] as $post_type ):
-				$post_types[] = $post_type;
-			endforeach;
-			$settings['post_type'] = $post_types;
-		else:
+		if( empty( $settings['name'] ) ):
+			$setting = 'evaluate_settings';
+			$code 	 = 'evaluation_name';
+			$message = "You didn't type in a name for your evaluation metric.";
+			$type 	 = "error";
+			add_settings_error( $setting, $code, $message, $type );
+		endif;
+		// var_dump($settings['post_type']);
+		if( !is_array( $settings['post_type'] ) ):
+			
 			$setting = 'evaluate_settings';
 			$code 	 = 'evaluation_post_type';
 			$message = "You didn't select any post type, your evaluation metric will not appear any where.";
 			$type 	 = "error";
 			add_settings_error( $setting, $code, $message, $type );
+			
 		endif;
-		$options = get_option( 'evaluate_settings' );
+		
+		if ($evaluation_setting_varification_count < 2):
+			$options = get_option( 'evaluate_mettrics' );
+			
+			
+			$id = Evaluate_Admin::get_id( $settings['name'], $options );
+			$options[$id] = $settings;
+			
+			update_option( 'evaluate_mettrics', $options );
+		endif;
 		// todo: make sure that the user entered appropriate stuff in here
-		if( $options ):
-			$options[] = $settings;
-		else:
-			$options = array();  
-			$options[] = $settings;
-		endif;
-		return $options;
+				
+		return $settings;
 	}
 	
+	public static function get_id( $title, $options ) {
+		$id = sanitize_title_with_dashes( strtolower( $title ) );
+		
+		if( is_array($options) ):
+		
+			$counter = 1;
+			while( Evaluate_Admin::id_exists( $id, $options ) )
+			{
+				$id = $id."-".$counter;
+				$counter += 1;
+			}
+		endif;
+		return $id; 
+		
+	}
+	public static function id_exists( $new_id, $options ) {
+		
+		if( is_array($options) ):
+			foreach( $options as $id  => $option):
+					if( $id == $new_id )
+						return true;
+			endforeach;
+		endif;
+		
+		return false;
+
+	}
 	
 	
 }
