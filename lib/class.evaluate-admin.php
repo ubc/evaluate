@@ -32,6 +32,8 @@ class Evaluate_Admin {
     }
  	
 	public static function page() { 
+		
+		$options = get_option( 'evaluate_mettrics' ); 
 	?>
 		<div class="wrap">
 			<div id="icon-options-general" class="icon32"></div>
@@ -48,14 +50,37 @@ class Evaluate_Admin {
 					*/
 					case 'delete': 
 						
-							Evaluate_Admin::delete_evaluation();
+						if( isset( $_GET['metric'] ) ):
+							if( isset( $options[ $_GET['metric'] ] ) ):
+								Evaluate_Admin::delete_evaluation( $options[ $_GET['metric'] ] );
+							else:
+								Evaluate_Admin::disply_error( 'Sorry but this metric doesn\'t exits' );
+							endif;
+						else:
+							Evaluate_Admin::disply_error( 'Sorry but this metric you didn\'t include a metric'  );
+						endif;
+					break;
+					
+					case 'edit':
+						
+						if( isset( $_GET['metric'] ) ):
+							if( isset( $options[ $_GET['metric'] ] ) ):
+								Evaluate_Admin::edit_metric( $options[ $_GET['metric'] ] );
+							else:
+								Evaluate_Admin::disply_error( 'Sorry but this metric doesn\'t exits' );
+							endif;
+						else:
+							Evaluate_Admin::disply_error( 'Sorry but this metric you didn\'t include a metric'  );
+						endif;
+						
+					
 					break;
 					
 						
 					
 					default:
-						Evaluate_Admin::display_page();
-						Evaluate_Admin::add_page();
+						Evaluate_Admin::display_page( $options );
+						Evaluate_Admin::edit_metric();
 					break;
 				
 				}
@@ -64,10 +89,10 @@ class Evaluate_Admin {
 	  <?php
 	}
 	
-	public static function delete_evaluation() {
+	public static function delete_evaluation( $metric ) {
 		
 		// are you allowed to delete it? 
-		
+		if( $metric )
 		// what do you want to delete?
 		
 		delete_option( 'evaluate_settings' );
@@ -75,8 +100,7 @@ class Evaluate_Admin {
 	
 	}
 	
-	public static function display_page() {
-		$options = get_option( 'evaluate_mettrics' ); 
+	public static function display_page( $options ) {
 		
 		if( !empty( $options ) ):
 		
@@ -91,11 +115,18 @@ class Evaluate_Admin {
 			</thead>
 			<tbody>
 		<?php 
-		
+		$i = 0;
 		foreach( $options as $id => $option ): 
+			$alternate = 'class="alternate"'; $i++;
 		?>
-		<tr>
-			<td class="row-title"><label for="tablecell"><?php echo $option['name']; ?></label></td>
+		<tr <?php echo ( $i%2 ? $alternate: '' ); ?> >
+			<td class="post-title page-title column-title">
+				<label for="tablecell"><strong><a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>"><?php echo $option['name']; ?></a></strong></label>
+				<div class="row-actions"><span class="edit">
+				<a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>">Edit</a> | </span><span class="trash"><a href="?_wpnonce=<?php echo wp_create_nonce( 'delete-'.$id ); ?>&page=evaluate&do=delete&metric=<?php echo $id;  ?>">Delete</a></span>
+				</div>
+			</td>
+			
 			<td><?php echo $option['type']; ?></td>
 			<td><?php 
 			
@@ -117,29 +148,34 @@ class Evaluate_Admin {
 		</table>
 		<?php 
 		
-		else: ?>
-		<div class="updated settings-error" id="setting-error-settings_updated"> 
-			<p><strong>You don't have any way for people to evaluate your content yet. Create a new metric.</strong></p>
+		else: 
+			
+			Evaluate_Admin::disply_error("You don't have any way for people to evaluate your content yet. Create a new metric.");
+			
+		endif;
+	
+	}
+	public static function disply_error( $error ) {
+		?>
+		<div class="updated settings-error" > 
+			<p><strong><?php echo $error; ?></strong></p>
 		</div>
 		
-		<?php 
-		
-		endif;
-		
-
+		<?php
 	}
 	
-	public static function add_page() {
-		
+	public static function edit_metric( $metric=array() ) {
+		var_dump( $metric );
 		?>
 		<h3>Add New Evaluation Criteria</h3>
 		
 		<form method="post" action="options.php" id="add">
 			<?php settings_fields('evaluate_settings_group'); ?>
+			
 			<?php $options = get_option( 'evaluate_mettrics' ); ?>
 			<table class="form-table">
 				<tr valign="top"><th scope="row"><label for="name">Name</label></th>
-					<td><input name="evaluate_settings[name]" type="text" value="" class="regular-text" />
+					<td><input name="evaluate_settings[name]" type="text" value="<?php echo $metric['name']; ?>" class="regular-text" />
 					<label><input type="checkbox" name="evaluate_settings[display_name]" value="1" /> display name</label> </td>
 				</tr>
 				<tr valign="top">
