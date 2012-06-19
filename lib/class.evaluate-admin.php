@@ -150,17 +150,16 @@ class Evaluate_Admin {
 		
 		else: 
 			
-			Evaluate_Admin::disply_error("You don't have any way for people to evaluate your content yet. Create a new metric.");
+			$this->disply_error("You don't have any way for people to evaluate your content yet. Create a new metric.");
 			
 		endif;
 	
 	}
-	public static function disply_error( $error ) {
+	function disply_error( $error ) {
 		?>
 		<div class="updated settings-error" > 
 			<p><strong><?php echo $error; ?></strong></p>
 		</div>
-		
 		<?php
 	}
 	
@@ -170,12 +169,15 @@ class Evaluate_Admin {
 		<h3>Add New Evaluation Criteria</h3>
 		
 		<form method="post" action="options.php" id="add">
-			<?php settings_fields('evaluate_settings_group'); ?>
+			<?php settings_fields( 'evaluate_settings_group' ); ?>
 			
 			<?php $options = get_option( 'evaluate_mettrics' ); ?>
 			<table class="form-table">
 				<tr valign="top"><th scope="row"><label for="name">Name</label></th>
 					<td><input name="evaluate_settings[name]" type="text" value="<?php echo $metric['name']; ?>" class="regular-text" />
+					<?php if( isset($_GET['metric']) ): ?>
+						<input type="hidden" name="id" value="<?php echo $_GET['metric']; ?>" />
+					<?php endif; ?>
 					<label><input type="checkbox" name="evaluate_settings[display_name]" value="1" /> display name</label> </td>
 				</tr>
 				<tr valign="top">
