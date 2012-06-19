@@ -178,7 +178,7 @@ class Evaluate_Admin {
 					<?php if( isset($_GET['metric']) ): ?>
 						<input type="hidden" name="id" value="<?php echo $_GET['metric']; ?>" />
 					<?php endif; ?>
-					<label><input type="checkbox" name="evaluate_settings[display_name]" value="1" /> display name</label> </td>
+					<label><input type="checkbox" name="evaluate_settings[display_name]" value="1" <?php checked( $metric['display_name']); ?> /> display name</label> </td>
 				</tr>
 				<tr valign="top">
 					<th scope="row">Type</th>
@@ -234,7 +234,7 @@ class Evaluate_Admin {
 					<td>
 						<?php $types = get_post_types( array( 'public'=>true ) , 'objects' );
 							foreach($types as $type ): ?>
-						<div><label><input type="checkbox" name="evaluate_settings[post_type][]" value="<?php echo $type->name; ?>" /> <?php echo  $type->label; ?></label></div>
+						<div><label><input type="checkbox" name="evaluate_settings[post_type][]" value="<?php echo $type->name; ?>" <?php checked( in_array($type->name, $metric['post_type']) ); ?> /> <?php echo  $type->label; ?></label></div>
 						<?php endforeach;?>
 					</td>
 				</tr>
@@ -242,8 +242,8 @@ class Evaluate_Admin {
 				<tr valign="top">
 					<th scope="row">Display Options</th>
 					<td>
-						<div><label><input type="checkbox" name="evaluate_settings[loggedin]" value="1" /> Users have to be logged in to vote.</label></div>
-						<div><label><input type="checkbox" name="evaluate_settings[admin_only]" value="1" /> Only Admins can see this criteria.</label></div>
+						<div><label><input type="checkbox" name="evaluate_settings[loggedin]" value="1" <?php checked( $metric['loggedin']); ?> /> Users have to be logged in to vote.</label></div>
+						<div><label><input type="checkbox" name="evaluate_settings[admin_only]" value="1" <?php checked( $metric['admin_only']); ?> /> Only Admins can see this criteria.</label></div>
 					</td>
 				</tr>
 				<tr valign="top" id="preview">
