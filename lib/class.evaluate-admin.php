@@ -3,6 +3,7 @@
 $evaluation_setting_varification_count = 0;
 class Evaluate_Admin {
 	
+	static $options = array();
   	
   	public static function init(){
   		
@@ -33,11 +34,11 @@ class Evaluate_Admin {
  	
 	public static function page() { 
 		
-		$options = get_option( 'evaluate_mettrics' ); 
+		self::$options = get_option( 'evaluate_mettrics' ); 
 	?>
 		<div class="wrap">
 			<div id="icon-options-general" class="icon32"></div>
-				<h2>Evaluation <a class="add-new-h2" href="#add">Add New</a></h2>
+				<h2>Evaluation <a class="add-new-h2" href="?page=evaluate#add">Add New</a></h2>
 				<?php 
 				settings_errors(); 
 				
@@ -51,21 +52,25 @@ class Evaluate_Admin {
 					case 'delete': 
 						
 						if( isset( $_GET['metric'] ) ):
-							if( isset( $options[ $_GET['metric'] ] ) ):
-								Evaluate_Admin::delete_evaluation( $options[ $_GET['metric'] ] );
+							if( isset( self::$options[ $_GET['metric'] ] ) ):
+								Evaluate_Admin::delete_evaluation( $_GET['metric'] );
 							else:
 								Evaluate_Admin::disply_error( 'Sorry but this metric doesn\'t exits' );
 							endif;
 						else:
 							Evaluate_Admin::disply_error( 'Sorry but this metric you didn\'t include a metric'  );
 						endif;
+						
+						Evaluate_Admin::display_page();
+						Evaluate_Admin::edit_metric();
+						
 					break;
 					
 					case 'edit':
 						
 						if( isset( $_GET['metric'] ) ):
-							if( isset( $options[ $_GET['metric'] ] ) ):
-								Evaluate_Admin::edit_metric( $options[ $_GET['metric'] ] );
+							if( isset( self::$options[ $_GET['metric'] ] ) ):
+								Evaluate_Admin::edit_metric( self::$options[ $_GET['metric'] ] );
 							else:
 								Evaluate_Admin::disply_error( 'Sorry but this metric doesn\'t exits' );
 							endif;
@@ -76,10 +81,8 @@ class Evaluate_Admin {
 					
 					break;
 					
-						
-					
 					default:
-						Evaluate_Admin::display_page( $options );
+						Evaluate_Admin::display_page();
 						Evaluate_Admin::edit_metric();
 					break;
 				
@@ -89,20 +92,24 @@ class Evaluate_Admin {
 	  <?php
 	}
 	
-	public static function delete_evaluation( $metric ) {
+	public static function delete_evaluation( $id ) {
 		
 		// are you allowed to delete it? 
-		if( $metric )
-		// what do you want to delete?
+		if( current_user_can('manage_options') && wp_verify_nonce( $_GET['_wpnonce'], 'delete-'.$id ) ):
+			// what do you want to delete?
+			unset( self::$options[$id] );
+			if( empty( self::$options ) ):
+				delete_option(  'evaluate_mettrics' );
+			else:
+				update_option( 'evaluate_mettrics', self::$options );
+			endif;
+		endif;
 		
-		delete_option( 'evaluate_settings' );
-		delete_option( 'evaluate_mettrics' );
-	
 	}
 	
-	public static function display_page( $options ) {
+	public static function display_page( ) {
 		
-		if( !empty( $options ) ):
+		if( !empty( self::$options ) ):
 		
 		?>
 		<table class="widefat">
@@ -116,14 +123,14 @@ class Evaluate_Admin {
 			<tbody>
 		<?php 
 		$i = 0;
-		foreach( $options as $id => $option ): 
+		foreach( self::$options as $id => $option ): 
 			$alternate = 'class="alternate"'; $i++;
 		?>
 		<tr <?php echo ( $i%2 ? $alternate: '' ); ?> >
 			<td class="post-title page-title column-title">
 				<label for="tablecell"><strong><a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>"><?php echo $option['name']; ?></a></strong></label>
 				<div class="row-actions"><span class="edit">
-				<a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>">Edit</a> | </span><span class="trash"><a href="?_wpnonce=<?php echo wp_create_nonce( 'delete-'.$id ); ?>&page=evaluate&do=delete&metric=<?php echo $id;  ?>">Delete</a></span>
+				<a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>">Edit</a> | </span><span class="trash"><a href="?page=evaluate&do=delete&metric=<?php echo $id;  ?>&_wpnonce=<?php echo wp_create_nonce( 'delete-'.$id ); ?>">Delete</a></span>
 				</div>
 			</td>
 			
@@ -150,12 +157,12 @@ class Evaluate_Admin {
 		
 		else: 
 			
-			$this->disply_error("You don't have any way for people to evaluate your content yet. Create a new metric.");
+			Evaluate_Admin::disply_error("You don't have any way for people to evaluate your content yet. Create a new metric.");
 			
 		endif;
 	
 	}
-	function disply_error( $error ) {
+	public static function disply_error( $error ) {
 		?>
 		<div class="updated settings-error" > 
 			<p><strong><?php echo $error; ?></strong></p>
@@ -164,19 +171,32 @@ class Evaluate_Admin {
 	}
 	
 	public static function edit_metric( $metric=array() ) {
-		var_dump( $metric );
-		?>
-		<h3>Add New Evaluation Criteria</h3>
+		$title = "Edit";
+		if( empty( $metric ) ):
 		
-		<form method="post" action="options.php" id="add">
-			<?php settings_fields( 'evaluate_settings_group' ); ?>
+			$title = "Add New";
+			if( isset( $_GET['settings-updated'] ) )
+				$metric = get_option( 'evaluate_settings' );
 			
-			<?php $options = get_option( 'evaluate_mettrics' ); ?>
+			if( !is_array( $metric['post_type'] ) )
+				$metric['post_type'] = array();
+			
+			
+		endif;
+		?>		
+		<h3><?php echo $title; ?> Evaluation Criteria</h3>
+		<form method="post" action="options.php" id="add">
+
+			<input type="hidden" value="evaluate_settings_group" name="option_page">
+			<input type="hidden" value="update" name="action">
+			<input id="_wpnonce" type="hidden" value="<?php echo wp_create_nonce( 'evaluate_settings_group-options' ); ?>" name="_wpnonce">
+			<input type="hidden" value="/carry/wp-admin/options-general.php?page=evaluate" name="_wp_http_referer">
+			
 			<table class="form-table">
 				<tr valign="top"><th scope="row"><label for="name">Name</label></th>
-					<td><input name="evaluate_settings[name]" type="text" value="<?php echo $metric['name']; ?>" class="regular-text" />
+					<td><input name="evaluate_settings[name]" type="text" value="<?php echo esc_attr($metric['name']); ?>" class="regular-text" />
 					<?php if( isset($_GET['metric']) ): ?>
-						<input type="hidden" name="id" value="<?php echo $_GET['metric']; ?>" />
+						<input type="hidden" name="evaluate_settings[id]" value="<?php echo $_GET['metric']; ?>" />
 					<?php endif; ?>
 					<label><input type="checkbox" name="evaluate_settings[display_name]" value="1" <?php checked( $metric['display_name']); ?> /> display name</label> </td>
 				</tr>
@@ -184,40 +204,43 @@ class Evaluate_Admin {
 					<th scope="row">Type</th>
 					<td>
 						<div>
-							<label><input type="radio" name="evaluate_settings[type]" value="one-way" class="evaluate-type-selection" /> One way voting</label>
+							<label><input type="radio" name="evaluate_settings[type]" value="one-way" <?php checked( $metric['type'], 'one-way'); ?> class="evaluate-type-selection" /> One way voting</label>
 							<div class="hide evaluate-type-shell">
-								<div><label><input type="radio" name="evaluate_settings[one-way][]" value="thumb" /> Thumb</label></div>
-								<div><label><input type="radio" name="evaluate_settings[one-way][]" value="arrow" /> Arrow</label></div>
-								<div><label><input type="radio" name="evaluate_settings[one-way][]" value="heart" /> Heart</label></div>
+								<div><label><input type="radio" name="evaluate_settings[one-way]" value="thumb" <?php checked( $metric['one-way'], 'thumb'); ?> /> Like </label> <?php echo Evaluate::one_way( 'thumb' ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[one-way]" value="arrow" <?php checked( $metric['one-way'], 'arrow'); ?> /> Vote Up </label> <?php echo Evaluate::one_way( 'arrow' ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[one-way]" value="heart" <?php checked( $metric['one-way'], 'heart'); ?> /> Heart </label> <?php echo Evaluate::one_way( 'heart' ); ?></div>
 							</div>
 						</div>
 						<div>
-							<label><input type="radio" name="evaluate_settings[type]" value="two-way" class="evaluate-type-selection" /> Two way voting, Up and Down</label>
+							<label><input type="radio" name="evaluate_settings[type]" value="two-way" <?php checked( $metric['type'], 'two-way'); ?> class="evaluate-type-selection" /> Two way voting, Up and Down</label>
 							<div class="hide evaluate-type-shell">
-								<div><label><input type="radio" name="evaluate_settings[two-way][]" value="thumb" /> Thumbs</label></div>
-								<div><label><input type="radio" name="evaluate_settings[two-way][]" value="arrow" /> Arrows</label></div>
+								<div><label><input type="radio" name="evaluate_settings[two-way]" value="thumb" <?php checked( $metric['two-way'], 'thumb'); ?>  /> Thumbs</label> <?php echo Evaluate::two_way( 'thumb' ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[two-way]" value="arrow" <?php checked( $metric['two-way'], 'arrow'); ?>  /> Arrows</label> <?php echo Evaluate::two_way( 'arrow' ); ?></div>
 							</div>
 						</div>
 						<div>
-							<label><input type="radio" name="evaluate_settings[type]" value="range" class="evaluate-type-selection" /> Range, Star Voting</label>
+							<label><input type="radio" name="evaluate_settings[type]" value="range" <?php checked( $metric['type'], 'range'); ?> class="evaluate-type-selection" /> Range, Star Voting</label>
+							<div class="hide evaluate-type-shell">
+							<?php Evaluate::range(); ?>
+							</div>
 						</div>
 						<div>
-							<label><input type="radio" name="evaluate_settings[type]" value="poll" class="evaluate-type-selection" /> Poll</label>
+							<label><input type="radio" name="evaluate_settings[type]" value="poll" <?php checked( $metric['type'], 'poll'); ?> class="evaluate-type-selection" /> Poll</label>
 							<div class="hide evaluate-type-shell">
 								<label>Question</label><br />
-								<input type="text" name="evaluate_settings[poll][question]"  class="regular-text" />
+								<input type="text" name="evaluate_settings[poll][question]" value="<?php echo esc_attr( $metric['poll']['question'] ); ?>"  class="regular-text" />
 								<ul>
 									<?php 
 										$j = 0;  while( $j < 5 ):
 										?>
 									<li>
 										<label>name</label><br />
-										<input type="text" name="evaluate_settings[poll][name][]"   class="all-options" />
+										<input type="text" name="evaluate_settings[poll][name][<?php echo $j; ?>]" value="<?php echo esc_attr( $metric['poll']['name'][$j] ); ?>"   class="all-options" />
 										
-										<select name="evaluate_settings[poll][value][]">
+										<select name="evaluate_settings[poll][value][<?php echo $j; ?>]">
 										<?php 
 										$i = 0; while( $i < 21) { ?>
-											<option value="<?php echo $i; ?>"> &nbsp;  <?php echo $i; ?>  &nbsp; </option>
+											<option value="<?php echo $i; ?>" <?php selected($metric['poll']['value'][$j], $i); ?>> &nbsp;  <?php echo $i; ?>  &nbsp; </option>
 									 		<?php $i++; } ?> 
 									 	</select>
 									 </li>
@@ -253,7 +276,7 @@ class Evaluate_Admin {
 					</td>
 				</tr>
 			</table>
-			<?php submit_button(); ?> <a href="?page=evaluate">cancel</a>
+			<?php submit_button(); ?>
 		</form>
 	
 		<?php
@@ -262,7 +285,15 @@ class Evaluate_Admin {
 	public static function sanitize_evaluate_settings( $settings ) {
 		global $evaluation_setting_varification_count; 
 		$evaluation_setting_varification_count++;
-		// var_dump( is_array( $settings['post_type'] ),$settings['post_type']  );
+		
+		if ($evaluation_setting_varification_count > 1):
+			return $settings;
+		endif;
+		
+		$error = false;
+		
+		
+		$settings['name'] = trim( $settings['name'] );
 		
 		if( empty( $settings['name'] ) ):
 			$setting = 'evaluate_settings';
@@ -270,8 +301,19 @@ class Evaluate_Admin {
 			$message = "You didn't type in a name for your evaluation metric.";
 			$type 	 = "error";
 			add_settings_error( $setting, $code, $message, $type );
+			$error = true;
 		endif;
-		// var_dump($settings['post_type']);
+		
+		if( empty( $settings['type'] ) ):
+			
+			$setting = 'evaluate_settings';
+			$code 	 = 'evaluation_type';
+			$message = "You didn't select any type, we don't know what kind of metric you want to display.";
+			$type 	 = "error";
+			add_settings_error( $setting, $code, $message, $type );
+			$error = true;
+		endif;
+		
 		if( !is_array( $settings['post_type'] ) ):
 			
 			$setting = 'evaluate_settings';
@@ -279,18 +321,31 @@ class Evaluate_Admin {
 			$message = "You didn't select any post type, your evaluation metric will not appear any where.";
 			$type 	 = "error";
 			add_settings_error( $setting, $code, $message, $type );
-			
+			$error = true;
 		endif;
 		
-		if ($evaluation_setting_varification_count < 2):
-			$options = get_option( 'evaluate_mettrics' );
-			
-			
+		
+		
+		
+		$options = get_option( 'evaluate_mettrics' );
+		
+		if( isset( $settings['id']) ):
+			$id = $settings['id'];
+			$setting = 'evaluate_settings';
+			$code 	 = 'saved';
+			$message = "The metric was updated,  <a href='?page=evaluate'>return back to the list</a>.";
+			$type 	 = "updated";
+			add_settings_error( $setting, $code, $message, $type );
+
+		else:
 			$id = Evaluate_Admin::get_id( $settings['name'], $options );
-			$options[$id] = $settings;
 			
-			update_option( 'evaluate_mettrics', $options );
 		endif;
+		$options[$id] = $settings;
+		
+		if(!$error)
+			update_option( 'evaluate_mettrics', $options );
+		
 		// todo: make sure that the user entered appropriate stuff in here
 				
 		return $settings;
@@ -298,6 +353,8 @@ class Evaluate_Admin {
 	
 	public static function get_id( $title, $options ) {
 		$id = sanitize_title_with_dashes( strtolower( $title ) );
+		if( empty($id) )
+			return false;
 		
 		if( is_array($options) ):
 		

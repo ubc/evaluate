@@ -1,5 +1,5 @@
 /* this css only gets shown on the admin side of things */
-
+@import url("evaluate.css");
 .hide{
 	display: none;	
 }

@@ -1,10 +1,12 @@
 var Evaluate_Add = {
 	onReady : function() {
 		
+		
 		jQuery('input.evaluate-type-selection').on('focus click', function( event ) {
 			if( event.type == 'focus' || event.type == 'click' ) Evaluate_Add.show_selection( this );
 			
 		});
+		jQuery('input.evaluate-type-selection:checked').trigger('focus');
 		jQuery('#preview').show();
 		
 	},

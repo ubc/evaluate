@@ -22,7 +22,7 @@ require( 'lib/class.evaluate-admin.php' );
 add_action( 'init',       array( 'Evaluate', 'init' ) );
 add_action( 'admin_menu', array( 'Evaluate_Admin', 'admin_menu' ) );
 add_action( 'admin_init', array( 'Evaluate_Admin', 'init' ) );
-
+add_filter( 'the_content',array( 'Evaluate', 'the_content' ), 999 );
 
 // install and uninstall
 register_activation_hook( __FILE__, array( 'Evaluate', 'install' ) );
