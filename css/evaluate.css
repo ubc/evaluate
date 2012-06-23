@@ -1,9 +1,10 @@
+.rate,
 .star-rating,
 .star-rating a:hover,
 .star-rating a:active,
 .star-rating a:focus,
 .star-rating .current-rating {
-	background:url(../img/alt_star.gif) left -1000px repeat-x;
+	background:url(../img/sprite.gif) left -1000px repeat-x;
 }
 
 .star-rating {
@@ -14,7 +15,7 @@
 	list-style:none;
 	margin:0;
 	padding:0;
-	background-position:left top;
+	background-position:0 -145px;
 }
 
 .star-rating li {
@@ -34,7 +35,7 @@
 }
 
 .star-rating a:hover,.star-rating a:active,.star-rating a:focus {
-	background-position:left bottom;
+	background-position:0 -193px;
 }
 
 .star-rating a.one-star {
@@ -64,11 +65,60 @@
 
 .star-rating .current-rating {
 	z-index:1;
-	background-position:left center;
+	background-position:0 -169px;
 }
 .inline-rating{
 	display:-moz-inline-block;
 	display:-moz-inline-box;
 	display:inline-block;
 	vertical-align: middle;
+}
+.rate-shell{
+	position: relative;
+	overflow: hidden;
+}
+.rate,
+.rate-count{
+	display: block;
+	float: left;
+	line-height: 25px;
+}
+.rate{
+	width:25px;
+	height: 25px;
+	text-indent: -999px;
+	line-height: 25px;
+	outline:none;
+	border:none;
+	text-decoration: none;
+}
+.thumb{
+	background-position:0 -50px;
+}
+.thumb:hover, .thumb.active{
+	background-position:0 -74px;
+}
+.thumb-down{
+	background-position:0 -96px;
+}
+.thumb-down:hover, .thumb-down.active{
+	background-position:0 -120px;
+}
+.heart {
+	background-position:0 -1px;
+}
+.heart:hover {
+	background-position:0 -24px;
+}
+.arrow {
+	background-position:0 -264px;
+}
+.arrow:hover {
+	background-position:0 -289px;
+}
+.arrow-down {
+	background-position:0 -312px;
+}
+.arrow-down:hover {
+	background-position:0 -336px;
 }

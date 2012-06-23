@@ -10,16 +10,20 @@ License: GPLv2 or later.
 */
 if ( !defined('ABSPATH') )
 	die('-1');
+global $wpdb;
 
 define( 'EVALUATE_DIR_PATH', plugin_dir_path( __FILE__ ) );
 define( 'EVALUATE_BASENAME', plugin_basename(__FILE__) );
 define( 'EVALUATE_DIR_URL',  plugins_url( ''  , EVALUATE_BASENAME ) );
+define( 'EVALUATE_DB_VERSION', 1 );
+define( 'EVALUATE_DB_TABLE', $wpdb->prefix .'evaluate' );
+
 
 require( 'lib/class.evaluate.php' );
 require( 'lib/class.evaluate-admin.php' );
 
-
 add_action( 'init',       array( 'Evaluate', 'init' ) );
+add_action( 'wp_print_styles', array( 'Evaluate', 'enqueue_style' ) );
 add_action( 'admin_menu', array( 'Evaluate_Admin', 'admin_menu' ) );
 add_action( 'admin_init', array( 'Evaluate_Admin', 'init' ) );
 add_filter( 'the_content',array( 'Evaluate', 'the_content' ), 999 );

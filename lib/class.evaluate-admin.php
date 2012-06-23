@@ -34,7 +34,7 @@ class Evaluate_Admin {
  	
 	public static function page() { 
 		
-		self::$options = get_option( 'evaluate_mettrics' ); 
+		self::$options = get_option( 'evaluate_metrics' ); 
 	?>
 		<div class="wrap">
 			<div id="icon-options-general" class="icon32"></div>
@@ -99,9 +99,9 @@ class Evaluate_Admin {
 			// what do you want to delete?
 			unset( self::$options[$id] );
 			if( empty( self::$options ) ):
-				delete_option(  'evaluate_mettrics' );
+				delete_option(  'evaluate_metrics' );
 			else:
-				update_option( 'evaluate_mettrics', self::$options );
+				update_option( 'evaluate_metrics', self::$options );
 			endif;
 		endif;
 		
@@ -118,6 +118,7 @@ class Evaluate_Admin {
 					<th class="row-title"><?php _e( 'Name' ); ?></th>
 					<th><?php _e( 'Type' ); ?></th>
 					<th><?php _e( 'Post Type Included' ); ?></th>
+					<th><?php _e( 'Preview' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -142,6 +143,11 @@ class Evaluate_Admin {
 				endif;
 			?>
 			</td>
+			<td><?php 
+				
+				echo Evaluate::display_metic( $option );
+			?>
+			</td>
 		</tr>	
 		<?php endforeach;  ?>
 			</tbody>
@@ -150,6 +156,7 @@ class Evaluate_Admin {
 					<th class="row-title"><?php _e( 'Name' ); ?></th>
 					<th><?php _e( 'Type' ); ?></th>
 					<th><?php _e( 'Post Type Included' ); ?></th>
+					<th><?php _e( 'Preview' ); ?></th>
 				</tr>
 			</tfoot>
 		</table>
@@ -206,22 +213,22 @@ class Evaluate_Admin {
 						<div>
 							<label><input type="radio" name="evaluate_settings[type]" value="one-way" <?php checked( $metric['type'], 'one-way'); ?> class="evaluate-type-selection" /> One way voting</label>
 							<div class="hide evaluate-type-shell">
-								<div><label><input type="radio" name="evaluate_settings[one-way]" value="thumb" <?php checked( $metric['one-way'], 'thumb'); ?> /> Like </label> <?php echo Evaluate::one_way( 'thumb' ); ?></div>
-								<div><label><input type="radio" name="evaluate_settings[one-way]" value="arrow" <?php checked( $metric['one-way'], 'arrow'); ?> /> Vote Up </label> <?php echo Evaluate::one_way( 'arrow' ); ?></div>
-								<div><label><input type="radio" name="evaluate_settings[one-way]" value="heart" <?php checked( $metric['one-way'], 'heart'); ?> /> Heart </label> <?php echo Evaluate::one_way( 'heart' ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[one-way]" value="thumb" <?php checked( $metric['one-way'], 'thumb'); ?> /> Like </label> <?php echo Evaluate::one_way( array( 'one-way' => 'thumb' ) ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[one-way]" value="arrow" <?php checked( $metric['one-way'], 'arrow'); ?> /> Vote Up </label> <?php echo Evaluate::one_way( array( 'one-way' =>'arrow' ) ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[one-way]" value="heart" <?php checked( $metric['one-way'], 'heart'); ?> /> Heart </label> <?php echo Evaluate::one_way( array( 'one-way' =>'heart' ) ); ?></div>
 							</div>
 						</div>
 						<div>
 							<label><input type="radio" name="evaluate_settings[type]" value="two-way" <?php checked( $metric['type'], 'two-way'); ?> class="evaluate-type-selection" /> Two way voting, Up and Down</label>
 							<div class="hide evaluate-type-shell">
-								<div><label><input type="radio" name="evaluate_settings[two-way]" value="thumb" <?php checked( $metric['two-way'], 'thumb'); ?>  /> Thumbs</label> <?php echo Evaluate::two_way( 'thumb' ); ?></div>
-								<div><label><input type="radio" name="evaluate_settings[two-way]" value="arrow" <?php checked( $metric['two-way'], 'arrow'); ?>  /> Arrows</label> <?php echo Evaluate::two_way( 'arrow' ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[two-way]" value="thumb" <?php checked( $metric['two-way'], 'thumb'); ?>  /> Thumbs</label> <?php echo Evaluate::two_way( array( 'two-way' =>'thumb' ) ); ?></div>
+								<div><label><input type="radio" name="evaluate_settings[two-way]" value="arrow" <?php checked( $metric['two-way'], 'arrow'); ?>  /> Arrows</label> <?php echo Evaluate::two_way( array( 'two-way' =>'arrow' ) ); ?></div>
 							</div>
 						</div>
 						<div>
 							<label><input type="radio" name="evaluate_settings[type]" value="range" <?php checked( $metric['type'], 'range'); ?> class="evaluate-type-selection" /> Range, Star Voting</label>
 							<div class="hide evaluate-type-shell">
-							<?php Evaluate::range(); ?>
+							<?php echo Evaluate::range(); ?>
 							</div>
 						</div>
 						<div>
@@ -327,7 +334,7 @@ class Evaluate_Admin {
 		
 		
 		
-		$options = get_option( 'evaluate_mettrics' );
+		$options = get_option( 'evaluate_metrics' );
 		
 		if( isset( $settings['id']) ):
 			$id = $settings['id'];
@@ -344,7 +351,7 @@ class Evaluate_Admin {
 		$options[$id] = $settings;
 		
 		if(!$error)
-			update_option( 'evaluate_mettrics', $options );
+			update_option( 'evaluate_metrics', $options );
 		
 		// todo: make sure that the user entered appropriate stuff in here
 				
