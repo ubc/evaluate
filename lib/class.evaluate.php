@@ -6,11 +6,13 @@ class Evaluate {
 
 	static $options = array();
 	static $settings = array();
+	static $user = null;
   	
 	public static function init() {
 		
 		self::$options = get_option( 'evaluate_metrics' ); 
 	    self::$settings = get_option( 'evaluate_settings' );
+	    self::$user = Evaluate::get_user();
 	    
 	    if( isset( $_GET['metric'] ) )
 	    	Evaluate::deal_with_metric();
@@ -277,8 +279,8 @@ class Evaluate {
 			return " poll";
 		
 		$user_count = Evaluate::count_exists( $post_id, $metric['id'] );
-		
-		if( ( !$user_count && ! isset(  $_GET['results-'.$metric['id']] ) ) || isset( $_GET['poll-'.$metric['id']] )  ):
+		 
+		if( ( !$user_count && ! isset(  $_GET['result-'.$metric['id']] ) ) || isset( $_GET['poll-'.$metric['id']] )  ):
 			$show_poll 		= 'display:block;';
 			$show_result 	= 'display:none;';
 		else:
@@ -320,7 +322,8 @@ class Evaluate {
 				$count = Evaluate::metric_count( $post_id, $metric['id'], $i );
 					$html .=  '<li>'.$item;
 				
-				$percent = $count / $total_count * 100;
+				$percent = ( $total_count > 0 ? $count / $total_count * 100 : 0 );
+				
 				if( $user_count == $i )
 					$html .= ' <strong>*</strong> ';
 				$html .=  ' <small>'.$count.' Votes ( '.$percent.'% )</small>';
@@ -425,7 +428,7 @@ class Evaluate {
 		global $wpdb;
 		
 		$date 		= Evaluate::gmt_time();
-		$user_id 	= Evaluate::get_user();
+		$user_id 	= Evaluate::get_user();;
 		$data 		= array( 
 						'post_id' 	=> $post_id, 
 						'type' 		=> $type,
@@ -454,7 +457,7 @@ class Evaluate {
 	public static function remove_count( $post_id, $count, $type ) {
 		global $wpdb;
 		
-		$user_id = Evaluate::get_user();
+		$user_id = Evaluate::get_user();;
 		
 		$wpdb->query( $wpdb->prepare( "DELETE FROM ".EVALUATE_DB_TABLE." WHERE post_id = %d AND user_id = '%s' AND type ='%s';", $post_id, $user_id, $type ) );
 		
@@ -475,7 +478,7 @@ class Evaluate {
 		global $wpdb;
 		
 		$date 		= Evaluate::gmt_time();
-		$user_id 	= Evaluate::get_user();
+		$user_id 	= Evaluate::get_user();;
 		
 		$data 		= array( 
 						'post_id' 	=> $post_id, 
@@ -512,7 +515,7 @@ class Evaluate {
 		global $wpdb;
 		
 		$date 		= Evaluate::gmt_time();
-		$user_id 	= Evaluate::get_user(); 
+		$user_id 	= Evaluate::get_user();; 
 		$data 		= array( 
 						'post_id' 	=> $post_id, 
 						'type' 		=> $type,
@@ -540,7 +543,7 @@ class Evaluate {
 	public static function count_exists( $post_id, $type ) {
 		global $wpdb;
 		
-		$user_id = Evaluate::get_user();
+		$user_id = Evaluate::get_user();;
 		
 		return $wpdb->get_var($wpdb->prepare("SELECT counter FROM ".EVALUATE_DB_TABLE." WHERE post_id = %d AND user_id = '%s' AND type ='%s';", $post_id, $user_id, $type ) );
 	
@@ -603,12 +606,25 @@ class Evaluate {
 	
 	public static function get_user() {
 		global $current_user;
+		if( self::$user )
+			return self::$user;
 		
-		
-		if( isset( $current_user ) && isset( $current_user->ID ) && $current_user->ID > 0 )
+		if( isset( $current_user ) && isset( $current_user->ID ) && $current_user->ID > 0 ):
 			return $current_user->ID;
-		else
+		
+		else:
+			
+			$cookie_id = 'evaluate_user_'.md5( LOGGED_IN_KEY);
+			
+			if( $_COOKIE[$cookie_id] ):
+				return $_COOKIE[$cookie_id];
+			else:
+				$time = time(); 
+				setcookie( $cookie_id, 'u'.$time, $time+60*60*24*30 );
+				return 'u'.$time;
+			endif;
 			return $_SERVER[ 'REMOTE_ADDR' ];
+		endif;
 	}
 	
 	public static function delete_everything() {

@@ -1,10 +1,6 @@
 .metric-shell{
-	border: 1px solid #EEE;
-	padding: 10px 1%;
 	margin-bottom: 5px;
-	float: left;
-	width: 45%;
-	margin:5px 1%;
+	
 }
 
 /* start rating */
@@ -23,8 +19,8 @@
 	height:25px;
 	overflow:hidden;
 	list-style:none;
-	margin:0;
-	padding:0;
+	margin:0!important;
+	padding:0!important;
 	background-position:0 -145px;
 }
 
@@ -143,21 +139,21 @@
 .poll-form {
 	padding: 0 0 10px;
 }
+.poll-form input{
+	margin:0!important;
+}
 .poll-results,
 .poll-form ul {
-	padding: 10px;
-	margin: 0 0 10px;
+	padding: 10px !important;
+	margin: 0 0 10px!important;
 	border:1px solid #EEE;
 	max-width:300px;
 }
 
-.poll-results li {
-	
-}
 .poll-results li,
 .poll-form li{
 	list-style: none;
-	margin-bottom: 5px;
+	margin:0 0 5px 0!important;
 }
 
 .poll-result-line{
