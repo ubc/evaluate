@@ -1,3 +1,13 @@
+.metric-shell{
+	border: 1px solid #EEE;
+	padding: 10px 1%;
+	margin-bottom: 5px;
+	float: left;
+	width: 45%;
+	margin:5px 1%;
+}
+
+/* start rating */
 .rate,
 .star-rating,
 .star-rating a:hover,
@@ -22,7 +32,8 @@
 	display:inline;
 }
 
-.star-rating a,.star-rating .current-rating {
+.star-rating a,
+.star-rating .current-rating {
 	position:absolute;
 	top:0;
 	left:0;
@@ -34,31 +45,27 @@
 	border:none;
 }
 
-.star-rating a:hover,.star-rating a:active,.star-rating a:focus {
-	background-position:0 -193px;
-}
-
-.star-rating a.one-star {
+.star-rating a.star-1 {
 	width:20%;
 	z-index:6;
 }
 
-.star-rating a.two-stars {
+.star-rating a.star-2 {
 	width:40%;
 	z-index:5;
 }
 
-.star-rating a.three-stars {
+.star-rating a.star-3 {
 	width:60%;
 	z-index:4;
 }
 
-.star-rating a.four-stars {
+.star-rating a.star-4 {
 	width:80%;
 	z-index:3;
 }
 
-.star-rating a.five-stars {
+.star-rating a.star-5{
 	width:100%;
 	z-index:2;
 }
@@ -67,12 +74,19 @@
 	z-index:1;
 	background-position:0 -169px;
 }
+
+.star-rating a:hover,
+.star-rating a:active,
+.star-rating a:focus {
+	background-position:0 -193px;
+}
 .inline-rating{
 	display:-moz-inline-block;
 	display:-moz-inline-box;
 	display:inline-block;
 	vertical-align: middle;
 }
+
 .rate-shell{
 	position: relative;
 	overflow: hidden;
@@ -92,33 +106,63 @@
 	border:none;
 	text-decoration: none;
 }
+/* single and double rating */
 .thumb{
 	background-position:0 -50px;
 }
-.thumb:hover, .thumb.active{
+.thumb:hover, .thumb.selected-rating{
 	background-position:0 -74px;
 }
 .thumb-down{
 	background-position:0 -96px;
 }
-.thumb-down:hover, .thumb-down.active{
+.thumb-down:hover, .thumb-down.selected-rating{
 	background-position:0 -120px;
 }
 .heart {
 	background-position:0 -1px;
 }
-.heart:hover {
+.heart:hover, .heart.selected-rating {
 	background-position:0 -24px;
 }
 .arrow {
 	background-position:0 -264px;
 }
-.arrow:hover {
+.arrow:hover, .arrow.selected-rating {
 	background-position:0 -289px;
 }
 .arrow-down {
 	background-position:0 -312px;
 }
-.arrow-down:hover {
+.arrow-down:hover, .arrow-down.selected-rating {
 	background-position:0 -336px;
+}
+
+/* poll */
+
+.poll-form {
+	padding: 0 0 10px;
+}
+.poll-results,
+.poll-form ul {
+	padding: 10px;
+	margin: 0 0 10px;
+	border:1px solid #EEE;
+	max-width:300px;
+}
+
+.poll-results li {
+	
+}
+.poll-results li,
+.poll-form li{
+	list-style: none;
+	margin-bottom: 5px;
+}
+
+.poll-result-line{
+	display: block;
+	background: #DDD;
+	height:5px;
+	border-left: 2px solid #DDD;
 }

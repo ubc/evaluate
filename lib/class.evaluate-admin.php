@@ -98,6 +98,17 @@ class Evaluate_Admin {
 		if( current_user_can('manage_options') && wp_verify_nonce( $_GET['_wpnonce'], 'delete-'.$id ) ):
 			// what do you want to delete?
 			unset( self::$options[$id] );
+			
+			// delete all the post meta
+			$all_posts = get_posts( 'posts_per_page=-1&post_type=any&post_status=any' );
+			
+			foreach( $all_posts as $postinfo) {
+				delete_post_meta($postinfo->ID, 'count_'.$id);
+				delete_post_meta($postinfo->ID, 'sum_'.$id);
+			}
+			// delete all the rows from the current table for that particular metric id
+			Evaluate::delete_metric( $id );
+			
 			if( empty( self::$options ) ):
 				delete_option(  'evaluate_metrics' );
 			else:
@@ -243,13 +254,14 @@ class Evaluate_Admin {
 									<li>
 										<label>name</label><br />
 										<input type="text" name="evaluate_settings[poll][name][<?php echo $j; ?>]" value="<?php echo esc_attr( $metric['poll']['name'][$j] ); ?>"   class="all-options" />
-										
+										<?php /*
 										<select name="evaluate_settings[poll][value][<?php echo $j; ?>]">
 										<?php 
 										$i = 0; while( $i < 21) { ?>
 											<option value="<?php echo $i; ?>" <?php selected($metric['poll']['value'][$j], $i); ?>> &nbsp;  <?php echo $i; ?>  &nbsp; </option>
 									 		<?php $i++; } ?> 
-									 	</select>
+									 	</select> 
+									 	*/ ?>
 									 </li>
 									<?php 
 									$j++;

@@ -10,6 +10,7 @@ License: GPLv2 or later.
 */
 if ( !defined('ABSPATH') )
 	die('-1');
+
 global $wpdb;
 
 define( 'EVALUATE_DIR_PATH', plugin_dir_path( __FILE__ ) );
@@ -27,6 +28,7 @@ add_action( 'wp_print_styles', array( 'Evaluate', 'enqueue_style' ) );
 add_action( 'admin_menu', array( 'Evaluate_Admin', 'admin_menu' ) );
 add_action( 'admin_init', array( 'Evaluate_Admin', 'init' ) );
 add_filter( 'the_content',array( 'Evaluate', 'the_content' ), 999 );
+
 
 // install and uninstall
 register_activation_hook( __FILE__, array( 'Evaluate', 'install' ) );
