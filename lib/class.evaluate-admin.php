@@ -35,10 +35,12 @@ class Evaluate_Admin {
 	public static function page() { 
 		
 		self::$options = get_option( 'evaluate_metrics' ); 
-	?>
+		
+		$title = ( $_GET['do'] != 'view' ? '<a class="add-new-h2" href="?page=evaluate#add">Add New</a>' : '<a class="add-new-h2" href="?page=evaluate">Back to metrics</a>');
+		?>
 		<div class="wrap">
 			<div id="icon-options-general" class="icon32"></div>
-				<h2>Evaluation <a class="add-new-h2" href="?page=evaluate#add">Add New</a></h2>
+				<h2>Evaluation <?php echo $title; ?></h2>
 				<?php 
 				settings_errors(); 
 				
@@ -55,10 +57,10 @@ class Evaluate_Admin {
 							if( isset( self::$options[ $_GET['metric'] ] ) ):
 								Evaluate_Admin::delete_evaluation( $_GET['metric'] );
 							else:
-								Evaluate_Admin::disply_error( 'Sorry but this metric doesn\'t exits' );
+								Evaluate_Admin::display_error( 'Sorry but this metric doesn\'t exits' );
 							endif;
 						else:
-							Evaluate_Admin::disply_error( 'Sorry but this metric you didn\'t include a metric'  );
+							Evaluate_Admin::display_error( 'Sorry but this metric you didn\'t include a metric'  );
 						endif;
 						
 						Evaluate_Admin::display_page();
@@ -72,13 +74,26 @@ class Evaluate_Admin {
 							if( isset( self::$options[ $_GET['metric'] ] ) ):
 								Evaluate_Admin::edit_metric( self::$options[ $_GET['metric'] ] );
 							else:
-								Evaluate_Admin::disply_error( 'Sorry but this metric doesn\'t exits' );
+								Evaluate_Admin::display_error( 'Sorry but this metric doesn\'t exits' );
 							endif;
 						else:
-							Evaluate_Admin::disply_error( 'Sorry but this metric you didn\'t include a metric'  );
+							Evaluate_Admin::display_error( 'Sorry but this metric you didn\'t include a metric'  );
 						endif;
 						
 					
+					break;
+					
+					case 'view':
+						if( isset( $_GET['metric'] ) ):
+							if( isset( self::$options[ $_GET['metric'] ] ) ):
+								Evaluate_Admin::display_data( self::$options[ $_GET['metric'] ] );
+							else:
+								Evaluate_Admin::display_error( 'Sorry but this metric doesn\'t exits' );
+							endif;
+						else:
+							Evaluate_Admin::display_error( 'Sorry but this metric you didn\'t include a metric'  );
+						endif;
+						
 					break;
 					
 					default:
@@ -141,8 +156,10 @@ class Evaluate_Admin {
 		<tr <?php echo ( $i%2 ? $alternate: '' ); ?> >
 			<td class="post-title page-title column-title">
 				<label for="tablecell"><strong><a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>"><?php echo $option['name']; ?></a></strong></label>
-				<div class="row-actions"><span class="edit">
-				<a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>">Edit</a> | </span><span class="trash"><a href="?page=evaluate&do=delete&metric=<?php echo $id;  ?>&_wpnonce=<?php echo wp_create_nonce( 'delete-'.$id ); ?>">Delete</a></span>
+				<div class="row-actions">
+				<span><a href="?page=evaluate&do=view&metric=<?php echo $id; ?>">View Data</a> | </span>
+				<span class="edit"><a href="?page=evaluate&do=edit&metric=<?php echo $id; ?>">Edit</a> | </span>
+				<span class="trash"><a href="?page=evaluate&do=delete&metric=<?php echo $id;  ?>&_wpnonce=<?php echo wp_create_nonce( 'delete-'.$id ); ?>">Delete</a> | </span>
 				</div>
 			</td>
 			
@@ -175,12 +192,81 @@ class Evaluate_Admin {
 		
 		else: 
 			
-			Evaluate_Admin::disply_error("You don't have any way for people to evaluate your content yet. Create a new metric.");
+			Evaluate_Admin::display_error("You don't have any way for people to evaluate your content yet. Create a new metric.");
 			
 		endif;
 	
 	}
-	public static function disply_error( $error ) {
+	public static function display_data( $metric ) {
+		// var_dump( $metric );
+		$id = $_GET['metric'];
+		
+		switch( $_GET['group'] ) {
+			case 'user':
+				$tab_content = '';
+				$tab_user = 'nav-tab-active';
+				$group_by = 'user_id';
+			break;
+			
+			default:
+				$tab_content = 'nav-tab-active';
+				$tab_user = '';
+				$group_by = 'post_id';
+			break;
+		
+		
+		}
+		
+		$data = Evaluate::list_metric( $id, $group_by );
+		
+	?>
+	<h3 class="nav-tab-wrapper"> 
+		<a class="nav-tab <?php echo $tab_content; ?>" href="?page=evaluate&do=view&metric=like">Content</a>
+		<a class="nav-tab <?php echo $tab_user; ?>" href="?page=evaluate&do=view&metric=like&group=user">Users</a>
+	</h3>
+	<?php 
+		$meta = array('Title', 'Total', 'User');
+		if( is_array( $data ) )
+		Evaluate_Admin::display_table( $data, $meta );
+	
+	}
+	public static function display_table( $data, $meta ) {
+	
+	?>
+	<table class="widefat">
+			<thead>
+				<tr>
+					<?php foreach( $meta as $tag ): ?>
+					<th ><?php echo $tag; ?></th>
+					<?php endforeach; ?>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach( $data as $item ): ?>
+				<tr>
+					<?php
+						var_dump($item);
+						$post = get_post( $item->post_id );
+						// var_dump($post);
+						?>
+						<td ><?php echo $post->post_title; ?></td>
+						<td ><?php echo $item->post_id; ?></td>
+						<td ><?php echo $post->post_title; ?></td>
+				</tr>
+				<?php endforeach; ?>
+			</tbody>
+			<tfoot>
+				<tr>
+					<?php foreach( $meta as $tag ): ?>
+					<th ><?php echo $tag; ?></th>
+					<?php endforeach; ?>
+				</tr>
+			</tfoot>
+		</table>
+		<?
+	}
+	public static function display_error( $error ) {
+		
 		?>
 		<div class="updated settings-error" > 
 			<p><strong><?php echo $error; ?></strong></p>
@@ -342,9 +428,6 @@ class Evaluate_Admin {
 			add_settings_error( $setting, $code, $message, $type );
 			$error = true;
 		endif;
-		
-		
-		
 		
 		$options = get_option( 'evaluate_metrics' );
 		

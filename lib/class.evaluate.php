@@ -575,6 +575,14 @@ class Evaluate {
 		
 	}
 	
+	public static function list_metric( $type, $group_by ) {
+		global $wpdb;
+		
+		return $wpdb->get_results($wpdb->prepare( 
+		"SELECT id, post_id, GROUP_CONCAT( user_id ) as ids, SUM( counter ) as sum, COUNT( id ) as count, date FROM ".EVALUATE_DB_TABLE." WHERE type ='%s' GROUP BY ".$group_by, $type, $group_by )  );
+	
+	}
+	
 	public static function gmt_time() {
 
 		$default_timezone = date_default_timezone_get();
