@@ -13,6 +13,8 @@ class Evaluate_Admin {
 		wp_register_script( 'evaluate-admin-add', EVALUATE_DIR_URL.'/js/admin-add.js' , array( 'jquery' ), '1.0', true ); 
 		wp_register_style( 'evaluate-admin', EVALUATE_DIR_URL. '/css/admin.css' );
 		
+    global $wpdb;
+    
  	}
  	
  	public static function admin_menu() {
@@ -225,11 +227,12 @@ class Evaluate_Admin {
 		<a class="nav-tab <?php echo $tab_user; ?>" href="?page=evaluate&do=view&metric=like&group=user">Users</a>
 	</h3>
 	<?php 
-		$meta = array('Title', 'Total', 'User');
+		$meta = array('Title', 'Score', 'Total Votes', 'Content Type', 'User');
 		if( is_array( $data ) )
 		Evaluate_Admin::display_table( $data, $meta );
 	
 	}
+  
 	public static function display_table( $data, $meta ) {
 	
 	?>
@@ -245,13 +248,16 @@ class Evaluate_Admin {
 				<?php foreach( $data as $item ): ?>
 				<tr>
 					<?php
-						var_dump($item);
+						//var_dump($item);
 						$post = get_post( $item->post_id );
-						// var_dump($post);
+            $user = get_userdata($item->ids);
+    var_dump($post);
 						?>
 						<td ><?php echo $post->post_title; ?></td>
-						<td ><?php echo $item->post_id; ?></td>
-						<td ><?php echo $post->post_title; ?></td>
+						<td ><?php echo $item->sum; ?></td>
+						<td ><?php echo $item->count; ?></td>
+						<td ><?php echo $post->post_type; ?></td>
+						<td ><?php echo $user->name; ?></td>
 				</tr>
 				<?php endforeach; ?>
 			</tbody>
@@ -263,8 +269,10 @@ class Evaluate_Admin {
 				</tr>
 			</tfoot>
 		</table>
-		<?
+		<?php
+    var_dump($data);
 	}
+  
 	public static function display_error( $error ) {
 		
 		?>
@@ -294,7 +302,7 @@ class Evaluate_Admin {
 			<input type="hidden" value="evaluate_settings_group" name="option_page">
 			<input type="hidden" value="update" name="action">
 			<input id="_wpnonce" type="hidden" value="<?php echo wp_create_nonce( 'evaluate_settings_group-options' ); ?>" name="_wpnonce">
-			<input type="hidden" value="/carry/wp-admin/options-general.php?page=evaluate" name="_wp_http_referer">
+			<input type="hidden" value="<?php echo admin_url('options-general.php?page=evaluate'); ?>" name="_wp_http_referer">
 			
 			<table class="form-table">
 				<tr valign="top"><th scope="row"><label for="name">Name</label></th>

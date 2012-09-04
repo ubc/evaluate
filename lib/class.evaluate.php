@@ -21,6 +21,17 @@ class Evaluate {
 	    	echo "delete everything";
 	    	Evaluate::delete_everything();
 	    }
+      
+      // check if the table is created, if not run install script
+      // this is needed as Evaluate::install() does not get run on
+      // multi-site even if network activation is on
+      global $wpdb;
+      $query = $wpdb->prepare("SHOW tables LIKE '". EVALUATE_DB_TABLE . "'");
+      $dbtable = $wpdb->get_var($query);
+      if(!$dbtable){
+        Evaluate::install();
+      }
+
 	}
 	
 	public static function enqueue_style() {
@@ -102,9 +113,9 @@ class Evaluate {
 			break;
 		
 		}	
-		
+    
 		if( $redirect ):
-			wp_redirect( Evaluate::current_URL() );
+			//wp_redirect( Evaluate::current_URL() );
 			die();
 		endif;
 		
@@ -396,7 +407,7 @@ class Evaluate {
  
 		return $pageURL;
 	}
-	
+  
 	/* DB Helper functions */
 	public static function install() {
 	  	global $wpdb;
@@ -412,7 +423,7 @@ class Evaluate {
 					type VARCHAR(64) NOT NULL,
 					UNIQUE KEY id (id)
 					);";
-			
+      
 			require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 			dbDelta($sql);
 			
@@ -438,7 +449,6 @@ class Evaluate {
 					);
 	
 		$result = $wpdb->insert( EVALUATE_DB_TABLE , $data , array( '%d', '%s', '%d', '%s', '%s') );
-		
 		$metric_count 	= Evaluate::metric_count( $post_id, $type );
 		$metric_sum 	= Evaluate::metric_sum( $post_id, $type );
 		
