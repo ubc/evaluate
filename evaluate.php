@@ -23,13 +23,18 @@ define( 'EVALUATE_DB_TABLE', $wpdb->prefix .'evaluate' );
 require( 'lib/class.evaluate.php' );
 require( 'lib/class.evaluate-admin.php' );
 
+if(!class_exists('WP_List_Table')) {
+  require_once( ABSPATH.'wp-admin/includes/class-wp-list-table.php');
+}
+require( 'lib/class.evaluate-display-list-table.php');
+
 add_action( 'init',       array( 'Evaluate', 'init' ) );
 add_action( 'wp_print_styles', array( 'Evaluate', 'enqueue_style' ) );
 add_action( 'admin_menu', array( 'Evaluate_Admin', 'admin_menu' ) );
 add_action( 'admin_init', array( 'Evaluate_Admin', 'init' ) );
 add_filter( 'the_content',array( 'Evaluate', 'the_content' ), 999 );
 
-
 // install and uninstall
 register_activation_hook( __FILE__, array( 'Evaluate', 'install' ) );
 
+add_filter('wpmu_drop_tables', array('Evaluate', 'remove_custom_table'));

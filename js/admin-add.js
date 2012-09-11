@@ -16,7 +16,7 @@ var Evaluate_Add = {
 		parent.parent().find('.evaluate-type-shell').hide();
 		parent.find('.evaluate-type-shell').show();
 	
-	},
+	}
 	
 	
 	

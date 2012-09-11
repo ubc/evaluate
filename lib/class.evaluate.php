@@ -25,12 +25,7 @@ class Evaluate {
       // check if the table is created, if not run install script
       // this is needed as Evaluate::install() does not get run on
       // multi-site even if network activation is on
-      global $wpdb;
-      $query = $wpdb->prepare("SHOW tables LIKE '". EVALUATE_DB_TABLE . "'");
-      $dbtable = $wpdb->get_var($query);
-      if(!$dbtable){
-        Evaluate::install();
-      }
+      Evaluate::install(); //will check for db version first
 
 	}
 	
@@ -585,11 +580,10 @@ class Evaluate {
 		
 	}
 	
-	public static function list_metric( $type, $group_by ) {
+	public static function list_metric( $type, $group_by, $order_by = NULL ) {
 		global $wpdb;
-		
 		return $wpdb->get_results($wpdb->prepare( 
-		"SELECT id, post_id, GROUP_CONCAT( user_id ) as ids, SUM( counter ) as sum, COUNT( id ) as count, date FROM ".EVALUATE_DB_TABLE." WHERE type ='%s' GROUP BY ".$group_by, $type, $group_by )  );
+		"SELECT id, post_id, GROUP_CONCAT( user_id ) as ids, SUM( counter ) as sum, COUNT( id ) as count, date FROM ".EVALUATE_DB_TABLE." WHERE type ='%s' GROUP BY ".$group_by." ORDER BY ".$order_by, $type )  );
 	
 	}
 	
@@ -655,5 +649,18 @@ class Evaluate {
 	   	$wpdb->query("DROP TABLE IF EXISTS ".EVALUATE_DB_TABLE);
 		// delete the different option
 	}
+  
+  /*
+   * removes evaluate table when a blog is being deleted
+   * EVALUATE_DB_TABLE does not seem to get initialized if
+   * removing blog from network admin panel
+   */
+  public static function remove_custom_table($tables) {
+   global $wpdb;
+   $id = isset( $_REQUEST['id'] ) ? intval( $_REQUEST['id'] ) : 0;
+   $tables[] = $wpdb->get_blog_prefix($id).'evaluate';
+   return $tables;
+}
+
 
 }
