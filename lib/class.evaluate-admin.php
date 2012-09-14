@@ -196,37 +196,49 @@ class Evaluate_Admin {
   public static function display_data($metric) {
     $id = $_GET['metric'];
 
-    switch ($_GET['group']) {
+    switch ($_GET['section']) {
       case 'user':
         $tab_content = '';
         $tab_user = 'nav-tab-active';
         $section = 'user';
         break;
 
+      case 'content':
+        $tab_content = 'nav-tab-active';
+        $tab_user = '';
+        $section = 'content';
+        break;
+
       default:
         $tab_content = 'nav-tab-active';
         $tab_user = '';
-        $section = 'metrics';
+        $section = 'content';
         break;
     }
     ?>
+    <div class="postbox">
+      <h3 class="eval-title">Details for <strong><?php echo $id; ?></strong></h3>
+      <div class="inside">
+        <p>Type: <strong><?php echo self::$options[$id]['type']; ?></strong></p>
+        <p>Active for: <strong><?php echo implode(', ', self::$options[$id]['post_type']); ?></strong></p>
+        <p>Preview: <?php echo Evaluate::display_metic(self::$options[$id]); ?></p>
+      </div>
+    </div>
+
     <h3 class="nav-tab-wrapper"> 
-      <a class="nav-tab <?php echo $tab_content; ?>" href="?page=evaluate&do=view&metric=<?php echo $id; ?>">Content</a>
-      <a class="nav-tab <?php echo $tab_user; ?>" href="?page=evaluate&do=view&metric=<?php echo $id; ?>&group=user">Users</a>
+      <a class="nav-tab <?php echo $tab_content; ?>" href="?page=evaluate&do=view&metric=<?php echo $id; ?>&section=content">Content</a>
+      <a class="nav-tab <?php echo $tab_user; ?>" href="?page=evaluate&do=view&metric=<?php echo $id; ?>&section=user">Users</a>
     </h3>
     <?php
-    Evaluate_Admin::display_metrics_table($section);
-  }
-
-  public static function display_metrics_table($section) {
     global $wpdb;
-    if ($section == 'metrics') {
-      $wp_table = new Evaluate_Display_List_Table();
-      /*$wp_table->prepare_items();
-      $wp_table->display();*/
+    if ($section == 'content') {
+      $wp_table = new Evaluate_Content_List_Table();
       $wp_table->render();
     } else if ($section == 'user') {
-      echo 'lolz';
+      $wp_table = new Evaluate_Users_List_Table();
+      $wp_table->render();
+      ?>
+      <?php
     }
   }
 
@@ -331,7 +343,7 @@ class Evaluate_Admin {
             foreach ($types as $type):
               ?>
               <div><label><input type="checkbox" name="evaluate_settings[post_type][]" value="<?php echo $type->name; ?>" <?php checked(in_array($type->name, $metric['post_type'])); ?> /> <?php echo $type->label; ?></label></div>
-    <?php endforeach; ?>
+            <?php endforeach; ?>
           </td>
         </tr>
 
@@ -349,7 +361,7 @@ class Evaluate_Admin {
           </td>
         </tr>
       </table>
-    <?php submit_button(); ?>
+      <?php submit_button(); ?>
     </form>
 
     <?php

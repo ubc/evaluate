@@ -162,3 +162,24 @@
 	height:5px;
 	border-left: 2px solid #DDD;
 }
+
+/* box to show metric details */
+.eval-title {
+  font-family: Georgia,"Times New Roman","Bitstream Charter",Times,serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #464646;
+  line-height: 15px;
+  text-shadow: #FFFFFF 0px 1px 0px;
+  padding: 7px 10px 7px 10px;
+}
+
+/* add top margin to details box */
+.postbox {
+  margin-top: 15px;
+}
+
+/* remove cursor:move from the heading in .postbox */
+.postbox h3 {
+  cursor: auto;
+}
