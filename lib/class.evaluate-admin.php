@@ -97,6 +97,24 @@ class Evaluate_Admin {
 
           break;
 
+        case 'votes':
+          if (isset($_GET['metric'])) {
+            if (!isset(self::$options[$_GET['metric']])) {
+              Evaluate_Admin::display_error('Metric doesnt exist');
+              return false;
+            }
+          } else {
+            Evaluate_Admin::display_error('No metric entered');
+            return false;
+          }
+          if (!isset($_GET['id'])) {
+            Evaluate_Admin::display_error('No ID given');
+            return false;
+          }
+
+          Evaluate_Admin::display_votes(self::$options[$_GET['metric']], $_GET['id']);
+          break;
+
         default:
           Evaluate_Admin::display_page();
           Evaluate_Admin::edit_metric();
@@ -194,19 +212,16 @@ class Evaluate_Admin {
   }
 
   public static function display_data($metric) {
-    $id = $_GET['metric'];
-
-    switch ($_GET['section']) {
+    $section = $_GET['section'];
+    switch ($section) {
       case 'user':
         $tab_content = '';
         $tab_user = 'nav-tab-active';
-        $section = 'user';
         break;
 
       case 'content':
         $tab_content = 'nav-tab-active';
         $tab_user = '';
-        $section = 'content';
         break;
 
       default:
@@ -217,29 +232,98 @@ class Evaluate_Admin {
     }
     ?>
     <div class="postbox">
-      <h3 class="eval-title">Details for <strong><?php echo $id; ?></strong></h3>
+      <h3 class="eval-title">Details for <strong><?php echo $metric['name']; ?></strong></h3>
       <div class="inside">
-        <p>Type: <strong><?php echo self::$options[$id]['type']; ?></strong></p>
-        <p>Active for: <strong><?php echo implode(', ', self::$options[$id]['post_type']); ?></strong></p>
-        <p>Preview: <?php echo Evaluate::display_metic(self::$options[$id]); ?></p>
+        <p>Type: <strong><?php echo $metric['type']; ?></strong></p>
+        <p>Active for: <strong><?php echo implode(', ', $metric['post_type']); ?></strong></p>
+        <p>Preview: <?php echo Evaluate::display_metic($metric); ?></p>
       </div>
     </div>
 
     <h3 class="nav-tab-wrapper"> 
-      <a class="nav-tab <?php echo $tab_content; ?>" href="?page=evaluate&do=view&metric=<?php echo $id; ?>&section=content">Content</a>
-      <a class="nav-tab <?php echo $tab_user; ?>" href="?page=evaluate&do=view&metric=<?php echo $id; ?>&section=user">Users</a>
+      <a class="nav-tab <?php echo $tab_content; ?>" href="?page=evaluate&do=view&metric=<?php echo $metric['id']; ?>&section=content">Content</a>
+      <a class="nav-tab <?php echo $tab_user; ?>" href="?page=evaluate&do=view&metric=<?php echo $metric['id']; ?>&section=user">Users</a>
     </h3>
     <?php
-    global $wpdb;
     if ($section == 'content') {
       $wp_table = new Evaluate_Content_List_Table();
       $wp_table->render();
     } else if ($section == 'user') {
       $wp_table = new Evaluate_Users_List_Table();
       $wp_table->render();
-      ?>
-      <?php
     }
+  }
+
+  public static function display_votes($metric, $id) {
+    $section = $_GET['section'];
+    switch ($section) {
+      case 'content':
+        $tab_content = sprintf('<a href="?page=evaluate&do=votes&section=content&metric=%s&id=%s" class="nav-tab nav-tab-active">Content</a>', $metric['id'], $id);
+        $tab_user = '<span class="nav-tab">User</span>';
+        break;
+
+      case 'user':
+        $tab_content = '<span class="nav-tab">Content</span>';
+        $tab_user = sprintf('<a href="?page=evaluate&do=votes&section=user&metric=%s&id=%s" class="nav-tab nav-tab-active">User</a>', $metric['id'], $id);
+        break;
+
+      default:
+        $section = 'content';
+        $tab_content = sprintf('<a href="?page=evaluate&do=votes&section=content&metric=%s&id=%s" class="nav-tab nav-tab-active">Content</a>', $metric['id'], $id);
+        $tab_user = '<span class="nav-tab">User</span>';
+        break;
+    }
+    ?>
+    <div class="postbox">
+      <h3 class="eval-title">Details for Metric: <small><strong><?php echo $metric['name']; ?></strong></small></h3>
+      <div class="inside">
+        <p>Type: <strong><?php echo $metric['type']; ?></strong></p>
+        <p>Active for: <strong><?php echo implode(', ', $metric['post_type']); ?></strong></p>
+        <p>Preview: <?php echo Evaluate::display_metic($metric); ?></p>
+      </div>
+    </div>
+
+    <h3 class="nav-tab-wrapper"> 
+      <?php
+      echo $tab_content;
+      echo $tab_user;
+      ?>
+    </h3>
+
+    <?php
+    global $wpdb;
+    $metric['slug'] = $_GET['metric']; //this corresponds to the database field TYPE in EVALUATE_DB_TABLE
+
+    if ($section == 'content') {
+      $post = get_post($id);
+      ?>
+      <div class="postbox">
+        <h3 class="eval-title">Details for Content: <small><strong><?php echo $post->post_title; ?></strong></small></h3>
+        <div class="inside">
+          <p>Content Type: <strong><?php echo $post->post_type; ?></strong></p>
+          <p>Title: <strong><?php echo $post->post_title; ?></strong></p>
+          <p>Post Status: <strong><?php echo $post->post_status; ?></strong> Last Modified: <strong><abbr title="<?php echo date('Y/m/d H:i:s', $post->post_modified); ?>"><?php echo date('Y/m/d', strtotime($post->post_modified)); ?></abbr></strong></p>
+          <p>Vote Breakdown: <?php echo Evaluate::get_vote_breakdown_content($metric, $post->ID); ?></p>
+        </div>
+      </div>
+      <?php
+    } else if ($section == 'user') { //TODO: fix info below
+      $user = get_user_by('id', $id);
+      ?>
+      <div class="postbox">
+        <h3 class="eval-title">Details for User: <small><strong><?php echo $post->post_title; ?></strong></small></h3>
+        <div class="inside">
+          <p>Content Type: <strong><?php echo $post->post_type; ?></strong></p>
+          <p>Title: <strong><?php echo $post->post_title; ?></strong></p>
+          <p>Post Status: <strong><?php echo $post->post_status; ?></strong> Last Modified: <strong><abbr title="<?php echo date('Y/m/d H:i:s', $post->post_modified); ?>"><?php echo date('Y/m/d', strtotime($post->post_modified)); ?></abbr></strong></p>
+          <p>Vote Breakdown:</p>
+        </div>
+      </div>
+      <?php
+      vd($user);
+    }
+    $wp_table = new Evaluate_Votes_List_Table();
+    $wp_table->render();
   }
 
   public static function display_error($error) {

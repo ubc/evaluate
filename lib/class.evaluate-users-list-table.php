@@ -43,7 +43,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
   
   function column_user_nicename($item) {
     $row_actions = array(
-        'user_vote_details' => sprintf('<a href="?page=evaluate&do=votes&post_id=%s">%s</a>', $item->user_id, 'View User Votes')
+        'user_vote_details' => sprintf('<a href="?page=evaluate&do=votes&section=user&metric=%s&id=%s">%s</a>', $_GET['metric'], $item->user_id, 'View User Votes')
     );
     return sprintf('<strong>%s</strong>%s', $item->user_nicename, $this->row_actions($row_actions));
   }
@@ -100,9 +100,6 @@ class Evaluate_Users_List_Table extends WP_List_Table {
     $end = $start + $per_page;
     $query .= " LIMIT $start, $end";
     $this->items = $wpdb->get_results($query); //fetch results with pagination limits this time
-    /* var_dump($this->items);
-      echo "<br><br>";
-      var_dump($query); */
   }
 
   function extra_tablenav($which) {

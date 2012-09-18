@@ -43,17 +43,25 @@ class Evaluate_Content_List_Table extends WP_List_Table {
         return sprintf('<abbr title="%s">%s</abbr>', date('Y/m/d H:i:s', strtotime($item->post_date)), date('Y/m/d', strtotime($item->post_date)));
         break;
 
-      case 'taxonomy_ids':
-        $categories = explode(',', $item->taxonomy_ids);
-        $categories_readable = array();
-        foreach ($categories as $category) {
+      case 'taxonomy_ids':/*
+          $categories = explode(',', $item->taxonomy_ids);
+          $categories_readable = array();
+          foreach ($categories as $category) {
           $category_name = get_the_category_by_ID($category);
           if ($category_name) {
-            $categories_readable[] = $category_name;
+          $categories_readable[] = $category_name;
           }
+          }
+          $categories_string = implode(', ', $categories_readable);
+          return $categories_string; */
+        $categories = wp_get_post_categories($item->post_id);
+        $cats = array();
+        foreach ($categories as $c) {
+          $cat = get_category($c);
+          $cats[] = $cat->name;
         }
-        $categories_string = implode(', ', $categories_readable);
-        return $categories_string;
+        $categories = implode(', ', $cats);
+        return $categories;
         break;
 
       default:
@@ -70,7 +78,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 
   function column_post_title($item) {
     $row_actions = array(
-        'vote_breakdown' => sprintf('<a href="?page=evaluate&do=votes&post_id=%s">%s</a>', $item->post_id, 'View Vote Breakdown')
+        'vote_breakdown' => sprintf('<a href="?page=evaluate&do=votes&metric=%s&section=content&id=%s">%s</a>', $_GET['metric'], $item->post_id, 'View Vote Breakdown')
     );
     return sprintf('<a class="row-title" href="%s">%s</a>%s', get_permalink($item->post_id), $item->post_title, $this->row_actions($row_actions));
   }
@@ -97,14 +105,6 @@ class Evaluate_Content_List_Table extends WP_List_Table {
     $orderby = ($_GET['orderby'] ? $_GET['orderby'] : 'score');
     $order = ($_GET['order'] ? $_GET['order'] : 'DESC');
 
-    if ($_GET['cat']) { //filter by category string
-      $cat = $_GET['cat'];
-      $wpdb->escape($cat);
-      $filter_category = " AND Relationships.term_taxonomy_id=$cat";
-    } else {
-      $filter_category = '';
-    }
-
     if ($_GET['filter_content_type']) { //filter by content type string
       $content = $_GET['filter_content_type'];
       $wpdb->escape($content);
@@ -113,7 +113,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
       $filter_content_type = '';
     }
 
-    if ($_GET['filter_users']) { //filter by user string
+    if ($_GET['filter_users']) { //filter by user name string
       $user = $_GET['filter_users'];
       $wpdb->escape($user);
       $filter_users = " AND User.user_nicename='$user'";
@@ -121,7 +121,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
       $filter_users = '';
     }
 
-    if ($_GET['m']) {
+    if ($_GET['m']) { //filter by specific month
       $first_day = $_GET['m']; //gets as YYYYMM
       $wpdb->escape($first_day);
       $first_day .= '01'; //turns it into YYYYMM01
@@ -136,22 +136,43 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 
     $wpdb->escape($orderby); //prepare puts ' which messes the query
     $wpdb->escape($order);  //so escape these two
+    //commented out sections below were causing problems with double/triple counting
+    //remove them
     $query = $wpdb->prepare(
-            "SELECT Eval.post_id, Post.post_title, SUM( Eval.counter ) as score, COUNT( Eval.id ) as total_votes, Post.post_type, User.user_nicename, Post.post_date, GROUP_CONCAT( DISTINCT Relationships.term_taxonomy_id) as taxonomy_ids"
+            "SELECT Eval.post_id, Post.post_title, SUM( Eval.counter ) as score, COUNT( Eval.id ) as total_votes, Post.post_type, User.user_nicename, Post.post_date" //, GROUP_CONCAT( DISTINCT Relationships.term_taxonomy_id) as taxonomy_ids"
             . " FROM " . EVALUATE_DB_TABLE . " Eval"
             . " INNER JOIN $wpdb->posts Post on (Eval.post_id = Post.id)"
             . " INNER JOIN $wpdb->users User on (Post.post_author = User.id)"
-            . " INNER JOIN $wpdb->term_relationships Relationships on (Eval.post_id = Relationships.object_id)"
+            //. " INNER JOIN $wpdb->term_relationships Relationships on (Eval.post_id = Relationships.object_id)"
             . " WHERE Eval.type=%s $filter_category $filter_content_type $filter_users $filter_date"
             . " GROUP BY Eval.post_id"
             . " ORDER BY " . $orderby . " " . $order . ", score DESC"
             , $type);
     $this->items = $wpdb->get_results($query);
 
+    if ($_GET['cat']) { //filter by category string
+      $filter_categories = $cat;
+      foreach ($this->items as $key => $item) {
+        $categories = wp_get_post_categories($item->post_id);
+        foreach ($categories as $c) {
+          $cat = get_category($c);
+          if ($filter_categories != $cat->term_id) {
+            $delete = true; //flag for removal from list
+          } else {
+            $delete = false; //belongs to search category so stop iterating
+            break;
+          }
+        }
+        if ($delete) {
+          unset($this->items[$key]);
+        }
+      }
+    }
+
     //set pagination properties
     $per_page = '10';
     $cur_page = $this->get_pagenum();
-    $total_items = $wpdb->num_rows;
+    $total_items = count($this->items);
 
     $this->set_pagination_args(array(
         'per_page' => $per_page,
@@ -160,11 +181,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 
     $start = ($cur_page - 1) * $per_page;
     $end = $start + $per_page;
-    $query .= " LIMIT $start, $end";
-    $this->items = $wpdb->get_results($query); //fetch results with pagination limits this time
-    //var_dump($this->items);
-    //echo "<br><br>";
-    //var_dump($query);
+    $this->items = array_slice($this->items, $start, $end); //feed only that particular page
   }
 
   function extra_tablenav($which) {

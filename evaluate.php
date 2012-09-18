@@ -28,6 +28,7 @@ if(!class_exists('WP_List_Table')) {
 }
 require( 'lib/class.evaluate-content-list-table.php');
 require( 'lib/class.evaluate-users-list-table.php');
+require( 'lib/class.evaluate-votes-list-table.php');
 
 add_action( 'init',       array( 'Evaluate', 'init' ) );
 add_action( 'wp_print_styles', array( 'Evaluate', 'enqueue_style' ) );
