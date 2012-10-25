@@ -1,185 +1,144 @@
-.metric-shell{
-	margin-bottom: 5px;
-	
+/* clear after floated elements */
+.clear {
+  clear: both;
 }
 
-/* start rating */
-.rate,
-.star-rating,
-.star-rating a:hover,
-.star-rating a:active,
-.star-rating a:focus,
-.star-rating .current-rating {
-	background:url(../img/sprite.gif) left -1000px repeat-x;
+.rate-name {
+  font-weight: bold;
 }
 
-.star-rating {
-	position:relative;
-	width:125px;
-	height:25px;
-	overflow:hidden;
-	list-style:none;
-	margin:0!important;
-	padding:0!important;
-	background-position:0 -145px;
+.rate-div a, .rate-div a:hover {
+  text-decoration: none;
 }
 
-.star-rating li {
-	display:inline;
+/* range (star) rating */
+.rate-range {
+  display: block;
 }
 
-.star-rating a,
-.star-rating .current-rating {
-	position:absolute;
-	top:0;
-	left:0;
-	text-indent:-1000em;
-	height:25px;
-	line-height:25px;
-	outline:none;
-	overflow:hidden;
-	border:none;
+.rating-text { /* pad 3px from top so the stars and text align */
+  padding-top: 3px;
+  display: inline-block;
 }
 
-.star-rating a.star-1 {
-	width:20%;
-	z-index:6;
+.stars { 
+  position: relative; 
+  float: left; 
+  background: url('../img/sprite.gif') repeat-x left top; 
+  background-position: 0px -150px;
+  cursor: default; 
 }
 
-.star-rating a.star-2 {
-	width:40%;
-	z-index:5;
+.stars .starr { 
+  height: 25px;
+  padding-left: 25px;
+  background: transparent none repeat-x left top; 
+  /*cursor: pointer; */
+  display: inline-block;
+  position: relative;
 }
 
-.star-rating a.star-3 {
-	width:60%;
-	z-index:4;
+.stars .starr a {
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  position: absolute;
+  top:0;
+  left: 0;
+  text-decoration: none;
 }
 
-.star-rating a.star-4 {
-	width:80%;
-	z-index:3;
+.stars:hover .starr { 
+  background-image: url(../img/sprite.gif);  
+  background-position: 0px -150px;
 }
 
-.star-rating a.star-5{
-	width:100%;
-	z-index:2;
+.stars:hover .starr:hover {
+  background-image: url(../img/sprite.gif); 
+  background-position: 0px -200px;
 }
 
-.star-rating .current-rating {
-	z-index:1;
-	background-position:0 -169px;
+.stars .rating { 
+  position: absolute; 
+  height: 100%; 
+  background: url(../img/sprite.gif) repeat-x left top;  
+  background-position: 0px -175px;
 }
 
-.star-rating a:hover,
-.star-rating a:active,
-.star-rating a:focus {
-	background-position:0 -193px;
-}
-.inline-rating{
-	display:-moz-inline-block;
-	display:-moz-inline-box;
-	display:inline-block;
-	vertical-align: middle;
+.stars:hover .rating { 
+  display: none;
 }
 
-.rate-shell{
-	position: relative;
-	overflow: hidden;
+/* one and two-way displays */
+.rate {
+  background: url(../img/sprite.gif);
+  background-repeat: no-repeat;
+  padding-left: 25px; /* space between icon and link text */
+  display: inline-block; /* make sure it sticks to rate-count on the same line */
+  height: 25px; /* height of the icon */
+  text-decoration: none;
 }
-.rate,
-.rate-count{
-	display: block;
-	float: left;
-	line-height: 25px;
-}
-.rate{
-	width:25px;
-	height: 25px;
-	text-indent: -999px;
-	line-height: 25px;
-	outline:none;
-	border:none;
-	text-decoration: none;
-}
-/* single and double rating */
-.thumb{
-	background-position:0 -50px;
-}
-.thumb:hover, .thumb.selected-rating{
-	background-position:0 -74px;
-}
-.thumb-down{
-	background-position:0 -96px;
-}
-.thumb-down:hover, .thumb-down.selected-rating{
-	background-position:0 -120px;
-}
+
+/* background positions for rating sprite */
 .heart {
-	background-position:0 -1px;
+  background-position: 0px 0px;
 }
-.heart:hover, .heart.selected-rating {
-	background-position:0 -24px;
+
+.heart:hover {
+  background-position: 0px -25px;
 }
+
+.thumb {
+  background-position: 0px -50px;
+}
+
+.thumb:hover {
+  background-position: 0px -75px;
+}
+
+.thumb-down {
+  background-position: 0px -100px;
+}
+
+.thumb-down:hover {
+  background-position: 0px -125px;
+}
+
 .arrow {
-	background-position:0 -264px;
+  background-position: 0px -225px;
 }
-.arrow:hover, .arrow.selected-rating {
-	background-position:0 -289px;
+
+.arrow:hover {
+  background-position: 0px -250px;
 }
+
 .arrow-down {
-	background-position:0 -312px;
+  background-position: 0px -275px;
 }
-.arrow-down:hover, .arrow-down.selected-rating {
-	background-position:0 -336px;
+
+.arrow-down:hover {
+  background-position: 0px -300px;
+}
+
+.star {
+  background-position: 0px -150px;
+}
+
+.star-selected {
+  background-position: 0px -175px;
+}
+
+.star:hover {
+  background-position: 0px -200px;
 }
 
 /* poll */
-
-.poll-form {
-	padding: 0 0 10px;
-}
-.poll-form input{
-	margin:0!important;
-}
-.poll-results,
-.poll-form ul {
-	padding: 10px !important;
-	margin: 0 0 10px!important;
-	border:1px solid #EEE;
-	max-width:300px;
+.poll-question {
+  font-weight: bold;
 }
 
-.poll-results li,
-.poll-form li{
-	list-style: none;
-	margin:0 0 5px 0!important;
-}
-
-.poll-result-line{
-	display: block;
-	background: #DDD;
-	height:5px;
-	border-left: 2px solid #DDD;
-}
-
-/* box to show metric details */
-.eval-title {
-  font-family: Georgia,"Times New Roman","Bitstream Charter",Times,serif;
-  font-size: 15px;
-  font-weight: 400;
-  color: #464646;
-  line-height: 15px;
-  text-shadow: #FFFFFF 0px 1px 0px;
-  padding: 7px 10px 7px 10px;
-}
-
-/* add top margin to details box */
-.postbox {
-  margin-top: 15px;
-}
-
-/* remove cursor:move from the heading in .postbox */
-.postbox h3 {
-  cursor: auto;
+.poll-list li {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
 }

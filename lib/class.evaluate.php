@@ -3,788 +3,333 @@
 class Evaluate {
 
   static $options = array();
-  static $settings = array();
   static $user = null;
 
-  public static function init() {
-
-    self::$options = get_option('evaluate_metrics');
-    self::$settings = get_option('evaluate_settings');
-    self::$user = Evaluate::get_user();
-
-    if (isset($_GET['metric']))
-      Evaluate::deal_with_metric();
-
-    if (isset($_GET['d'])) {
-      echo "delete everything";
-      Evaluate::delete_everything();
+  function __construct($case = false) {
+    if (!$case) {
+      wp_die('Cannot call this class directly!', 'Error!');
     }
-
-    // check if the table is created, if not run install script
-    // this is needed as Evaluate::install() does not get run on
-    // multi-site even if network activation is on
-    Evaluate::install(); //will check for db version first
   }
 
-  public static function enqueue_style() {
+  /*
+   * first thing that runs before any code
+   */
+  public static function init() {
+    self::$options['EVAL_DB_METRICS_VER'] = get_option('EVAL_DB_METRICS_VER');
+    self::$options['EVAL_DB_VOTES_VER'] = get_option('EVAL_DB_VOTES_VER');
+    // check to see if we have the required tables created, if not, create them
+    if (self::$options['EVAL_DB_METRICS_VER'] < EVAL_DB_METRICS_VER || self::$options['EVAL_DB_VOTES_VER'] < EVAL_DB_VOTES_VER) {
+      self::activate();
+    }
 
-    wp_register_style('evaluate', EVALUATE_DIR_URL . '/css/evaluate.css');
+    //js and css script hook
+    add_action('wp_enqueue_scripts', array('Evaluate', 'enqueue_scripts'));
+  }
 
-    // enqueing:
+  /*
+   * create tables required for functioning upon activation
+   * this should run only once
+   */
+  public static function activate() {
+    global $wpdb;
+    $metrics_table = EVAL_DB_METRICS;
+    $sql = "CREATE TABLE $metrics_table (
+    id bigint(11) NOT NULL AUTO_INCREMENT,
+    slug varchar(64) NOT NULL,
+    nicename varchar(64) NOT NULL,
+    type varchar(10) NOT NULL DEFAULT 'one-way',
+    style varchar(10) NOT NULL DEFAULT 'thumb',
+    require_login tinyint(1) NOT NULL DEFAULT '1',
+    admin_only tinyint(1) NOT NULL DEFAULT '0',
+    display_name tinyint(1) NOT NULL DEFAULT '1',
+    params longtext,
+    created datetime,
+    modified datetime,
+    PRIMARY KEY  (id) );";
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+    add_option('EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER);
+
+    $votes_table = EVAL_DB_VOTES;
+    $sql = "CREATE TABLE $votes_table (
+    id bigint(11) NOT NULL AUTO_INCREMENT,
+    metric_id bigint(11) NOT NULL,
+    content_id bigint(11) NOT NULL,
+    user_id bigint(11) NOT NULL,
+    vote int(11) NOT NULL,
+    date datetime NOT NULL,
+    PRIMARY KEY (id) );";
+    dbDelta($sql);
+    add_option('EVAL_DB_VOTES_VER', EVAL_DB_VOTES_VER);
+  }
+
+  /*
+   * do nothing in deactivation, we don't want to remove
+   * the tables in the database in case the user re-activates it
+   */
+  public static function deactivate() {
+    
+  }
+
+  /*
+   * remove the database tables created by Eval
+   */
+  public static function uninstall() {
+    $sql = "DROP TABLE " . EVAL_DB_METRICS;
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+    remove_option('EVAL_DB_METRICS_VER');
+
+    $sql = "DROP TABLE " . EVAL_DB_VOTES;
+    dbDelta($sql);
+    remove_option('EVAL_DB_VOTES_VER');
+  }
+
+  /*
+   * put the evaluate.css style in the queue to be linked
+   */
+  public static function enqueue_scripts() {
+    wp_register_style('evaluate', EVAL_DIR_URL . '/css/evaluate.css');
+
     wp_enqueue_style('evaluate');
   }
 
-  public static function the_content($content) {
+  /*
+   * general function to display metrics
+   */
+  public static function display_metric($metric_id) {
+    global $wpdb;
+    $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE id=%s', $metric_id);
+    $metric = $wpdb->get_row($query);
 
-
-
-    if (!is_singular())
-      return $content; // don't do anything
-    $vote = "";
-
-    if (is_array(self::$options)):
-      foreach (self::$options as $id => $metric):
-        $metric['id'] = $id;
-        if (Evaluate::show_metric($metric))
-          $vote .= Evaluate::display_metic($metric);
-
-      endforeach;
-    endif;
-
-
-    // $vote = "<div>vote for me</div>";
-
-    return $content . $vote;
-  }
-
-  public static function show_metric($metric) {
-
-    if (!empty($metric['loggedin']) && !current_user_can('read'))
-      return false;
-
-    if (!empty($metric['admin_only']) && !current_user_can('administrator'))
-      return false;
-
-    foreach ($metric['post_type'] as $post_type):
-      if (is_singular($post_type))
-        return true;
-    endforeach;
-
-    return false;
-  }
-
-  public static function deal_with_metric($redirect = true) {
-
-    $verify = $_GET['verify'];
-    $post_id = $_GET['post'];
-    $type = $_GET['type'];
-    $count = $_GET['count'];
-    $action = $_GET['metric'];
-
-    // don't do anything if we don't pass the varification stage
-    if (!Evaluate::verify($verify, $post_id, $type, $count, $action))
-      return null;
-
-    switch ($action) {
-      case 'add':
-        Evaluate::add_count($post_id, $count, $type);
-        break;
-
-      case 'remove':
-        Evaluate::remove_count($post_id, $count, $type);
-        break;
-
-      case 'update':
-        Evaluate::update_count($post_id, $count, $type);
-        break;
-
-      case 'poll':
-
-        Evaluate::poll_count($post_id, $count, $type);
-        break;
+    if (!$metric) { //cannot find the metric, could be deleted, do not display
+      return;
     }
 
-    if ($redirect):
-      //wp_redirect( Evaluate::current_URL() );
-      die();
-    endif;
-
-    return null;
-  }
-
-  public static function display_metic($metric) {
-
-    $html = "";
-
-    if (isset($metric['display_name'])):
-      $html .= '<span class="metric-name">' . $metric['name'] . '</span>';
-    endif;
-
-    switch ($metric['type']) {
-
+    switch ($metric->type) { //switch and feed the metric data to respective functions
       case 'one-way':
-        $html .= Evaluate::one_way($metric);
+        echo Evaluate::display_one_way($metric);
         break;
+
       case 'two-way':
-        $html .= Evaluate::two_way($metric);
+        echo Evaluate::display_two_way($metric);
         break;
+
       case 'range':
-        $html .= Evaluate::range($metric);
+        echo Evaluate::display_range($metric);
         break;
+
       case 'poll':
-        $html .= Evaluate::poll($metric);
+        echo Evaluate::display_poll($metric);
         break;
     }
-
-    return '<div class="metric-shell">' . $html . '</div>';
   }
+  
+  /*
+   * show one-way vote block
+   * if $metric is given, fetch metric data and display that
+   * if metric is not given, it means we want a preview, so look at $style
+   * and display a preview of that style. If no parameters given then
+   * the universe collapses into itself
+   */
+  public static function display_one_way($metric = null, $style = null) {
+    if (!$metric) { //preview, set defaults
+      $counter = 0;
+      $link = 'javascript:void(0)';
+      $display_name = '';
+    } else {
+      $counter = 5;
+      $link = 'javascript:void(0);';
+      $style = $metric->style;
+      if ($metric->display_name) {
+        $display_name = $metric->nicename;
+      } else {
+        $display_name = '';
+      }
+    }
 
-  public static function one_way($metric) {
-    global $post;
-
-    if (isset($post))
-      $post_id = $post->ID;
-
-    $type = $metric['one-way'];
-
-    $votes = Evaluate::metric_sum($post_id, $metric['id']);
-
-    $votes = ( $votes ? $votes : 0 );
-
-    if ($post_id)
-      $id_attr = "rate-" . $type . "-" . $post_id;
-
-    $class_attr = 'rate one-way ' . $type;
-
-    switch ($type) {
+    switch ($style) {
       case 'thumb':
         $title = 'Like';
-        break;
-
-      case 'arrow':
-        $title = 'Vote Up';
         break;
 
       case 'heart':
         $title = 'Heart';
         break;
-    }
-
-    if (Evaluate::count_exists($post_id, $metric['id'])):
-      $class_attr .= " selected-rating ";
-      $url = Evaluate::url($metric['id'], 1, 'remove');
-    else:
-      $url = Evaluate::url($metric['id'], 1, 'add');
-    endif;
-
-    return '<div class="rate-shell"><span class="rate-count">' . $votes . '</span> <a href="' . $url . '" class="' . $class_attr . '" title="' . $title . '">' . $title . '</a></div>';
-  }
-
-  public static function two_way($metric) {
-    global $post;
-
-    if (isset($post))
-      $post_id = $post->ID;
-
-    $type = $metric['two-way'];
-
-    $class_attr_up = $type . '-up ';
-    $class_attr_down = $type . '-down ';
-
-    if (Evaluate::count_exists($post_id, $metric['id']) > 0):
-      // the user has voted up
-      $class_attr_up .= " selected-rating ";
-      $url_up = Evaluate::url($metric['id'], 1, 'remove');
-      $url_down = Evaluate::url($metric['id'], -1, 'update');
-
-    elseif (Evaluate::count_exists($post_id, $metric['id']) < 0) :
-      // the user has voted down
-      $class_attr_down .= " selected-rating ";
-      $url_up = Evaluate::url($metric['id'], 1, 'update');
-      $url_down = Evaluate::url($metric['id'], -1, 'remove');
-    else:
-      // the user still needs to vote
-      $url_up = Evaluate::url($metric['id'], 1, 'add');
-      $url_down = Evaluate::url($metric['id'], -1, 'add');
-    endif;
-
-    $up_votes = Evaluate::metric_count($post_id, $metric['id'], 1);
-    $down_votes = Evaluate::metric_count($post_id, $metric['id'], -1);
-
-
-    if ($post_id)
-      $id_attr = "rate-" . $type . "-" . $post_id;
-
-    $class_attr = 'rate two-way ' . $type . ' ';
-
-
-    switch ($type) {
-      case 'thumb':
-        $up = 'Thumbs Up';
-        $down = 'Thumbs Down';
-        break;
 
       case 'arrow':
-        $up = 'Vote Up';
-        $down = 'Vote Down';
+        $title = 'Vote Up';
         break;
     }
 
-    $html = '<span class="rate-count">' . $up_votes . '</span> <a href="' . $url_up . '" class="' . $class_attr . $class_attr_up . '" title="' . $up . '">' . $up . '</a> ';
-    return '<div class="rate-shell">' . $html . '<span class="rate-count">' . $down_votes . '</span> <a href="' . $url_down . '" class="' . $class_attr . $class_attr_down . '" title="' . $down . '">' . $down . '</a></div> ';
-  }
-
-  public static function range($metric = null) {
-    global $post;
-    $stars = 5;
-    if (isset($post))
-      $post_id = $post->ID;
-
-    $current_i = Evaluate::count_exists($post_id, $metric['id']);
-
-    $action = ($current_i ? 'update' : 'add' );
-
-    $sum = Evaluate::metric_sum($post_id, $metric['id']);
-    $number = Evaluate::metric_count($post_id, $metric['id']);
-
-    $average = ( $number > 0 ? $sum / $number : 0 );
-    $average = ( is_float($average) ? number_format($average, 1) : $average );
-
-    $html = '<div class="rate-shell"><span class="inline-rating">
-			<ul class="star-rating small-star">
-				<li class="current-rating" style="width:' . ( $current_i / $stars * 100 ) . '%;">Your Rating ' . $current_i . '/' . $stars . ' Stars.</li>';
-    $i = 1;
-    while ($i <= $stars):
-      $s = ( $i > 1 ? "s" : "" );
-      $url = ( $current_i == $i ? Evaluate::url($metric['id'], $i, 'remove') : Evaluate::url($metric['id'], $i, $action) );
-      $current = ( $current_i == $i ? " selected-rating " : '' );
-      $html .= '<li><a href="' . $url . '" title="' . $i . ' star' . $s . ' out of ' . $stars . '" class="star-' . $i . $current . ' ">' . $i . '</a></li>';
-
-      $i++;
-
-    endwhile;
-    $html .='
-					
-			</ul> 
-		</span><span> Rating ' . $average . '/' . $stars . ' Stars</span></div>';
-    return $html;
-  }
-
-  public static function poll($metric = null) {
-    global $post;
-
-    if (isset($post))
-      $post_id = $post->ID;
-    else
-      return " poll";
-
-    $user_count = Evaluate::count_exists($post_id, $metric['id']);
-
-    if ((!$user_count && !isset($_GET['result-' . $metric['id']]) ) || isset($_GET['poll-' . $metric['id']])):
-      $show_poll = 'display:block;';
-      $show_result = 'display:none;';
-    else:
-      $show_poll = 'display:none;';
-      $show_result = 'display:block;';
-    endif;
-
-    $verify = wp_create_nonce('metric-' . $post_id . '-' . $metric['id'] . '-poll');
-
-    $html = '<div class="rate-shell" style="' . $show_poll . '">';
-    $html .= '<form action="" method="get" class="poll-form" >';
-    $html .= '<input type="hidden" name="type" value="' . esc_attr($metric['id']) . '" />';
-    $html .= '<input type="hidden" name="metric" value="poll" />';
-    $html .= '<input type="hidden" name="post" value="' . esc_attr($post_id) . '" />';
-    $html .= '<input type="hidden" name="verify" value="' . esc_attr($verify) . '" />';
-    $html .= '<strong>' . $metric['poll']['question'] . '</strong>';
-    $html .= "<ul>";
-    $i = 1;
-
-    foreach ($metric['poll']['name'] as $item):
-      if (!empty($item))
-        $html .= '<li><label><input type="radio" ' . checked($user_count, $i, false) . '  name="count" value="' . $i . '" /> ' . $item . '</label></li>';
-
-      $i++;
-    endforeach;
-    $html .= "</ul>";
-    $html .= '<input type="submit" value="Vote" /> <a href="?result-' . $metric['id'] . '=1">view results</a>';
-    $html .= '</form></div>'; // end of rate-shell
-    // the results 
-    $total_count = Evaluate::metric_count($post_id, $metric['id']);
-    $html .= '<div class="rate-shell" style="' . $show_result . '">';
-    $html .= '<strong>' . $metric['poll']['question'] . '</strong> Total votes:<span class="total-count"> ' . $total_count . '</span>';
-    $html .= '<ul class="poll-results">';
-
-    $i = 1;
-    foreach ($metric['poll']['name'] as $item):
-      if (!empty($item)):
-        $count = Evaluate::metric_count($post_id, $metric['id'], $i);
-        $html .= '<li>' . $item;
-
-        $percent = ( $total_count > 0 ? $count / $total_count * 100 : 0 );
-
-        if ($user_count == $i)
-          $html .= ' <strong>*</strong> ';
-        $html .= ' <small>' . $count . ' Votes ( ' . $percent . '% )</small>';
-        $html .= '<div class="poll-result-line" title="' . esc_attr($item) . '" style="width: ' . $percent . '%;"></div>
-				</li>';
-      endif;
-      $i++;
-    endforeach;
-    $html .= '</ul> <a href="?poll-' . $metric['id'] . '=1">back to the poll</a></div>'; // end of rate shell
+    $html = <<<HTML
+<span class="rate-name">$display_name</span>
+<div class="rate-div">
+  <span class="up-counter">$counter</span>
+  <a href="$link" class="rate $style" title="$title">$title</a>
+</div>
+HTML;
 
     return $html;
-  }
-
-  /* Helper Functions */
-
-  public static function url($type, $count = null, $action) {
-    global $post;
-    if (!isset($post))
-      return '#';
-
-    $post_id = $post->ID;
-    $once = wp_create_nonce('metric-' . $post_id . '-' . $type . '-' . $count . '-' . $action);
-    if (isset($count)):
-      $once = wp_create_nonce('metric-' . $post_id . '-' . $type . '-' . $count . '-' . $action);
-      $url = "?metric=" . $action . "&type=" . $type . "&post=" . $post_id . "&count=" . $count . "&verify=" . $once;
-
-    else:
-      $once = wp_create_nonce('metric-' . $post_id . '-' . $type . '-' . $action);
-      $url = "?metric=" . $action . "&type=" . $type . "&post=" . $post_id . "&verify=" . $once;
-
-    endif;
-
-    return $url;
-  }
-
-  public static function verify($verify, $post_id, $type, $count, $action) {
-
-    $skip_next = false;
-
-    if ($action == 'poll' && wp_verify_nonce($verify, 'metric-' . $post_id . '-' . $type . '-' . $action))
-      $skip_next = true;
-
-    // the non once passes
-    if (!$skip_next):
-      if (!wp_verify_nonce($verify, 'metric-' . $post_id . '-' . $type . '-' . $count . '-' . $action))
-        return false;
-    endif;
-
-    // if you are not logged in and somehow guess the url
-    if (!empty(self::$options[$type]['loggedin']) && !current_user_can('read'))
-      return false;
-
-    // if you are not an admin but somehow guess the url
-    if (!empty(self::$options[$type]['admin_only']) && !current_user_can('administrator'))
-      return false;
-
-
-    return true;
-  }
-
-  public static function current_URL() {
-    $pageURL = 'http';
-    if (isset($_SERVER["HTTPS"])) {
-      $pageURL .= "s";
-    }
-    $pageURL .= "://";
-    if ($_SERVER["SERVER_PORT"] != "80") {
-      $pageURL .= $_SERVER["SERVER_NAME"] . ":" . $_SERVER["SERVER_PORT"] . parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-    } else {
-      $pageURL .= $_SERVER["SERVER_NAME"] . parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-    }
-
-    return $pageURL;
-  }
-
-  /* DB Helper functions */
-
-  public static function install() {
-    global $wpdb;
-    if (EVALUATE_DB_VERSION > Evaluate::get_option('db_version')):
-
-      $sql = "CREATE TABLE " . EVALUATE_DB_TABLE . " (
-					id mediumint(9) NOT NULL AUTO_INCREMENT,
-					post_id bigint(11) DEFAULT '0' NOT NULL,
-					user_id VARCHAR(11) DEFAULT '0' NOT NULL,
-					counter bigint(11) DEFAULT '1' NOT NULL,
-					date TIMESTAMP NOT NULL,
-					date_gmt DATETIME  DEFAULT '0000-00-00 00:00:00' NOT NULL,
-					type VARCHAR(64) NOT NULL,
-					UNIQUE KEY id (id)
-					);";
-
-      require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-      dbDelta($sql);
-
-      Evaluate::update_option('db_version', EVALUATE_DB_VERSION);
-
-
-    endif;
-
-    // this is just for testing shoule be take out later
-  }
-
-  public static function add_count($post_id, $count, $type) {
-    global $wpdb;
-
-    $date = Evaluate::gmt_time();
-    $user_id = Evaluate::get_user();
-    ;
-    $data = array(
-        'post_id' => $post_id,
-        'type' => $type,
-        'counter' => $count,
-        'user_id' => $user_id,
-        'date_gmt' => $date,
-    );
-
-    $result = $wpdb->insert(EVALUATE_DB_TABLE, $data, array('%d', '%s', '%d', '%s', '%s'));
-    $metric_count = Evaluate::metric_count($post_id, $type);
-    $metric_sum = Evaluate::metric_sum($post_id, $type);
-
-    // save the number of votes to better get popular votes 
-    add_post_meta($post_id, 'count_' . $type, $metric_count, true) or update_post_meta($post_id, 'count_' . $type, $metric_count);
-    add_post_meta($post_id, 'sum_' . $type, $metric_sum, true) or update_post_meta($post_id, 'sum_' . $type, $metric_sum);
-
-    // for knowing when to update this 
-    $date = Evaluate::gmt_time();
-
-    update_option('updated', $date);
-  }
-
-  public static function remove_count($post_id, $count, $type) {
-    global $wpdb;
-
-    $user_id = Evaluate::get_user();
-    ;
-
-    $wpdb->query($wpdb->prepare("DELETE FROM " . EVALUATE_DB_TABLE . " WHERE post_id = %d AND user_id = '%s' AND type ='%s';", $post_id, $user_id, $type));
-
-    $metric_count = Evaluate::metric_count($post_id, $type);
-    $metric_sum = Evaluate::metric_sum($post_id, $type);
-
-    // save the number of votes to better get popular votes 
-    update_post_meta($post_id, 'count_' . $type, $metric_count);
-    update_post_meta($post_id, 'sum_' . $type, $metric_sum);
-
-    // for knowing when to update this 
-    $date = Evaluate::gmt_time();
-
-    update_option('updated', $date);
-  }
-
-  public static function update_count($post_id, $count, $type) {
-    global $wpdb;
-
-    $date = Evaluate::gmt_time();
-    $user_id = Evaluate::get_user();
-    ;
-
-    $data = array(
-        'post_id' => $post_id,
-        'type' => $type,
-        'counter' => $count,
-        'user_id' => $user_id,
-        'date_gmt' => $date,
-    );
-
-    $where = array(
-        'post_id' => $post_id,
-        'type' => $type,
-        'user_id' => $user_id,
-    );
-
-    $result = $wpdb->update(EVALUATE_DB_TABLE, $data, $where, array('%d', '%s', '%d', '%s', '%s'), array('%d', '%s', '%s'));
-
-    $metric_count = Evaluate::metric_count($post_id, $type);
-    $metric_sum = Evaluate::metric_sum($post_id, $type);
-
-    // save the number of votes to better get popular votes 
-    update_post_meta($post_id, 'count_' . $type, $metric_count);
-    update_post_meta($post_id, 'sum_' . $type, $metric_sum);
-
-    // for knowing when to update this 
-    $date = Evaluate::gmt_time();
-
-    update_option('updated', $date);
-  }
-
-  public static function poll_count($post_id, $count, $type) {
-
-    global $wpdb;
-
-    $date = Evaluate::gmt_time();
-    $user_id = Evaluate::get_user();
-    ;
-    $data = array(
-        'post_id' => $post_id,
-        'type' => $type,
-        'counter' => $count,
-        'user_id' => $user_id,
-        'date_gmt' => $date,
-    );
-
-    $where = array(
-        'post_id' => $post_id,
-        'type' => $type,
-        'user_id' => $user_id,
-    );
-
-
-    if (Evaluate::count_exists($post_id, $type)):
-      $result = $wpdb->update(EVALUATE_DB_TABLE, $data, $where, array('%d', '%s', '%d', '%s', '%s'), array('%d', '%s', '%s'));
-
-    else:
-      $result = $wpdb->insert(EVALUATE_DB_TABLE, $data, array('%d', '%s', '%d', '%s', '%s'));
-
-    endif;
-  }
-
-  public static function count_exists($post_id, $type) {
-    global $wpdb;
-
-    $user_id = Evaluate::get_user();
-    ;
-
-    return $wpdb->get_var($wpdb->prepare("SELECT counter FROM " . EVALUATE_DB_TABLE . " WHERE post_id = %d AND user_id = '%s' AND type ='%s';", $post_id, $user_id, $type));
-  }
-
-  public static function delete_metric($type) {
-    global $wpdb;
-
-    return $wpdb->query($wpdb->prepare("DELETE FROM " . EVALUATE_DB_TABLE . " WHERE type ='%s'", $type));
-  }
-
-  // count the number of votes that something has both up and down votes
-  public static function metric_count($post_id, $type, $count = null) {
-    global $wpdb;
-
-    if (isset($count))
-      return $wpdb->get_var($wpdb->prepare("SELECT COUNT(*)  FROM " . EVALUATE_DB_TABLE . " WHERE post_id = %d AND type ='%s' AND counter =%d;", $post_id, $type, $count));
-    else
-      return $wpdb->get_var($wpdb->prepare("SELECT COUNT(*)  FROM " . EVALUATE_DB_TABLE . " WHERE post_id = %d AND type ='%s';", $post_id, $type));
-  }
-
-  public static function metric_sum($post_id, $type) {
-    global $wpdb;
-
-    return $wpdb->get_var($wpdb->prepare("SELECT SUM(counter) FROM " . EVALUATE_DB_TABLE . " WHERE post_id = %d AND type ='%s';", $post_id, $type));
-  }
-
-  public static function list_metric($type, $group_by, $order_by = NULL) {
-    global $wpdb;
-    return $wpdb->get_results($wpdb->prepare(
-                            "SELECT id, post_id, GROUP_CONCAT( user_id ) as ids, SUM( counter ) as sum, COUNT( id ) as count, date FROM " . EVALUATE_DB_TABLE . " WHERE type ='%s' GROUP BY " . $group_by . " ORDER BY " . $order_by, $type));
-  }
-
-  public static function gmt_time() {
-
-    $default_timezone = date_default_timezone_get();
-
-    date_default_timezone_set('GMT');
-
-    $date = date('Y-m-d H:i:s');
-
-    date_default_timezone_set($default_timezone);
-
-    return $date;
-  }
-
-  public static function update_option($option, $value) {
-
-    self::$settings[$option] = $value;
-
-    update_option('evaluate_settings', self::$settings);
-  }
-
-  public static function get_option($option) {
-
-    if (isset(self::$settings[$option]))
-      return self::$settings[$option];
-
-    return null;
-  }
-
-  public static function get_user() {
-    global $current_user;
-    if (self::$user)
-      return self::$user;
-
-    if (isset($current_user) && isset($current_user->ID) && $current_user->ID > 0):
-      return $current_user->ID;
-
-    else:
-
-      $cookie_id = 'evaluate_user_' . md5(LOGGED_IN_KEY);
-
-      if ($_COOKIE[$cookie_id]):
-        return $_COOKIE[$cookie_id];
-      else:
-        $time = time();
-        setcookie($cookie_id, 'u' . $time, $time + 60 * 60 * 24 * 30);
-        return 'u' . $time;
-      endif;
-      return $_SERVER['REMOTE_ADDR'];
-    endif;
-  }
-
-  public static function delete_everything() {
-    global $wpdb;
-
-    // delete_option( 'evaluate_metrics' );
-    delete_option('evaluate_settings');
-    self::$settings = array();
-
-    $wpdb->query("DROP TABLE IF EXISTS " . EVALUATE_DB_TABLE);
-    // delete the different option
   }
 
   /*
-   * removes evaluate table when a blog is being deleted
-   * EVALUATE_DB_TABLE does not seem to get initialized if
-   * removing blog from network admin panel
+   * displays two-way ratings
+   * if $metric is passed, displays that metric, if not, $style determines
+   * preview style.
    */
+  public static function display_two_way($metric = null, $style = null) {
+    if (!$metric) { //preview
+      $up_counter = 0;
+      $down_counter = 0;
 
-  public static function remove_custom_table($tables) {
-    global $wpdb;
-    $id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
-    $tables[] = $wpdb->get_blog_prefix($id) . 'evaluate';
-    return $tables;
-  }
+      $link_up = 'javascript:void(0)';
+      $link_down = 'javascript:void(0)';
 
-  public static function get_vote_breakdown_content($metric, $content_id) {
-    global $wpdb;
-    //get all votes for a specific content and specific metric
-    $query = $wpdb->prepare('SELECT * FROM ' . EVALUATE_DB_TABLE . ' WHERE type=%s AND post_id=%s', $metric['slug'], $content_id);
-    $votes = $wpdb->get_results($query);
-    //display metric (all available choices) for vote breakdown
-    switch ($metric['type']) {
-      case 'one-way':
-        $voteCount[1] = 0;
-        break;
-
-      case 'two-way':
-        $voteCount[-1] = 0;
-        $voteCount[1] = 0;
-        break;
-
-      case 'range':
-        $voteCount = array_fill(1, 5, 0);
-        break;
+      $display_name = '';
+    } else {
+      $up_counter = 5;
+      $down_counter = 5;
+      $link_up = 'javascript:void(0)';
+      $link_down = 'javascript:void(0)';
+      $style = $metric->style;
+      if ($metric->display_name) {
+        $display_name = $metric->nicename;
+      } else {
+        $display_name = '';
+      }
     }
-    //go through votes and construct breakdown array
-    foreach ($votes as $vote) {
-      $voteCount[$vote->counter]++;
-    }
-    //choose which type to display
-    $breakdown_box = '';
-    switch($metric['type']) {
-      case 'one-way':
-        $breakdown_box = Evaluate::one_way_breakdown($voteCount, $metric[$metric['type']]);
-        break;
-      
-      case 'two-way':
-        $breakdown_box = Evaluate::two_way_breakdown($voteCount, $metric[$metric['type']]);
-        break;
-      
-      case 'range':
-        $breakdown_box = Evaluate::range_breakdown($voteCount);
-        break;
-    }
-    
-    return $breakdown_box;
-  }
 
-  public static function range_breakdown($voteCount) {
-    //wrapper to shrink-fit everything to this div
-    $html = '<div style="display:inline-block">';
-    //loop through all 5 stars and write down total votes
-    for ($i = 5; $i > 0; $i--) {
-      $current_rating = $i / 5 * 100;
-      $html .= '<div class="rate-shell">
-                <span class="inline-rating">
-                  <ul class="star-rating small-star">
-                    <li class="current-rating" style="width:' . $current_rating . '%;"></li>
-                  </ul>
-                </span>
-                <span> Total Votes: ' . $voteCount[$i] . '</span>
-              </div>';
-    }
-    //calculate average vote
-    $sum = 0;
-    $totalVotes = 0;
-    foreach ($voteCount as $weight => $count) {
-      $sum += $weight * $count; //weighted average
-      $totalVotes += $count;
-    }
-    $average_rating = ($totalVotes == 0 ? 0 : $sum / $totalVotes); //avoid division by 0 if no votes
-    $average_rating = number_format($average_rating, 1);
-    //display the average rating
-    $html .= '<hr>
-              <div class="rate-shell">
-                <span class="inline-rating">
-                  <ul class="star-rating small-star">
-                    <li class="current-rating" style="width:' . ($average_rating * 20) . '%;"></li>
-                  </ul>
-                </span>
-                <span> Average Rating: ' . $average_rating . ' / 5</span>
-              </div>';
-    $html .= '</div>';
-    return $html;
-  }
-
-  public static function one_way_breakdown($voteCount, $type) {
-    $votes = $voteCount[1]; //users can only rate 1, so extract that
-    $plural = ($votes > 1 ? 's' : ''); //choose pluralization
-    //choose the verb between Like, Vote Up and Heart
-    switch ($type) {
+    switch ($style) {
       case 'thumb':
-        $verb = "Like$plural";
+        $title_up = 'Thumbs Up';
+        $title_down = 'Thumbs Down';
         break;
 
       case 'arrow':
-        $verb = "Vote$plural Up";
-        break;
-      
-      case 'heart':
-        $verb = "Heart$plural";
+        $title_up = 'Vote Up';
+        $title_down = 'Vote Down';
         break;
     }
-    $html = '<div style="display: inline-block">'; //shrink wrap div
-    $html .= '<div class="rate-shell">
-                <a class="rate one-way ' . $type . ' selected-rating" title="' . $verb . '"></a>
-                <span class="rate-count">' . $votes . ' ' . $verb . '</span>
-              </div>
-            </div>';
+
+    $html = <<<HTML
+<span class="rate-name">$display_name</span>
+<div class="rate-div">
+    <span class="up-counter">$up_counter</span>
+    <a href="$link_up" class="rate $style" title="$title_up">&nbsp;</a>
+      
+    <span class="up-counter">$down_counter</span>
+    <a href="$link_down" class="rate $style-down" title="$title_down">&nbsp;</a>
+</div>
+HTML;
+
     return $html;
   }
-  
-  public static function two_way_breakdown($voteCount, $type) {
-    //choose pluralization and action name for up/down
-    $plural_up = ($voteCount[1] > 1 ? 's' : ''); 
-    $plural_down = ($voteCount[-1] > 1 ? 's' : '');
-    switch($type) {
-      case 'thumb':
-        $verb_up = "Thumb$plural_up Up";
-        $verb_down = "Thumb$plural_down Down";
-        break;
-      
-      case 'arrow':
-        $verb_up = "Arrow$plural Up";
-        $verb_down = "Arrow$plural Down";
-        break;
+
+  /*
+   * display range ratings
+   * if $metric is passed display that metric, if not display
+   * a preview
+   */
+  public static function display_range($metric = null) {
+    if (!$metric) { //preview
+      $average = 2.5;
+      $width = $average / 5.0 * 100; //width for current rating
+      $display_name = '';
+    } else {
+      $average = 5;
+      $width = $average / 5.0 * 100;
+      if ($metric->display_name) {
+        $display_name = $metric->nicename;
+      } else {
+        $display_name = '';
+      }
     }
-    $html = '<div style="display: inline-block">';
-    $html .= '<div class="rate-shell">
-                <span class="rate-count">' . $voteCount[1] . '</span>
-                <a class="rate two-way ' . $type . ' ' . $type . '-up selected-rating" title="' . $verb . '"></a>
-                <span class="rate-count">' . $voteCount[-1] . '</span>
-                <a class="rate two-way ' . $type . ' ' . $type . '-down selected-rating" title="' . $verb . '"></a>
-              </div>
-             </div>';
+
+    $html = <<<HTML
+<span class="rate-name">$display_name</span>
+<div class="rate-range">
+  <div class="rating-text">Average Vote: $average/5 Stars</div>
+  <div class="stars">
+    <div class="rating" style="width:$width%"></div>
+HTML;
+
+    for ($i = 1; $i <= 5; $i++) {
+      $title = "$i/5 Stars";
+      $link = 'javascript:void(0)';
+      $html .= <<<HTML
+      <div class="starr"><a href="$link" title="$title">&nbsp;</a>
+HTML;
+    }
+
+    $html .= <<<HTML
+  </div></div></div></div></div>
+  </div>
+</div>
+<div class="clear"></div>
+HTML;
     return $html;
+  }
+
+  /*
+   * display poll metric
+   * if $metric, then display the metric, if not then preview
+   */
+  public static function display_poll($metric = null) {
+    if (!$metric) {
+      $html = <<<HTML
+<div class="poll-div">
+  <form method="post" action="wat.php?plz=lol" name="poll-form">
+    <ul class="poll-list">
+      <li class="poll-question"></li>
+      <li class="poll-answer"><label><input type="radio" name="poll-preview" /></label></li>
+      <li class="poll-answer"><label><input type="radio" name="poll-preview" /></label></li>
+    </ul>
+    <input type="button" value="Cast Vote" />
+    <input type="button" value="Show Results" />
+  </form>
+</div>
+HTML;
+    } else {
+      $params = unserialize($metric->params);
+      $question = $params['poll']['question'];
+      $answers = $params['poll']['answer'];
+
+      $html = <<<HTML
+<div class="poll-div">
+  <form method="post" action="wat.php?plz=lol" name="poll-form">
+    <ul class="poll-list">
+      <li class="poll-question">$question</li>
+HTML;
+
+      foreach ($answers as $answer) {
+        $html .= '<li class="poll-answer"><label><input type="radio" name="poll-preview" />' . $answer . '</label></li>';
+      }
+
+      $html .= <<<HTML
+    </ul>
+    <input type="button" value="Cast Vote" />
+    <input type="button" value="Show Results" />
+  </form>
+</div>
+HTML;
+    }
+
+    return $html;
+  }
+
+  /*
+   * content to be displayed after every post
+   */
+  public static function content_display($content) {
+    global $post; //get current post object
+    $post_metrics = unserialize(get_post_meta($post->ID, 'metrics', true));
+    if (isset($post_metrics) && $post_metrics) {
+      foreach ($post_metrics as $key => $val) {
+        Evaluate::display_metric($key);
+      }
+    }
   }
 
 }
+?>
