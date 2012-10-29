@@ -54,16 +54,16 @@ class Evaluate_Admin {
    */
   public static function page() {
     global $wpdb;
-    $view = (isset($_GET['view']) ? $_GET['view'] : ''); //avoid warning when wp_debug = true
-    switch ($view) {
+    $view = (isset($_GET['view']) ? $_GET['view'] : ''); //avoids warning when wp_debug = true
+    switch ($view) { //sort of redundant, only required for the title link, otherwise its handled properly after the html block
       case 'main':
         $link = '<a href="options-general.php?page=evaluate&view=add" class="add-new-h2" title="Add New Metric">Add New</a>';
         break;
-      
+
       case 'add':
         $link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
         break;
-      
+
       case 'edit':
         $link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
         break;
@@ -80,9 +80,11 @@ class Evaluate_Admin {
     </div>
     <?php
     vd($_POST);
-    $action = (isset($_POST['action']) ? $_POST['action'] : ''); //avoid warning when wp_debug = true
+
+    //handle actions request with POST
+    $action = (isset($_POST['action']) ? $_POST['action'] : '');
     switch ($action) {
-      case 'new':
+      case 'new': //add new metric
         try { //try to add the new metric
           $formdata = (isset($_POST['evalu_form']) ? $_POST['evalu_form'] : null);
           Evaluate_Admin::add_metric($formdata);
@@ -94,25 +96,37 @@ class Evaluate_Admin {
         }
         break;
 
-      case 'delete':
-        echo 'whaaat';
+      case 'delete': //delete metric (bulk action)
+        $metrics = (isset($_POST['metric']) ? $_POST['metric'] : false);
+        if ($metrics) {
+          foreach ($metrics as $slug) {
+            try {
+              Evaluate_Admin::delete_metric($slug);
+              Evaluate_Admin::alert("Metric '$slug' deleted successfully.", 'updated');
+            } catch (Exception $e) {
+              Evaluate_Admin::alert($e->getMessage(), 'error');
+            }
+          }
+        }
+        //Evaluate_Admin::delete_metric();
         break;
     }
-    
-    //handle deletion of single metric (via Delete link action in metrics-list-table
+
+    //handle actions requested with GET
     $get_action = (isset($_GET['action']) ? $_GET['action'] : '');
-    $metric_delete = (isset($_GET['metric']) ? $_GET['metric'] : '');
-    switch($get_action) {
-      case 'delete':
+    switch ($get_action) {
+      case 'delete': //single metric delete event from link
+        $slug = (isset($_GET['metric']) ? $_GET['metric'] : '');
         try {
-        Evaluate_Admin::delete_metric($metric_delete);
-        Evaluate_Admin::alert('Metric deleted successfully.', 'updated');
+          Evaluate_Admin::delete_metric($slug);
+          Evaluate_Admin::alert("Metric '$slug' deleted successfully.", 'updated');
         } catch (Exception $e) {
           Evaluate_Admin::alert($e->getMessage(), 'error');
         }
         break;
     }
 
+    //after actions, handle which view to render
     switch ($view) {
       case 'main':
         Evaluate_Admin::metrics_table();
@@ -182,26 +196,29 @@ HTML;
    */
   public static function delete_metric($slug) {
     global $wpdb;
-    
-    if(!$slug) {
+
+    if (!$slug) {
       throw new Exception('You have not specified a metric to delete.');
     }
-    
-    if(!isset($_GET['nonce_delete']) || !wp_verify_nonce($_GET['nonce_delete'], 'evaluate-delete-'.$slug)) {
+
+    $nonce = (isset($_REQUEST['_wpnonce']) ? $_REQUEST['_wpnonce'] : false);
+    echo $nonce;
+    if (!$nonce || (!wp_verify_nonce($nonce, "evaluate-delete-$slug") && !wp_verify_nonce($nonce, 'bulk-metrics'))) {
       throw new Exception('Nonce check failed. Did you mean to visit this page?');
     }
-    
-    $query = $wpdb->prepare('DELETE FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s',$slug);
+
+    $query = $wpdb->prepare('DELETE FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s', $slug);
     $result = $wpdb->query($query);
-    if($result === FALSE) { //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
+
+    if ($result === FALSE) { //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
       throw new Exception('Database error during delete operation.');
-    } elseif($result == 0) {
+    } elseif ($result == 0) {
       throw new Exception('Database unchanged after delete operation (metric already deleted?).');
     }
-    
+
     return true;
   }
-  
+
   /*
    * add metric to the database
    * throws Exception if there are any errors, so make sure to try..catch when calling this
@@ -210,7 +227,9 @@ HTML;
     global $wpdb;
 
     //check nonce first
-    check_admin_referer('evaluate-new');
+    if (!wp_verify_nonce($_POST['_wpnonce'], 'evaluate-new')) {
+      throw new Exception('Nonce check failed. Were you meant to do this?');
+    }
 
     //assign if we're updating
     $update = (isset($data['update']) ? true : false);
@@ -478,9 +497,20 @@ HTML;
         <tr>
           <th>Content Types</th>
           <td>
-            <label><input type="checkbox" name="evalu_form[content_post]" value="true" <?php echo (isset($formdata['content_post']) ? 'checked="checked"' : ''); ?> /> Posts</label>
-            <label><input type="checkbox" name="evalu_form[content_page]" value="true" <?php echo (isset($formdata['content_page']) ? 'checked="checked"' : ''); ?> /> Pages</label>
-            <label><input type="checkbox" name="evalu_form[content_media]" value="true" <?php echo (isset($formdata['content_media']) ? 'checked="checked"' : ''); ?> /> Media</label>
+            <?php
+            if($update) {
+              $cb_post_state = (isset($formdata['content_post']) ? 'checked="checked"' : '');
+              $cb_page_state = (isset($formdata['content_page']) ? 'checked="checked"' : '');
+              $cb_media_state = (isset($formdata['content_media']) ? 'checked="checked"' : '');
+            } else {
+              $cb_post_state = 'checked="checked"';
+              $cb_page_state = 'checked="checked"';
+              $cb_media_state = 'checked="checked"';
+            }
+            ?>
+            <label><input type="checkbox" name="evalu_form[content_post]" value="true" <?php echo $cb_post_state; ?> /> Posts</label>
+            <label><input type="checkbox" name="evalu_form[content_page]" value="true" <?php echo $cb_page_state; ?> /> Pages</label>
+            <label><input type="checkbox" name="evalu_form[content_media]" value="true" <?php echo $cb_media_state; ?> /> Media</label>
           </td>
         </tr>
 
@@ -562,7 +592,7 @@ HTML;
             ?>
             <p>
               <label>
-                <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (isset($post_meta[$metric->slug]) || !$post_meta) echo 'checked="checked"'; ?> />
+                <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (isset($post_meta[$metric->id]) || !$post_meta) echo 'checked="checked"'; ?> />
                 <?php echo $metric->nicename . ' - ' . $metric->type . ' - ' . $metric->style; ?>
               </label>
             </p>

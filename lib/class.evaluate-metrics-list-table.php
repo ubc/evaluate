@@ -1,5 +1,8 @@
 <?php
-
+/**
+ * list table that extends WP_List_Table to display metrics on the main page
+ * this keeps admin tables consistent with wp defaults
+ */
 class Evaluate_Metrics_List_Table extends WP_List_Table {
 
   public $columns = array();
@@ -7,7 +10,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 
   function __construct() {
     parent::__construct(array(
-        'singular' => 'metric',
+        'singular' => 'metric', //used when passing actions etc.
         'plural' => 'metrics',
         'ajax' => false
     ));
@@ -39,6 +42,9 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
     );
   }
 
+  /*/
+   * extra column for the checkbox next to each row
+   */
   function column_cb($item) {
     return sprintf('<input type="checkbox" name="metric[]" value="%s" />', $item->slug);
   }
@@ -50,7 +56,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
         $row_actions = array(
             'view' => sprintf('<a href="?page=evaluate&view=metric&metric=%s">View Details</a>', $item->slug),
             'edit' => sprintf('<a href="?page=evaluate&view=edit&metric=%s">Edit</a>', $item->slug),
-            'delete' => sprintf('<span class="trash"><a href="?page=evaluate&view=main&action=delete&metric=%s&nonce_delete=%s">Delete</a></span>', $item->slug, wp_create_nonce('evaluate-delete-'.$item->slug))
+            'delete' => sprintf('<span class="trash"><a href="?page=evaluate&view=main&action=delete&metric=%s&_wpnonce=%s">Delete</a></span>', $item->slug, wp_create_nonce('evaluate-delete-'.$item->slug))
         );
         return sprintf('%s %s', $name_link, $this->row_actions($row_actions));
         break;
@@ -75,11 +81,11 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 
   function extra_tablenav($which) {
     if ($which == 'top') {
-      echo 'before navigation';
+//      echo 'before navigation';
     }
 
     if ($which == 'bottom') {
-      echo 'after navigation';
+//      echo 'after navigation';
     }
   }
 
@@ -92,6 +98,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
     $sortable = $this->get_sortable_columns();
     $this->_column_headers = array($columns, $hidden, $sortable);
 
+    //get order if exists or set default
     $orderby = (isset($_GET['orderby']) ? $_GET['orderby'] : 'created');
     $order = (isset($_GET['order']) ? $_GET['order'] : 'desc');
     //prepare query
@@ -104,15 +111,16 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
   }
 
   public function render() {
+    //need to wrap a form around the table for bulk actions
     ?>
-    <form id="metrics-list-table" method="post" action="">
+    <form id="metrics-list-table" method="post" action="options-general.php?page=evaluate&view=main">
       <?php
+      //wp_nonce_field('evaluate-new');
       $this->prepare_items();
       $this->display();
       ?>
     </form>
     <?php
   }
-
 }
 ?>

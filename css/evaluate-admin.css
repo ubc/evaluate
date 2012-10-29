@@ -5,3 +5,12 @@
 .metric_preview {
   display: none;
 }
+
+/* for some reason some css elements look different in admin section,
+ * likely has to do with stylesheet inheritance 
+ */
+
+.rating-text { /* pad 3px from top so the stars and text align */
+  padding-top: 3px;
+  display: inline-block;
+}

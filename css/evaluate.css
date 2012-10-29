@@ -14,10 +14,12 @@
 /* range (star) rating */
 .rate-range {
   display: block;
+  height: 25px;
+  overflow: hidden;
 }
 
 .rating-text { /* pad 3px from top so the stars and text align */
-  padding-top: 3px;
+  padding-top: 0px;
   display: inline-block;
 }
 
@@ -53,9 +55,9 @@
   background-position: 0px -150px;
 }
 
-.stars:hover .starr:hover {
+.stars:hover .starr:hover, .stars-selected {
   background-image: url(../img/sprite.gif); 
-  background-position: 0px -200px;
+  background-position: 0px -200px !important;
 }
 
 .stars .rating { 
@@ -63,6 +65,13 @@
   height: 100%; 
   background: url(../img/sprite.gif) repeat-x left top;  
   background-position: 0px -175px;
+}
+
+.stars .rating-selected { 
+  position: absolute; 
+  height: 100%; 
+  background: url(../img/sprite.gif) repeat-x left top;  
+  background-position: 0px -200px;
 }
 
 .stars:hover .rating { 
@@ -84,7 +93,7 @@
   background-position: 0px 0px;
 }
 
-.heart:hover {
+.heart:hover, .heart-selected {
   background-position: 0px -25px;
 }
 
@@ -92,7 +101,7 @@
   background-position: 0px -50px;
 }
 
-.thumb:hover {
+.thumb:hover, .thumb-selected {
   background-position: 0px -75px;
 }
 
@@ -100,7 +109,7 @@
   background-position: 0px -100px;
 }
 
-.thumb-down:hover {
+.thumb-down:hover, .thumb-down-selected {
   background-position: 0px -125px;
 }
 
@@ -108,7 +117,7 @@
   background-position: 0px -225px;
 }
 
-.arrow:hover {
+.arrow:hover, .arrow-selected {
   background-position: 0px -250px;
 }
 
@@ -116,7 +125,7 @@
   background-position: 0px -275px;
 }
 
-.arrow-down:hover {
+.arrow-down:hover, .arrow-down-selected {
   background-position: 0px -300px;
 }
 
@@ -133,6 +142,11 @@
 }
 
 /* poll */
+.poll-div ul {
+  margin: 0px !important;
+  padding: 0px !important;
+}
+
 .poll-question {
   font-weight: bold;
 }
@@ -141,4 +155,15 @@
   list-style-type: none;
   margin: 0;
   padding: 0;
+}
+
+.poll-result {
+  width: 200px;
+  height: 10px;
+  background-color: #b9b9b9;
+}
+
+.poll-bar {
+  background-color: #767676;
+  height: 10px;
 }
