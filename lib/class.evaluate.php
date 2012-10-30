@@ -145,7 +145,7 @@ class Evaluate {
     if (!wp_verify_nonce($nonce, 'evaluate-vote-' . $vote . '-' . self::$user) && !wp_verify_nonce($nonce, 'evaluate-poll-' . $metric_id . '-' . self::$user)) {
       throw new Exception('Nonce check failed. Did you mean to do this action?');
     }
-    
+
     $data = array(); //to hold vote data for db
     $data['metric_id'] = $metric_id;
     $data['content_id'] = $content_id;
@@ -178,7 +178,7 @@ class Evaluate {
   /*
    * general function to display metrics
    */
-  public static function display_metric($metric_id) {
+  public static function display_metric($metric_id, $post_id) {
     global $wpdb;
     $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE id=%s', $metric_id);
     $metric = $wpdb->get_row($query);
@@ -201,7 +201,14 @@ class Evaluate {
         break;
 
       case 'poll':
-        return Evaluate::display_poll($metric);
+        $metric_id = (isset($_GET['metric_id']) ? $_GET['metric_id'] : false);
+        $display = (isset($_GET['poll_display']) ? $_GET['poll_display'] : false);
+        $content_id = (isset($_GET['content_id']) ? $_GET['content_id'] : false);
+        if ($metric->id == $metric_id && $content_id == $post_id && $display == 'results') {
+          return self::display_poll_results($metric);
+        } else {
+          return self::display_poll($metric);
+        }
         break;
     }
   }
@@ -433,11 +440,7 @@ HTML;
 
       //check previous vote by user
       $prev_vote = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post_id, self::$user));
-      
-      if($prev_vote) {
-        return self::display_poll_results($metric);
-      }
-      
+
       //construct html
       $html = <<<HTML
 <div class="poll-div">
@@ -447,7 +450,7 @@ HTML;
 HTML;
 
       foreach ($answers as $key => $answer) {
-        if($prev_vote && $prev_vote->vote == $key) {
+        if ($prev_vote && $prev_vote->vote == $key) {
           $checked = ' checked="checked"';
         } else {
           $checked = '';
@@ -459,7 +462,7 @@ HTML;
     </ul>
     <input type="hidden" value="$nonce" name="_wpnonce" />
     <input type="submit" value="Cast Vote" />
-    <a href="?evaluate=poll&metric_id=$metric->id" title="See vote results!">Show Results</a>
+    <a href="?evaluate=poll&metric_id=$metric->id&content_id=$post_id&poll_display=results" title="See vote results!">Show Results</a>
   </form>
 </div>
 HTML;
@@ -467,47 +470,62 @@ HTML;
 
     return $html;
   }
-  
+
+  /*
+   * display results of a given poll
+   */
   public static function display_poll_results($poll, $content_id = null) {
     global $wpdb, $post;
     $post_id = (isset($post->ID) ? $post->ID : $content_id);
-    $votes = $wpdb->get_results( $wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $poll->id, $post_id));
+    $votes = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $poll->id, $post_id));
     $params = unserialize($poll->params);
     $question = $params['poll']['question'];
     $answers = $params['poll']['answer'];
     $answer_votes = array_fill(1, count($answers), 0);
-    foreach($votes as $vote) {
+    $user_vote = false;
+    foreach ($votes as $vote) {
       $answer_votes[$vote->vote]++;
+      if ($vote->user_id == self::$user) {
+        $user_vote = $vote->vote;
+      }
     }
-    
+
     $total_sum = 0;
-    foreach($answer_votes as $answer_vote) {
+    foreach ($answer_votes as $answer_vote) {
       $total_sum += $answer_vote;
     }
-    
+
     $html = <<<HTML
 <div class="poll-div">
   <ul class="poll-list">
   <li class="poll-question">$question</li>
 HTML;
-    
-    foreach($answers as $key => $answer) {
-      $average = round($answer_votes[$key] / $total_sum * 100, 1);
+
+    foreach ($answers as $key => $answer) {
+      if ($total_sum < 1) {
+        $average = 0;
+      } else {
+        $average = round($answer_votes[$key] / $total_sum * 100, 1);
+      }
+      if ($user_vote == $key) {
+        $selected = '-selected';
+      } else {
+        $selected = '';
+      }
       $html .= <<<HTML
     <li><strong>$answer:</strong> $average% ($answer_votes[$key] votes)
-      <div class="poll-result"><div class="poll-bar" style="width: $average%"></div></div>
+      <div class="poll-result"><div class="poll-bar$selected" style="width: $average%"></div></div>
     </li>
 HTML;
     }
-    
+
     $html .= <<<HTML
   </ul>
-  <a href="?evaluate=poll&metric_id=$poll->id" title="See vote results!">Back to vote</a>
+  <a href="?evaluate=poll&metric_id=$poll->id&content_id=$post_id&poll_display=vote" title="See voting form">Back to vote</a>
 </div>
 HTML;
-    
+
     return $html;
- 
   }
 
   /*
@@ -518,7 +536,7 @@ HTML;
     $post_metrics = unserialize(get_post_meta($post->ID, 'metrics', true));
     if (isset($post_metrics) && $post_metrics) {
       foreach ($post_metrics as $key => $val) {
-        $content .= Evaluate::display_metric($key);
+        $content .= Evaluate::display_metric($key, $post->ID);
       }
     }
 

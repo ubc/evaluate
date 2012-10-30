@@ -19,7 +19,6 @@ class Evaluate_Admin {
 
   /*
    * queue the css styles and js scripts
-   * TODO: load only on eval-specific admin pages
    */
   public static function enqueue_scripts() {
     //needs site-wide unique identifiers for first param
@@ -65,6 +64,10 @@ class Evaluate_Admin {
         break;
 
       case 'edit':
+        $link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
+        break;
+
+      case 'metric':
         $link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
         break;
 
@@ -152,6 +155,10 @@ class Evaluate_Admin {
         }
         break;
 
+      case 'metric':
+        self::content_table();
+        break;
+
       default:
         Evaluate_Admin::metrics_table();
         break;
@@ -168,6 +175,17 @@ class Evaluate_Admin {
     $metrics_table->render();
   }
 
+  public static function content_table() {
+    $metric_id = $_GET['metric'];
+    ?>
+<div class="widefat" style="width:30% !important; padding: 10px;">
+  <strong>Metric Details:</strong>
+  <p><?php echo Evaluate::display_metric($metric_id, 0); ?></p>
+</div>
+<?php
+    $content_table = new Evaluate_Content_List_Table();
+    $content_table->render();
+  }
   /*
    * returns a div containing the message and styled according to the $type
    * used for displaying feedback to the user
@@ -498,7 +516,7 @@ HTML;
           <th>Content Types</th>
           <td>
             <?php
-            if($update) {
+            if ($update) {
               $cb_post_state = (isset($formdata['content_post']) ? 'checked="checked"' : '');
               $cb_page_state = (isset($formdata['content_page']) ? 'checked="checked"' : '');
               $cb_media_state = (isset($formdata['content_media']) ? 'checked="checked"' : '');

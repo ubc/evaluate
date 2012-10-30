@@ -167,3 +167,8 @@
   background-color: #767676;
   height: 10px;
 }
+
+.poll-bar-selected { 
+  background-color: #333333;
+  height: 10px;
+}

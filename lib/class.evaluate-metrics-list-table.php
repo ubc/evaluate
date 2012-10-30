@@ -1,4 +1,5 @@
 <?php
+
 /**
  * list table that extends WP_List_Table to display metrics on the main page
  * this keeps admin tables consistent with wp defaults
@@ -42,7 +43,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
     );
   }
 
-  /*/
+  /* /
    * extra column for the checkbox next to each row
    */
   function column_cb($item) {
@@ -52,11 +53,11 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
   function column_default($item, $column) {
     switch ($column) {
       case 'nicename':
-        $name_link = sprintf('<a href="?page=evaluate&view=metric&metric=%s"><b>%s</b></a>', $item->slug, $item->nicename);
+        $name_link = sprintf('<a href="?page=evaluate&view=metric&metric=%s"><b>%s</b></a>', $item->id, $item->nicename);
         $row_actions = array(
-            'view' => sprintf('<a href="?page=evaluate&view=metric&metric=%s">View Details</a>', $item->slug),
+            'view' => sprintf('<a href="?page=evaluate&view=metric&metric=%s">View Details</a>', $item->id),
             'edit' => sprintf('<a href="?page=evaluate&view=edit&metric=%s">Edit</a>', $item->slug),
-            'delete' => sprintf('<span class="trash"><a href="?page=evaluate&view=main&action=delete&metric=%s&_wpnonce=%s">Delete</a></span>', $item->slug, wp_create_nonce('evaluate-delete-'.$item->slug))
+            'delete' => sprintf('<span class="trash"><a href="?page=evaluate&view=main&action=delete&metric=%s&_wpnonce=%s">Delete</a></span>', $item->slug, wp_create_nonce('evaluate-delete-' . $item->slug))
         );
         return sprintf('%s %s', $name_link, $this->row_actions($row_actions));
         break;
@@ -101,10 +102,24 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
     //get order if exists or set default
     $orderby = (isset($_GET['orderby']) ? $_GET['orderby'] : 'created');
     $order = (isset($_GET['order']) ? $_GET['order'] : 'desc');
+
+    //pagination arguments
+    $per_page = 10;
+    $current_page = $this->get_pagenum();
+    $total_items = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_METRICS));
+
+    $this->set_pagination_args(array(
+        'total_items' => $total_items,
+        'per_page' => $per_page
+    ));
+    
     //prepare query
+    $start = ($current_page-1)*$per_page;
+    $end = $start + $per_page;
     $query = $wpdb->prepare(
             "SELECT * FROM " . EVAL_DB_METRICS . ""
             . ' ORDER BY ' . $orderby . ' ' . $order
+            . ' LIMIT ' . $start . ', ' . $end
     );
 
     $this->items = $wpdb->get_results($query);
@@ -122,5 +137,6 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
     </form>
     <?php
   }
+
 }
 ?>

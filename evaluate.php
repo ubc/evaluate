@@ -34,6 +34,7 @@ if (!class_exists('WP_List_Table')) {
   require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
 require('lib/class.evaluate-metrics-list-table.php');
+require('lib/class.evaluate-content-list-table.php');
 
 //register the three activation hooks for the plugin
 register_activation_hook(__FILE__, 'on_activation');
