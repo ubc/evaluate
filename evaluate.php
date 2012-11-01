@@ -14,6 +14,13 @@ if (!defined('ABSPATH')) {
   die('-1');
 }
 
+//remove _wp_http_referer from requests
+require(ABSPATH . 'wp-includes/pluggable.php');
+if (!empty($_GET['_wp_http_referer']) && $_REQUEST['page'] == 'evaluate') {
+  wp_redirect(remove_query_arg(array('_wp_http_referer'), stripslashes($_SERVER['REQUEST_URI'])));
+  exit;
+}
+
 global $wpdb; //reference to wpdb object
 //define plugin-specific globals
 define('EVAL_DIR_PATH', plugin_dir_path(__FILE__));
@@ -35,12 +42,12 @@ if (!class_exists('WP_List_Table')) {
 }
 require('lib/class.evaluate-metrics-list-table.php');
 require('lib/class.evaluate-content-list-table.php');
+require('lib/class.evaluate-users-list-table.php');
 
 //register the three activation hooks for the plugin
 register_activation_hook(__FILE__, 'on_activation');
 register_deactivation_hook(__FILE__, 'on_deactivation');
 register_uninstall_hook(__FILE__, 'on_uninstall');
-
 //functions to do with activation, deactivation and uninstallation
 function on_activation() {
   Evaluate::activate();
@@ -63,7 +70,7 @@ add_filter('clean_url', array('Evaluate_Admin', 'add_defer_to_script'), 11, 1);
 //hooks to display meta box in post editor
 add_action('load-post.php', array('Evaluate_Admin', 'meta_box_setup'));
 add_action('load-post-new.php', array('Evaluate_Admin', 'meta_box_setup'));
-add_action('save_post', array('Evaluate_Admin', 'save_post_meta'));
+add_action('save_post', array('Evaluate_Admin', 'save_post_meta'), 10, 2);
 //hooks to display metrics below content
 add_filter('the_content', array('Evaluate', 'content_display'));
 ?>

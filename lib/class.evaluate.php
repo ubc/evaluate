@@ -178,13 +178,18 @@ class Evaluate {
   /*
    * general function to display metrics
    */
-  public static function display_metric($metric_id, $post_id) {
+  public static function display_metric($metric_id, $post_id = null) {
     global $wpdb;
     $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE id=%s', $metric_id);
     $metric = $wpdb->get_row($query);
 
     if (!$metric) { //cannot find the metric, could be deleted, do not display
       return;
+    }
+    
+    //check if metric is admin only
+    if($metric->admin_only && !current_user_can('manage_options')) {
+      return ;
     }
 
     switch ($metric->type) { //switch and feed the metric data to respective functions
@@ -201,14 +206,7 @@ class Evaluate {
         break;
 
       case 'poll':
-        $metric_id = (isset($_GET['metric_id']) ? $_GET['metric_id'] : false);
-        $display = (isset($_GET['poll_display']) ? $_GET['poll_display'] : false);
-        $content_id = (isset($_GET['content_id']) ? $_GET['content_id'] : false);
-        if ($metric->id == $metric_id && $content_id == $post_id && $display == 'results') {
-          return self::display_poll_results($metric);
-        } else {
-          return self::display_poll($metric);
-        }
+        return self::display_poll($metric);
         break;
     }
   }
@@ -230,7 +228,14 @@ class Evaluate {
     } else { //metric supplied
       global $post, $wpdb;
       $post_id = (isset($post->ID) ? $post->ID : '');
-      $link = self::vote_url($metric->id, $post_id, 1);
+
+      //check if user needs to be logged in to vote
+      if (($metric->require_login && is_user_logged_in()) || !$metric->require_login) {
+        $link = self::vote_url($metric->id, $post_id, 1);
+      } else {
+        $link = 'wp-login.php?action=register';
+      }
+
       $style = $metric->style;
       $display_name = ($metric->display_name ? $metric->nicename : '');
 
@@ -309,9 +314,17 @@ HTML;
           $state_down = '-selected';
         }
       }
+
       //links
-      $link_up = self::vote_url($metric->id, $post_id, 1);
-      $link_down = self::vote_url($metric->id, $post_id, -1);
+      //check if user needs to be logged in to vote
+      if (($metric->require_login && is_user_logged_in()) || !$metric->require_login) {
+        $link_up = self::vote_url($metric->id, $post_id, 1);
+        $link_down = self::vote_url($metric->id, $post_id, -1);
+      } else {
+        $link_up = 'wp-login.php?action=register';
+        $link_down = 'wp-login.php?action=register';
+      }
+      
       $style = $metric->style;
       if ($metric->display_name) {
         $display_name = $metric->nicename;
@@ -395,7 +408,12 @@ HTML;
 
     for ($i = 1; $i <= 5; $i++) {
       $title = "$i/5 Stars";
-      $link = ($metric ? self::vote_url($metric->id, $post_id, $i) : 'javascript:void(0);');
+      //check if user needs to be logged in to vote
+      if ($metric && (($metric->require_login && is_user_logged_in()) || !$metric->require_login)) {
+        $link = self::vote_url($metric->id, $post_id, $i);
+      } else {
+        $link = 'wp-login.php?action=register';
+      }
       $html .= <<<HTML
       <div class="starr"><a href="$link" title="$title">&nbsp;</a>
 HTML;
@@ -426,7 +444,7 @@ HTML;
       <li class="poll-answer"><label><input type="radio" name="poll-preview" /></label></li>
     </ul>
     <input type="button" value="Cast Vote" />
-    <a href="?evaluate=poll&metric_id=$metric->id" title="See vote results!">Show Results</a>
+    <a href="javascript:void(0);" title="See vote results!">Show Results</a>
   </form>
 </div>
 HTML;
@@ -441,10 +459,29 @@ HTML;
       //check previous vote by user
       $prev_vote = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post_id, self::$user));
 
+      /* this is to achieve:
+       * if the user voted: show results
+       * if the user is not voted: show form
+       * but it can be overridden for specific metrics
+       */
+      $content_id = (isset($_GET['content_id']) ? $_GET['content_id'] : false);
+      if (isset($_GET['poll_display']) && $_GET['poll_display'] == 'results' && $content_id == $post_id) {
+        return self::display_poll_results($metric);
+      } elseif ($content_id != $post_id && $prev_vote) {
+        return self::display_poll_results($metric);
+      }
+
+      //check if user needs to be logged in to vote
+      if ($metric && (($metric->require_login && is_user_logged_in()) || !$metric->require_login)) {
+        $action = "?evaluate=vote&metric_id=$metric->id&content_id=$post_id";
+      } else {
+        $action = '';
+      }
+      
       //construct html
       $html = <<<HTML
 <div class="poll-div">
-  <form method="post" action="?evaluate=vote&metric_id=$metric->id&content_id=$post_id" name="poll-form">
+  <form method="post" action="$action" name="poll-form">
     <ul class="poll-list">
       <li class="poll-question">$question</li>
 HTML;
@@ -533,10 +570,10 @@ HTML;
    */
   public static function content_display($content) {
     global $post; //get current post object
-    $post_metrics = unserialize(get_post_meta($post->ID, 'metrics', true));
+    $post_metrics = get_post_meta($post->ID, 'metric');
     if (isset($post_metrics) && $post_metrics) {
-      foreach ($post_metrics as $key => $val) {
-        $content .= Evaluate::display_metric($key, $post->ID);
+      foreach ($post_metrics as $metric_id) {
+        $content .= Evaluate::display_metric($metric_id, $post->ID);
       }
     }
 

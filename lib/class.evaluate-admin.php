@@ -53,7 +53,7 @@ class Evaluate_Admin {
    */
   public static function page() {
     global $wpdb;
-    $view = (isset($_GET['view']) ? $_GET['view'] : ''); //avoids warning when wp_debug = true
+    $view = (isset($_REQUEST['view']) ? $_REQUEST['view'] : ''); //avoids warning when wp_debug = true
     switch ($view) { //sort of redundant, only required for the title link, otherwise its handled properly after the html block
       case 'main':
         $link = '<a href="options-general.php?page=evaluate&view=add" class="add-new-h2" title="Add New Metric">Add New</a>';
@@ -82,8 +82,6 @@ class Evaluate_Admin {
       </h2>
     </div>
     <?php
-    vd($_POST);
-
     //handle actions request with POST
     $action = (isset($_POST['action']) ? $_POST['action'] : '');
     switch ($action) {
@@ -156,7 +154,11 @@ class Evaluate_Admin {
         break;
 
       case 'metric':
-        self::content_table();
+        try {
+          self::details_table();
+        } catch (Exception $e) {
+          self::alert($e->getMessage(), 'error');
+        }
         break;
 
       default:
@@ -175,17 +177,47 @@ class Evaluate_Admin {
     $metrics_table->render();
   }
 
-  public static function content_table() {
-    $metric_id = $_GET['metric'];
+  public static function details_table() {
+    global $wpdb;
+    $metric_id = (isset($_GET['metric']) ? $_GET['metric'] : false);
+    if (!$metric_id) {
+      throw new Exception("You haven't supplied a metric!");
+    }
     ?>
-<div class="widefat" style="width:30% !important; padding: 10px;">
-  <strong>Metric Details:</strong>
-  <p><?php echo Evaluate::display_metric($metric_id, 0); ?></p>
-</div>
-<?php
-    $content_table = new Evaluate_Content_List_Table();
-    $content_table->render();
+    <div class="postbox metric-details">
+      <h3>Metric Details</h3>
+      <div class="metric-details-inner">
+        <p># Votes across all contents: <?php echo $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric_id)); ?></p>
+        <div>
+          <?php echo Evaluate::display_metric($metric_id, 0); ?>
+        </div>
+      </div>
+    </div>
+    <?php
+    $section = (isset($_GET['section']) ? $_GET['section'] : 'content');
+    $content_is_active = true;
+    switch ($section) {
+      case 'user':
+        $content_is_active = false;
+        $details_table = new Evaluate_Users_List_Table();
+        break;
+
+      case 'content':
+
+      default:
+        $content_is_active = true;
+        $details_table = new Evaluate_Content_List_Table();
+        break;
+    }
+    ?>
+    <h3 class = "nav-tab-wrapper">
+      <a class = "nav-tab <?php echo ($content_is_active ? 'nav-tab-active' : ''); ?>" href = "?page=evaluate&view=metric&metric=<?php echo $metric_id; ?>&section=content">Content</a>
+      <a class = "nav-tab <?php echo ($content_is_active ? '' : 'nav-tab-active'); ?>" href = "?page=evaluate&view=metric&metric=<?php echo $metric_id; ?>&section=user">Users</a>
+    </h3>
+    <?php
+    $details_table->render();
   }
+
   /*
    * returns a div containing the message and styled according to the $type
    * used for displaying feedback to the user
@@ -261,6 +293,13 @@ HTML;
     $wpdb->escape($metric['nicename']);
     $metric['slug'] = sanitize_title($metric['nicename']);
 
+    if($update) {
+      $metric = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s', $metric['slug']));
+      $num_votes = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric->id));
+      if($num_votes > 0 && $data['type'] != $metric->type) {
+        throw new Exception('You cannot change the type of this metric because there are votes registered.');
+      }
+    }
     //check if name is unique
     $query = $wpdb->prepare("SELECT id FROM " . EVAL_DB_METRICS . " WHERE slug=%s", $metric['slug']);
     $check = $wpdb->get_results($query);
@@ -556,6 +595,7 @@ HTML;
         </tr>
       </table>
       <input type="hidden" name="action" value="new" />
+      <input type="hidden" name="view" value="edit" />
       <?php if ($update) { ?>
         <input type="hidden" name="evalu_form[update]" value="<?php echo $formdata['slug']; ?>" />
       <?php } ?>
@@ -599,8 +639,7 @@ HTML;
     $post_type = get_post_type($object->ID);
     wp_nonce_field('evaluate_post-meta', 'evaluate_nonce');
 
-    $post_meta = get_post_meta($object->ID, 'metrics', true);
-    $post_meta = unserialize($post_meta);
+    $post_meta = get_post_meta($object->ID, 'metric');
     vd($post_meta);
     foreach ($metrics as $metric) { //sift through metrics and try to find ones that match the current $post_type
       $params = unserialize($metric->params);
@@ -609,8 +648,9 @@ HTML;
           if ($content_type == $post_type) {
             ?>
             <p>
+              <input type="hidden" name="evaluate_cb[<?php echo $metric->id; ?>]" value="0" />
               <label>
-                <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (isset($post_meta[$metric->id]) || !$post_meta) echo 'checked="checked"'; ?> />
+                <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (in_array($metric->id, $post_meta) || !$post_meta) echo 'checked="checked"'; ?> />
                 <?php echo $metric->nicename . ' - ' . $metric->type . ' - ' . $metric->style; ?>
               </label>
             </p>
@@ -624,7 +664,7 @@ HTML;
   /*
    * handle saving the post meta after any add/edit action to posts
    */
-  public static function save_post_meta($post_id) {
+  public static function save_post_meta($post_id, $post_object) {
     global $meta_box;
 
     //validate nonce
@@ -641,11 +681,20 @@ HTML;
       return $post_id;
     }
 
-    $metrics = serialize($_POST['evaluate_cb']);
-    //save/update post meta
-    if (!update_post_meta($post_id, 'metrics', $metrics)) {
-      echo ' error';
+    //we're only interested in the parent post
+    if ($post_object->post_type == 'revision')
+      return;
+
+    $post_meta = get_post_meta($post_id, 'metric');
+    foreach ($_POST['evaluate_cb'] as $key => $cb) {
+      if (!$cb) {
+        delete_post_meta($post_id, 'metric', $key);
+      } elseif ($cb == 'on' && !in_array($key, $post_meta)) {
+        add_post_meta($post_id, 'metric', $key);
+      }
     }
+
+    return true;
   }
 
 }

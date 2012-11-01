@@ -147,13 +147,6 @@ var Evaluate_Admin = {
         jQuery('input[name*="evalu_form[poll][answer]['+i+']"]').trigger('change'); //trigger so previewPoll runs to change the preview to match the field
       }
     }
-  },
-  
-  /*
-   *submits sibling form for metric deletion link
-   */
-  trash : function(element) {
-    console.log(jQuery(element));
   }
 };
 
