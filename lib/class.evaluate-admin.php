@@ -252,11 +252,15 @@ HTML;
     }
 
     $nonce = (isset($_REQUEST['_wpnonce']) ? $_REQUEST['_wpnonce'] : false);
-    echo $nonce;
+    
     if (!$nonce || (!wp_verify_nonce($nonce, "evaluate-delete-$slug") && !wp_verify_nonce($nonce, 'bulk-metrics'))) {
       throw new Exception('Nonce check failed. Did you mean to visit this page?');
     }
 
+    //get metric
+    $metric = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s', $slug));
+    
+    //delete the metric itself
     $query = $wpdb->prepare('DELETE FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s', $slug);
     $result = $wpdb->query($query);
 
@@ -266,6 +270,16 @@ HTML;
       throw new Exception('Database unchanged after delete operation (metric already deleted?).');
     }
 
+    //delete its votes
+    $query = $wpdb->prepare('DELETE FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric->id);
+    $result = $wpdb->query($query);
+
+    if ($result === FALSE) { //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
+      throw new Exception('Database error during delete operation.');
+    } elseif ($result == 0) {
+      throw new Exception('Database unchanged after delete operation (metric already deleted?).');
+    }
+    
     return true;
   }
 
