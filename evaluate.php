@@ -65,12 +65,15 @@ function on_uninstall() {
 add_action('init', array('Evaluate', 'init'));
 add_action('admin_init', array('Evaluate_Admin', 'init'));
 add_action('admin_menu', array('Evaluate_Admin', 'admin_menu'));
-//hooks to clean_url which prints out scripts when requested, to add defer="defer" so the JS loads last
+//filter to clean_url which prints out scripts when requested, to add defer="defer" so the JS loads last
 add_filter('clean_url', array('Evaluate_Admin', 'add_defer_to_script'), 11, 1);
 //hooks to display meta box in post editor
 add_action('load-post.php', array('Evaluate_Admin', 'meta_box_setup'));
 add_action('load-post-new.php', array('Evaluate_Admin', 'meta_box_setup'));
 add_action('save_post', array('Evaluate_Admin', 'save_post_meta'), 10, 2);
-//hooks to display metrics below content
+//filter for displaying metrics below content
 add_filter('the_content', array('Evaluate', 'content_display'));
+//hook for ajax voting
+add_action('wp_ajax_evaluate-vote', array('Evaluate', 'ajax_handler'));
+add_action('wp_ajax_nopriv_evaluate-vote', array('Evaluate', 'ajax_handler'));
 ?>

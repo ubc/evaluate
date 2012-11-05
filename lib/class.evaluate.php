@@ -22,6 +22,8 @@ class Evaluate {
       self::activate();
     }
 
+    self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
+
     //js and css script hook
     add_action('wp_enqueue_scripts', array('Evaluate', 'enqueue_scripts'));
 
@@ -92,14 +94,27 @@ class Evaluate {
   }
 
   /*
-   * put the evaluate.css style in the queue to be linked
+   * put the scripts and styles needed
    */
   public static function enqueue_scripts() {
     wp_register_style('evaluate', EVAL_DIR_URL . '/css/evaluate.css');
 
     wp_enqueue_style('evaluate');
+
+    //put ajax script
+    wp_enqueue_script('evaluate-js', plugins_url('/js/evaluate.js', dirname(__FILE__)), array('jquery'));
+
+    //wp localize trick to pass params into js without direct printing
+    $use_ajax = (self::$options['EVAL_AJAX'] ? 'true' : 'false');
+    wp_localize_script('evaluate-js', 'evaluate_ajax', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        'use_ajax' => $use_ajax
+    ));
   }
 
+  /*
+   * handles events requested from anywhere within wp
+   */
   public static function event_handler() {
     $evaluate = $_REQUEST['evaluate'];
     switch ($evaluate) {
@@ -111,6 +126,30 @@ class Evaluate {
 //          self::alert($e->getMessage(), 'error');
         }
         break;
+    }
+  }
+
+  /*
+   * handle ajax voting events
+   */
+  public static function ajax_handler() {
+    if (isset($_POST['data'])) {
+      $data = $_POST['data'];
+      if ($data['evaluate'] == 'poll') {
+        if ($data['poll_display'] == 'results') {
+          echo self::display_metric($data['metric_id'], $data['content_id'], true);
+        } else {
+          echo self::display_metric($data['metric_id'], $data['content_id'], false);
+        }
+        die();
+      }
+      try {
+        self::vote($data['metric_id'], $data['content_id'], $data['vote'], $data['_wpnonce']);
+        echo self::display_metric($data['metric_id'], $data['content_id']);
+        die(); //prevent getting further content (specifically wp adds a 0 or 1 code which gets appended at the end of the response)
+      } catch (Exception $e) {
+        echo self::display_metric($data['metric_id'], $data['content_id']);
+      }
     }
   }
 
@@ -142,7 +181,8 @@ class Evaluate {
   public static function vote($metric_id, $content_id, $vote, $nonce) {
     global $wpdb;
 
-    if (!wp_verify_nonce($nonce, 'evaluate-vote-' . $vote . '-' . self::$user) && !wp_verify_nonce($nonce, 'evaluate-poll-' . $metric_id . '-' . self::$user)) {
+    if (!wp_verify_nonce($nonce, 'evaluate-vote-' . $metric_id . '-' . $content_id . '-' . $vote . '-' . self::$user)
+            && !wp_verify_nonce($nonce, 'evaluate-poll-' . $metric_id . '-' . $content_id . '-' . self::$user)) {
       throw new Exception('Nonce check failed. Did you mean to do this action?');
     }
 
@@ -172,43 +212,60 @@ class Evaluate {
    * creates a vote url for a given metric and content id and vote count
    */
   public static function vote_url($metric_id, $content_id, $vote) {
-    return sprintf("?evaluate=vote&metric_id=$metric_id&content_id=$content_id&vote=$vote&_wpnonce=%s", wp_create_nonce('evaluate-vote-' . $vote . '-' . self::$user));
+    $nonce = wp_create_nonce('evaluate-vote-' . $metric_id . '-' . $content_id . '-' . $vote . '-' . self::$user);
+    return sprintf("?evaluate=vote&metric_id=%s&content_id=%s&vote=%s&_wpnonce=%s", $metric_id, $content_id, $vote, $nonce);
   }
 
   /*
    * general function to display metrics
    */
-  public static function display_metric($metric_id, $post_id = null) {
-    global $wpdb;
+  public static function display_metric($metric_id, $post_id = null, $results = false) {
+    global $wpdb, $post;
     $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE id=%s', $metric_id);
     $metric = $wpdb->get_row($query);
 
     if (!$metric) { //cannot find the metric, could be deleted, do not display
       return;
     }
-    
+
     //check if metric is admin only
-    if($metric->admin_only && !current_user_can('manage_options')) {
-      return ;
+    if ($metric->admin_only && !current_user_can('manage_options')) {
+      return;
     }
 
+    //set post id manually if one isn't set from the variables, or quit
+    if (!isset($post->ID)) {
+      if (!$post_id) {
+        return;
+      } else {
+        $post->ID = $post_id;
+      }
+    }
+
+    $html = '<div class="evaluate-shell">';
     switch ($metric->type) { //switch and feed the metric data to respective functions
       case 'one-way':
-        return Evaluate::display_one_way($metric);
+        $html .= self::display_one_way($metric);
         break;
 
       case 'two-way':
-        return Evaluate::display_two_way($metric);
+        $html .= self::display_two_way($metric);
         break;
 
       case 'range':
-        return Evaluate::display_range($metric);
+        $html .= self::display_range($metric);
         break;
 
       case 'poll':
-        return self::display_poll($metric);
+        if ($results) {
+          $html .= self::display_poll_results($metric);
+        } else {
+          $html .= self::display_poll($metric);
+        }
         break;
     }
+    $html .= '</div>';
+    return $html;
   }
 
   /*
@@ -275,7 +332,7 @@ class Evaluate {
 <span class="rate-name">$display_name</span>
 <div class="rate-div">
   <span class="up-counter">$counter</span>
-  <a href="$link" class="rate $style$state" title="$title">$title</a>
+  <a href="$link" class="rate $style$state eval-link" title="$title">$title</a>
 </div>
 HTML;
 
@@ -324,7 +381,7 @@ HTML;
         $link_up = 'wp-login.php?action=register';
         $link_down = 'wp-login.php?action=register';
       }
-      
+
       $style = $metric->style;
       if ($metric->display_name) {
         $display_name = $metric->nicename;
@@ -349,10 +406,10 @@ HTML;
 <span class="rate-name">$display_name</span>
 <div class="rate-div">
     <span class="up-counter">$up_counter</span>
-    <a href="$link_up" class="rate $style$state_up" title="$title_up">&nbsp;</a>
+    <a href="$link_up" class="rate $style$state_up eval-link" title="$title_up">&nbsp;</a>
       
     <span class="up-counter">$down_counter</span>
-    <a href="$link_down" class="rate $style-down$state_down" title="$title_down">&nbsp;</a>
+    <a href="$link_down" class="rate $style-down$state_down eval-link" title="$title_down">&nbsp;</a>
 </div>
 HTML;
 
@@ -415,7 +472,7 @@ HTML;
         $link = 'wp-login.php?action=register';
       }
       $html .= <<<HTML
-      <div class="starr"><a href="$link" title="$title">&nbsp;</a>
+      <div class="starr"><a href="$link" title="$title" class="eval-link">&nbsp;</a>
 HTML;
     }
 
@@ -432,7 +489,7 @@ HTML;
    * display poll metric
    * if $metric, then display the metric, if not then preview
    */
-  public static function display_poll($metric = null) {
+  public static function display_poll($metric = null, $results = false) {
     $checked = ''; //poll form state
     if (!$metric) {
       $html = <<<HTML
@@ -454,7 +511,7 @@ HTML;
       $params = unserialize($metric->params);
       $question = $params['poll']['question'];
       $answers = $params['poll']['answer'];
-      $nonce = wp_create_nonce('evaluate-poll-' . $metric->id . '-' . self::$user);
+      $nonce = wp_create_nonce('evaluate-poll-' . $metric->id . '-' . $post_id . '-' . self::$user);
 
       //check previous vote by user
       $prev_vote = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post_id, self::$user));
@@ -463,21 +520,21 @@ HTML;
        * if the user voted: show results
        * if the user is not voted: show form
        * but it can be overridden for specific metrics
-       */
+       *//*
       $content_id = (isset($_GET['content_id']) ? $_GET['content_id'] : false);
       if (isset($_GET['poll_display']) && $_GET['poll_display'] == 'results' && $content_id == $post_id) {
         return self::display_poll_results($metric);
       } elseif ($content_id != $post_id && $prev_vote) {
         return self::display_poll_results($metric);
       }
-
+*/
       //check if user needs to be logged in to vote
       if ($metric && (($metric->require_login && is_user_logged_in()) || !$metric->require_login)) {
-        $action = "?evaluate=vote&metric_id=$metric->id&content_id=$post_id";
+        $action = "?";
       } else {
         $action = '';
       }
-      
+
       //construct html
       $html = <<<HTML
 <div class="poll-div">
@@ -498,6 +555,9 @@ HTML;
       $html .= <<<HTML
     </ul>
     <input type="hidden" value="$nonce" name="_wpnonce" />
+    <input type="hidden" name="metric_id" value="$metric->id" />
+    <input type="hidden" name="content_id" value="$post_id" />
+    <input type="hidden" name="evaluate" value="vote" />
     <input type="submit" value="Cast Vote" />
     <a href="?evaluate=poll&metric_id=$metric->id&content_id=$post_id&poll_display=results" title="See vote results!">Show Results</a>
   </form>
@@ -539,16 +599,8 @@ HTML;
 HTML;
 
     foreach ($answers as $key => $answer) {
-      if ($total_sum < 1) {
-        $average = 0;
-      } else {
-        $average = round($answer_votes[$key] / $total_sum * 100, 1);
-      }
-      if ($user_vote == $key) {
-        $selected = '-selected';
-      } else {
-        $selected = '';
-      }
+      $average = ($total_sum < 1 ? 0 : round($answer_votes[$key] / $total_sum * 100, 1));
+      $selected = ($user_vote == $key ? '-selected' : '');
       $html .= <<<HTML
     <li><strong>$answer:</strong> $average% ($answer_votes[$key] votes)
       <div class="poll-result"><div class="poll-bar$selected" style="width: $average%"></div></div>

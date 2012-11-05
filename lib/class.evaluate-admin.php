@@ -1,10 +1,15 @@
 <?php
 
 class Evaluate_Admin {
+
+  static $options = array();
+
   /*
    * first code block that runs
    */
   public static function init() {
+    self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
+
     //js and css script hook
     add_action('admin_enqueue_scripts', array('Evaluate_Admin', 'enqueue_scripts'));
   }
@@ -28,9 +33,7 @@ class Evaluate_Admin {
     wp_enqueue_style('evaluate');
     wp_enqueue_style('evaluate-admin');
 
-    // last parameters (version) must be null, otherwise js won't load
-    // as it doesn't handle version numbers
-    wp_enqueue_script('evaluate-admin-js', plugins_url('/js/evaluate-admin.js', dirname(__FILE__)), null, null);
+    wp_enqueue_script('evaluate-admin-js', plugins_url('/js/evaluate-admin.js', dirname(__FILE__)), array('jquery'));
   }
 
   /*
@@ -111,6 +114,12 @@ class Evaluate_Admin {
         }
         //Evaluate_Admin::delete_metric();
         break;
+
+      case 'options':
+        $use_ajax = isset($_POST['use_ajax']);
+        update_option('EVAL_AJAX', $use_ajax);
+        self::$options['EVAL_AJAX'] = $use_ajax;
+        break;
     }
 
     //handle actions requested with GET
@@ -130,6 +139,7 @@ class Evaluate_Admin {
     //after actions, handle which view to render
     switch ($view) {
       case 'main':
+        self::plugin_options();
         Evaluate_Admin::metrics_table();
         break;
 
@@ -169,6 +179,21 @@ class Evaluate_Admin {
     <?php
   }
 
+  public static function plugin_options() {
+    $checked = (self::$options['EVAL_AJAX'] ? 'checked="checked"' : '');
+    $html = <<<HTML
+<form id="evaluate-options" method="post" action="">
+  <label>
+  <input type="checkbox" $checked name="use_ajax" />
+  Use AJAX voting
+  </label>
+  <input type="hidden" name="action" value="options" />
+  <input type="submit" value="Save Changes" />
+</form>
+HTML;
+    echo $html;
+  }
+
   /*
    * outputs main metrics list table
    */
@@ -177,6 +202,9 @@ class Evaluate_Admin {
     $metrics_table->render();
   }
 
+  /*
+   * outputs the metric details table depending on selection
+   */
   public static function details_table() {
     global $wpdb;
     $metric_id = (isset($_GET['metric']) ? $_GET['metric'] : false);
@@ -252,14 +280,14 @@ HTML;
     }
 
     $nonce = (isset($_REQUEST['_wpnonce']) ? $_REQUEST['_wpnonce'] : false);
-    
+
     if (!$nonce || (!wp_verify_nonce($nonce, "evaluate-delete-$slug") && !wp_verify_nonce($nonce, 'bulk-metrics'))) {
       throw new Exception('Nonce check failed. Did you mean to visit this page?');
     }
 
     //get metric
     $metric = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s', $slug));
-    
+
     //delete the metric itself
     $query = $wpdb->prepare('DELETE FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s', $slug);
     $result = $wpdb->query($query);
@@ -279,7 +307,7 @@ HTML;
     } elseif ($result == 0) {
       throw new Exception('Database unchanged after delete operation (metric already deleted?).');
     }
-    
+
     return true;
   }
 
@@ -307,10 +335,10 @@ HTML;
     $wpdb->escape($metric['nicename']);
     $metric['slug'] = sanitize_title($metric['nicename']);
 
-    if($update) {
+    if ($update) {
       $metric = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE slug=%s', $metric['slug']));
       $num_votes = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric->id));
-      if($num_votes > 0 && $data['type'] != $metric->type) {
+      if ($num_votes > 0 && $data['type'] != $metric->type) {
         throw new Exception('You cannot change the type of this metric because there are votes registered.');
       }
     }
@@ -609,9 +637,11 @@ HTML;
         </tr>
       </table>
       <input type="hidden" name="action" value="new" />
-      <input type="hidden" name="view" value="edit" />
       <?php if ($update) { ?>
         <input type="hidden" name="evalu_form[update]" value="<?php echo $formdata['slug']; ?>" />
+        <input type="hidden" name="view" value="edit" />
+      <?php } else { ?>
+        <input type="hidden" name="view" value="main" />
       <?php } ?>
       <?php submit_button(); ?>
     </form>
@@ -654,7 +684,7 @@ HTML;
     wp_nonce_field('evaluate_post-meta', 'evaluate_nonce');
 
     $post_meta = get_post_meta($object->ID, 'metric');
-    vd($post_meta);
+//    vd($post_meta);
     foreach ($metrics as $metric) { //sift through metrics and try to find ones that match the current $post_type
       $params = unserialize($metric->params);
       if (isset($params['content_types'])) {
