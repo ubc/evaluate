@@ -40,6 +40,7 @@ require('lib/class.evaluate-admin.php');
 if (!class_exists('WP_List_Table')) {
   require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
+//various list table displays for admin side
 require('lib/class.evaluate-metrics-list-table.php');
 require('lib/class.evaluate-content-list-table.php');
 require('lib/class.evaluate-users-list-table.php');
@@ -48,6 +49,7 @@ require('lib/class.evaluate-users-list-table.php');
 register_activation_hook(__FILE__, 'on_activation');
 register_deactivation_hook(__FILE__, 'on_deactivation');
 register_uninstall_hook(__FILE__, 'on_uninstall');
+
 //functions to do with activation, deactivation and uninstallation
 function on_activation() {
   Evaluate::activate();
@@ -62,11 +64,9 @@ function on_uninstall() {
 }
 
 //add action hooks for the plugin
-add_action('init', array('Evaluate', 'init'));
+add_action('init', array('Evaluate', 'init'), 15); //priority parameters MUST be > than CTLT_Stream priority otherwise post requests don't work
 add_action('admin_init', array('Evaluate_Admin', 'init'));
 add_action('admin_menu', array('Evaluate_Admin', 'admin_menu'));
-//filter to clean_url which prints out scripts when requested, to add defer="defer" so the JS loads last
-add_filter('clean_url', array('Evaluate_Admin', 'add_defer_to_script'), 11, 1);
 //hooks to display meta box in post editor
 add_action('load-post.php', array('Evaluate_Admin', 'meta_box_setup'));
 add_action('load-post-new.php', array('Evaluate_Admin', 'meta_box_setup'));
@@ -76,4 +76,15 @@ add_filter('the_content', array('Evaluate', 'content_display'));
 //hook for ajax voting
 add_action('wp_ajax_evaluate-vote', array('Evaluate', 'ajax_handler'));
 add_action('wp_ajax_nopriv_evaluate-vote', array('Evaluate', 'ajax_handler'));
+
+/* returns the first non-null argument */
+function coalesce() {
+  $args = func_get_args();
+  foreach ($args as $arg) {
+    if (!empty($arg)) {
+      return $arg;
+    }
+  }
+  return NULL;
+}
 ?>

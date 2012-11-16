@@ -12,7 +12,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
         'plural' => 'metrics',
         'ajax' => false
     ));
-    $this->metric_id = $_GET['metric'];
+    $this->metric_id = $_GET['metric_id'];
   }
 
   function get_columns() {
@@ -121,7 +121,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
       <input type="hidden" name="page" value="evaluate" />
       <input type="hidden" name="view" value="metric" />
       <input type="hidden" name="section" value="user" />
-      <input type="hidden" name="metric" value="<?php echo $this->metric_id; ?>" />
+      <input type="hidden" name="metric_id" value="<?php echo $this->metric_id; ?>" />
     </form>
     <?php
   }

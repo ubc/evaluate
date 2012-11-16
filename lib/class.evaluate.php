@@ -1,9 +1,32 @@
 <?php
 
+/*
+ * main class that takes care of everything that has to do with metrics, voting, display and setup
+ */
+
 class Evaluate {
 
-  static $options = array();
-  static $user = null;
+  static $options = array(); //plugin options
+  static $user = null; //current user id as known by the plugin
+  static $stream_active = null; //is CTLT_Stream active
+  static $titles = array(//titles for vote links
+      'thumb' => array(
+          'up' => 'Thumbs Up!',
+          'down' => 'Thumbs Down!'
+      ),
+      'arrow' => array(
+          'up' => 'Vote Up!',
+          'down' => 'Vote Down!'
+      ),
+      'heart' => array(
+          'up' => 'Heart!'
+      ),
+      'range' => '/5 Stars'
+  );
+
+  //******************************************************//
+  // functions related to plugin setup and initialization //
+  //******************************************************//
 
   function __construct($case = false) {
     if (!$case) {
@@ -11,9 +34,7 @@ class Evaluate {
     }
   }
 
-  /*
-   * first thing that runs before any code
-   */
+  /* first thing that runs before any code */
   public static function init() {
     self::$options['EVAL_DB_METRICS_VER'] = get_option('EVAL_DB_METRICS_VER');
     self::$options['EVAL_DB_VOTES_VER'] = get_option('EVAL_DB_VOTES_VER');
@@ -22,10 +43,19 @@ class Evaluate {
       self::activate();
     }
 
-    self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
+    //check if CTLT_Stream plugin exists to use with node
+    if (!function_exists('is_plugin_active')) {
+      //include plugins.php to check for other plugins from the frontend
+      include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+    }
+
+    self::$stream_active = is_plugin_active('stream/stream.php');
+    self::$options['EVAL_AJAX'] = (!self::$stream_active ? false : get_option('EVAL_AJAX'));
 
     //js and css script hook
-    add_action('wp_enqueue_scripts', array('Evaluate', 'enqueue_scripts'));
+    add_action('wp_enqueue_scripts', array(__CLASS__, 'enqueue_scripts'));
+    //add a hook to footer to print out metric templates for doT
+    add_action('wp_footer', array(__CLASS__, 'print_templates'));
 
     self::$user = self::get_user(); //get user, because we won't be able to set a cookie later in the file
     //handle any evaluate event that occurs
@@ -79,9 +109,7 @@ class Evaluate {
     
   }
 
-  /*
-   * remove the database tables created by Eval
-   */
+  /* remove the database tables created by Eval */
   public static function uninstall() {
     $sql = "DROP TABLE " . EVAL_DB_METRICS;
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
@@ -93,69 +121,27 @@ class Evaluate {
     remove_option('EVAL_DB_VOTES_VER');
   }
 
-  /*
-   * put the scripts and styles needed
-   */
+  /* put the scripts and styles needed */
   public static function enqueue_scripts() {
     wp_register_style('evaluate', EVAL_DIR_URL . '/css/evaluate.css');
-
     wp_enqueue_style('evaluate');
 
-    //put ajax script
-    wp_enqueue_script('evaluate-js', plugins_url('/js/evaluate.js', dirname(__FILE__)), array('jquery'));
+    //put js
+    wp_register_script('doT', EVAL_DIR_URL . '/js/doT.js', false, false, true);
+    wp_register_script('evaluate-js', EVAL_DIR_URL . '/js/evaluate.js', array('jquery', 'doT'), false, true);
+    wp_enqueue_script('doT');
+    wp_enqueue_script('evaluate-js');
 
     //wp localize trick to pass params into js without direct printing
-    $use_ajax = (self::$options['EVAL_AJAX'] ? 'true' : 'false');
+    $use_ajax = (self::$options['EVAL_AJAX'] ? true : false);
     wp_localize_script('evaluate-js', 'evaluate_ajax', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
-        'use_ajax' => $use_ajax
+        'use_ajax' => $use_ajax,
+        'user' => self::$user
     ));
   }
 
-  /*
-   * handles events requested from anywhere within wp
-   */
-  public static function event_handler() {
-    $evaluate = $_REQUEST['evaluate'];
-    switch ($evaluate) {
-      case 'vote':
-        try {
-          self::vote($_REQUEST['metric_id'], $_REQUEST['content_id'], $_REQUEST['vote'], $_REQUEST['_wpnonce']);
-//          self::alert('Vote submitted.', 'updated');
-        } catch (Exception $e) {
-//          self::alert($e->getMessage(), 'error');
-        }
-        break;
-    }
-  }
-
-  /*
-   * handle ajax voting events
-   */
-  public static function ajax_handler() {
-    if (isset($_POST['data'])) {
-      $data = $_POST['data'];
-      if ($data['evaluate'] == 'poll') {
-        if ($data['poll_display'] == 'results') {
-          echo self::display_metric($data['metric_id'], $data['content_id'], true);
-        } else {
-          echo self::display_metric($data['metric_id'], $data['content_id'], false);
-        }
-        die();
-      }
-      try {
-        self::vote($data['metric_id'], $data['content_id'], $data['vote'], $data['_wpnonce']);
-        echo self::display_metric($data['metric_id'], $data['content_id']);
-        die(); //prevent getting further content (specifically wp adds a 0 or 1 code which gets appended at the end of the response)
-      } catch (Exception $e) {
-        echo self::display_metric($data['metric_id'], $data['content_id']);
-      }
-    }
-  }
-
-  /*
-   * get id of the current user
-   */
+  /* get id of the current user */
   public static function get_user() {
     global $current_user;
 
@@ -175,14 +161,63 @@ class Evaluate {
     return $_SERVER['REMOTE_ADDR']; //last resort
   }
 
-  /*
-   * process incoming votes for deletion, update or insert
-   */
+  //*************************************//
+  // event and request handler functions //
+  //*************************************//
+
+  /* handles events requested from anywhere within wp */
+  public static function event_handler() {
+    switch ($_REQUEST['evaluate']) {
+      case 'vote':
+        return self::vote($_REQUEST['metric_id'], $_REQUEST['content_id'], $_REQUEST['vote'], $_REQUEST['_wpnonce']);
+        break;
+    }
+  }
+
+  /* handle ajax voting events */
+  public static function ajax_handler() {
+    $data = (isset($_POST['data']) ? $_POST['data'] : false);
+    if ($data) {
+      //handle poll view requests first
+      if (isset($data['evaluate']) && $data['evaluate'] == 'poll') {
+        $metric_data = self::get_data_by_id($data['metric_id'], $data['content_id']);
+        echo self::display_poll($metric_data);
+        die();
+      }
+      //now handle vote requests
+      echo self::vote($data['metric_id'], $data['content_id'], $data['vote'], $data['_wpnonce']);
+    }
+    die();
+  }
+
+  /* content hook for main wordpress loop */
+  public static function content_display($content) {
+    global $wpdb, $post;
+
+    //get all metrics, then filter out excluded ones
+    $metrics = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS));
+    $excluded = get_post_meta($post->ID, 'metric');
+
+    foreach ($metrics as $metric) {
+      if (!in_array($metric->id, $excluded)) { //not excluded
+        $data = self::get_metric_data($metric);
+        $content .= self::display_metric($data);
+      }
+    }
+
+    return $content;
+  }
+
+  //**************************//
+  // voting related functions //
+  //**************************//
+
+  /* process incoming votes for deletion, update or insert */
   public static function vote($metric_id, $content_id, $vote, $nonce) {
     global $wpdb;
 
     if (!wp_verify_nonce($nonce, 'evaluate-vote-' . $metric_id . '-' . $content_id . '-' . $vote . '-' . self::$user)
-            && !wp_verify_nonce($nonce, 'evaluate-poll-' . $metric_id . '-' . $content_id . '-' . self::$user)) {
+            && !wp_verify_nonce($nonce, 'evaluate-vote-poll-' . $metric_id . '-' . $content_id . '-' . self::$user)) {
       throw new Exception('Nonce check failed. Did you mean to do this action?');
     }
 
@@ -199,439 +234,560 @@ class Evaluate {
     if ($prev_vote) {
       if ($vote == $prev_vote->vote) { //same vote twice constitutes a 'toggle', remove vote
         $query = $wpdb->prepare('DELETE FROM ' . EVAL_DB_VOTES . ' WHERE id=%d', $prev_vote->id);
-        return $wpdb->query($query);
+        $result = $wpdb->query($query);
       } else { //update vote from previous value
-        return $wpdb->update(EVAL_DB_VOTES, array('vote' => $vote), array('metric_id' => $metric_id, 'content_id' => $content_id, 'user_id' => $data['user_id']));
+        $result = $wpdb->update(EVAL_DB_VOTES, array('vote' => $vote), array('metric_id' => $metric_id, 'content_id' => $content_id, 'user_id' => $data['user_id']));
       }
     } else { //add new vote
-      return $wpdb->insert(EVAL_DB_VOTES, $data, array('%d', '%d', '%s', '%d', '%s'));
-    }
-  }
-
-  /*
-   * creates a vote url for a given metric and content id and vote count
-   */
-  public static function vote_url($metric_id, $content_id, $vote) {
-    $nonce = wp_create_nonce('evaluate-vote-' . $metric_id . '-' . $content_id . '-' . $vote . '-' . self::$user);
-    return sprintf("?evaluate=vote&metric_id=%s&content_id=%s&vote=%s&_wpnonce=%s", $metric_id, $content_id, $vote, $nonce);
-  }
-
-  /*
-   * general function to display metrics
-   */
-  public static function display_metric($metric_id, $post_id = null, $results = false) {
-    global $wpdb, $post;
-    $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ' WHERE id=%s', $metric_id);
-    $metric = $wpdb->get_row($query);
-
-    if (!$metric) { //cannot find the metric, could be deleted, do not display
-      return;
+      $result = $wpdb->insert(EVAL_DB_VOTES, $data, array('%d', '%d', '%s', '%d', '%s'));
     }
 
-    //check if metric is admin only
-    if ($metric->admin_only && !current_user_can('manage_options')) {
-      return;
-    }
-
-    //set post id manually if one isn't set from the variables, or quit
-    if (!isset($post->ID)) {
-      if (!$post_id) {
-        return;
+    if ($result) {
+      $metric_data = self::get_data_by_id($data['metric_id'], $data['content_id']);
+      $metric_data->user = self::$user;
+      if (self::$stream_active) { //notify CTLT_Stream on success if enabled
+//        CTLT_Stream::send('evaluate', array(
+//            'data' => $metric_data
+//                ), 'vote');
+        CTLT_Stream::send('evaluate', $metric_data, 'vote');
       } else {
-        $post->ID = $post_id;
+        return self::display_metric($metric_data);
       }
     }
 
-    $html = '<div class="evaluate-shell">';
-    switch ($metric->type) { //switch and feed the metric data to respective functions
+    return $result;
+  }
+
+  /* create a url to vote */
+  public static function vote_url($metric, $content_id, $vote) {
+    if ($metric->admin_only && !current_user_can('manage_options')) {
+      return 'javascript:void(0);';
+    }
+    if ($metric->require_login && !is_user_logged_in()) {
+      return 'wp-login.php?action=register';
+    }
+
+    return sprintf("?evaluate=vote&metric_id=%s&content_id=%s&vote=%s", $metric->id, $content_id, $vote);
+  }
+
+  //********************************************************//
+  // data functions to get all required data about a metric //
+  //********************************************************//
+
+  public static function get_data_by_id($metric_id, $content_id) {
+    global $wpdb, $post;
+
+    $metric = $wpdb->get_row(
+            $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS
+                    . ' WHERE id=%s'
+                    , $metric_id));
+    if ($metric) {
+      //force specific post data
+      $post = wp_get_single_post($content_id);
+      if (isset($post)) {
+        setup_postdata($post);
+      } else { //no post id set, avoid warnings
+        $post->ID = 0;
+      }
+      //get metric data
+      return self::get_metric_data($metric);
+    }
+  }
+
+  /* convenience function to handle any metric */
+  public static function get_metric_data($metric) {
+    switch ($metric->type) {
       case 'one-way':
-        $html .= self::display_one_way($metric);
+        $data = self::one_way_data($metric);
         break;
 
       case 'two-way':
-        $html .= self::display_two_way($metric);
+        $data = self::two_way_data($metric);
         break;
 
       case 'range':
-        $html .= self::display_range($metric);
+        $data = self::range_data($metric);
         break;
 
       case 'poll':
-        if ($results) {
-          $html .= self::display_poll_results($metric);
-        } else {
-          $html .= self::display_poll($metric);
-        }
-        break;
-    }
-    $html .= '</div>';
-    return $html;
-  }
-
-  /*
-   * show one-way vote block
-   * if $metric is given, fetch metric data and display that
-   * if metric is not given, it means we want a preview, so look at $style
-   * and display a preview of that style. If no parameters given then
-   * the universe collapses into itself
-   */
-  public static function display_one_way($metric = null, $style = null) {
-    $state = ''; //state of the button, whether if its toggled or not depending on previous vote
-
-    if (!$metric) { //preview, set defaults
-      $counter = 0;
-      $link = 'javascript:void(0)';
-      $display_name = '';
-    } else { //metric supplied
-      global $post, $wpdb;
-      $post_id = (isset($post->ID) ? $post->ID : '');
-
-      //check if user needs to be logged in to vote
-      if (($metric->require_login && is_user_logged_in()) || !$metric->require_login) {
-        $link = self::vote_url($metric->id, $post_id, 1);
-      } else {
-        $link = 'wp-login.php?action=register';
-      }
-
-      $style = $metric->style;
-      $display_name = ($metric->display_name ? $metric->nicename : '');
-
-      //check # votes
-      $counter = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $metric->id, $post_id));
-
-      if ($counter > 0) { //no need to run extra query if no votes
-        //check if vote by user exists
-        $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post_id, self::$user);
-        $result = $wpdb->get_row($query);
-        if ($result && $result->vote == 1) { //vote already exists
-          $state = '-selected';
-        }
-      }
-    }
-
-    //link titles
-    switch ($style) { //prepare link title and text
-      case 'thumb':
-        $title = 'Like';
-        break;
-
-      case 'heart':
-        $title = 'Heart';
-        break;
-
-      case 'arrow':
-        $title = 'Vote Up';
+        $data = self::poll_data($metric);
         break;
 
       default:
-        $title = '';
+        $data = null;
         break;
     }
 
-    $html = <<<HTML
-<span class="rate-name">$display_name</span>
-<div class="rate-div">
-  <span class="up-counter">$counter</span>
-  <a href="$link" class="rate $style$state eval-link" title="$title">$title</a>
-</div>
-HTML;
-
-    return $html;
+    return $data;
   }
 
-  /*
-   * displays two-way ratings
-   * if $metric is passed, displays that metric, if not, $style determines
-   * preview style.
-   */
-  public static function display_two_way($metric = null, $style = null) {
-    $state_up = '';
-    $state_down = '';
-    if (!$metric) { //preview
-      $up_counter = 0;
-      $down_counter = 0;
+  public static function one_way_data($metric) {
+    global $wpdb, $post;
 
-      $link_up = 'javascript:void(0)';
-      $link_down = 'javascript:void(0)';
-
-      $display_name = '';
+    $data = new stdClass(); //data declaration
+    $data->metric_id = $metric->id;
+    $data->content_id = $post->ID;
+    $data->display_name = ($metric->display_name ? $metric->nicename : null); //check if display name is enabled
+    $data->type = $metric->type;
+    $data->admin_only = $metric->admin_only;
+    //count the number of votes
+    $data->counter = $wpdb->get_var(
+            $wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES
+                    . ' WHERE metric_id=%s AND content_id=%s'
+                    , $metric->id, $post->ID));
+    //if there are votes check to see if our user is one of them
+    if ($data->counter > 0) {
+      $data->user_vote = $wpdb->get_var(
+              $wpdb->prepare('SELECT vote FROM ' . EVAL_DB_VOTES
+                      . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s'
+                      , $metric->id, $post->ID, self::$user));
     } else {
-      global $post, $wpdb;
-      $post_id = (isset($post->ID) ? $post->ID : '');
-      //get #votes
-      $up_counter = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND vote=%s', $metric->id, $post_id, 1));
-      $down_counter = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND vote=%s', $metric->id, $post_id, -1));
-      if ($up_counter + $down_counter > 0) { //at least 1 vote either way
-        //check if user voted
-        $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post_id, self::$user);
-        $result = $wpdb->get_row($query);
-        if ($result && $result->vote == 1) { //vote already exists
-          $state_up = '-selected';
-        } elseif ($result && $result->vote == -1) {
-          $state_down = '-selected';
-        }
-      }
-
-      //links
-      //check if user needs to be logged in to vote
-      if (($metric->require_login && is_user_logged_in()) || !$metric->require_login) {
-        $link_up = self::vote_url($metric->id, $post_id, 1);
-        $link_down = self::vote_url($metric->id, $post_id, -1);
-      } else {
-        $link_up = 'wp-login.php?action=register';
-        $link_down = 'wp-login.php?action=register';
-      }
-
-      $style = $metric->style;
-      if ($metric->display_name) {
-        $display_name = $metric->nicename;
-      } else {
-        $display_name = '';
-      }
+      $data->user_vote = false;
     }
+    //set state of the link
+    $data->state = ($data->user_vote && $data->user_vote == 1 ? '-selected' : '');
+    $data->link = self::vote_url($metric, $post->ID, 1); //upvote link
+    $data->style = $metric->style;
+    $data->title = self::$titles[$metric->style]['up'];
+    $data->nonce = wp_create_nonce('evaluate-vote-' . $data->metric_id . '-' . $data->content_id . '-1-' . self::$user);
 
-    switch ($style) {
-      case 'thumb':
-        $title_up = 'Thumbs Up';
-        $title_down = 'Thumbs Down';
-        break;
-
-      case 'arrow':
-        $title_up = 'Vote Up';
-        $title_down = 'Vote Down';
-        break;
-    }
-
-    $html = <<<HTML
-<span class="rate-name">$display_name</span>
-<div class="rate-div">
-    <span class="up-counter">$up_counter</span>
-    <a href="$link_up" class="rate $style$state_up eval-link" title="$title_up">&nbsp;</a>
-      
-    <span class="up-counter">$down_counter</span>
-    <a href="$link_down" class="rate $style-down$state_down eval-link" title="$title_down">&nbsp;</a>
-</div>
-HTML;
-
-    return $html;
+    return $data;
   }
 
-  /*
-   * display range ratings
-   * if $metric is passed display that metric, if not display
-   * a preview
-   */
-  public static function display_range($metric = null) {
-    $active = ''; //vote active state
-    if (!$metric) { //preview
-      $average = 2.5;
-      $width = $average / 5.0 * 100; //width for current rating
-      $display_name = '';
+  public static function two_way_data($metric) {
+    global $wpdb, $post;
+
+    $data = new stdClass();
+    $data->metric_id = $metric->id;
+    $data->content_id = $post->ID;
+    $data->display_name = ($metric->display_name ? $metric->nicename : null); //name display
+    $data->type = $metric->type;
+    $data->admin_only = $metric->admin_only;
+    //get votes
+    $data->counter = $wpdb->get_results(
+            $wpdb->prepare('SELECT vote, COUNT(vote) as count FROM ' . EVAL_DB_VOTES
+                    . ' WHERE metric_id=%s AND content_id=%s GROUP BY vote'
+                    , $metric->id, $post->ID)
+            , OBJECT_K); //key gets the value of vote column for easy access below
+    //assign votes
+    $data->counter_up = (isset($data->counter[1]) ? $data->counter[1]->count : 0);
+    $data->counter_down = (isset($data->counter[-1]) ? $data->counter[-1]->count : 0);
+
+    $data->counter_total = $data->counter_up - $data->counter_down; //total
+    //get user's vote if exists
+    if ($data->counter_up + $data->counter_down > 0) {
+      $data->user_vote = $wpdb->get_var(
+              $wpdb->prepare('SELECT vote FROM ' . EVAL_DB_VOTES
+                      . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s'
+                      , $metric->id, $post->ID, self::$user));
     } else {
-      global $post, $wpdb;
-      $post_id = (isset($post->ID) ? $post->ID : '');
-      //get # votes and total sum
-      $num_votes = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $metric->id, $post_id));
-      $total_sum = $wpdb->get_var($wpdb->prepare('SELECT SUM(vote) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $metric->id, $post_id));
-      if ($num_votes > 0) {
-        $average = $total_sum / $num_votes;
-        //get if our user voted
-        $user_voted = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post_id, self::$user));
-        if ($user_voted) {
-          $active = '-selected';
-          $width = $user_voted->vote / 5.0 * 100;
-        } else {
-          $width = $average / 5.0 * 100;
-        }
-      } else {
-        $average = 0;
-        $width = $average / 5.0 * 100;
-      }
-      if ($metric->display_name) {
-        $display_name = $metric->nicename;
-      } else {
-        $display_name = '';
-      }
+      $data->user_vote = false;
+    }
+    //set link state if user has voted
+    $data->state_up = ($data->user_vote && $data->user_vote == 1 ? '-selected' : '');
+    $data->state_down = ($data->user_vote && $data->user_vote == -1 ? '-selected' : '');
+    //vote links
+    $data->link_up = self::vote_url($metric, $post->ID, 1);
+    $data->link_down = self::vote_url($metric, $post->ID, -1);
+    //titles
+    $data->title_up = self::$titles[$metric->style]['up'];
+    $data->title_down = self::$titles[$metric->style]['down'];
+    $data->style = $metric->style;
+    $data->nonce_up = wp_create_nonce('evaluate-vote-' . $data->metric_id . '-' . $data->content_id . '-1-' . self::$user);
+    $data->nonce_down = wp_create_nonce('evaluate-vote-' . $data->metric_id . '-' . $data->content_id . '--1-' . self::$user);
+
+    return $data;
+  }
+
+  public static function range_data($metric) {
+    global $wpdb, $post;
+
+    $data = new stdClass(); //data object
+    $data->metric_id = $metric->id;
+    $data->content_id = $post->ID;
+    $data->display_name = ($metric->display_name ? $metric->nicename : null); //display name available?
+    $data->type = $metric->type;
+    $data->admin_only = $metric->admin_only;
+    //get sum of votes and the total number of votes
+    $data->votes = $wpdb->get_results(
+            $wpdb->prepare('SELECT vote, COUNT(vote) as count FROM ' . EVAL_DB_VOTES
+                    . ' WHERE metric_id=%s AND content_id=%s GROUP BY vote'
+                    , $metric->id, $post->ID)
+            , OBJECT_K);
+    //calculate the average
+    $data->average = 0;
+    $total_votes = 0;
+    foreach ($data->votes as $vote) {
+      $data->average += $vote->vote * $vote->count;
+      $total_votes += $vote->count;
+    }
+    if ($total_votes > 0) {
+      $data->average /= $total_votes;
+    } else {
+      $data->average = 0;
+    }
+    $data->average = round($data->average, 1);
+
+    //if there are votes, check to see if our user voted
+    if (count($data->votes) > 0) {
+      $data->user_vote = $wpdb->get_var(
+              $wpdb->prepare('SELECT vote FROM ' . EVAL_DB_VOTES
+                      . ' WHERE metric_id=%s AND content_id=%s and user_id=%s'
+                      , $metric->id, $post->ID, self::$user));
+    } else {
+      $data->user_vote = false;
     }
 
-    $average = round($average, 1);
-    $html = <<<HTML
-<span class="rate-name">$display_name</span>
-<div class="rate-range">
-  <div class="rating-text">Average Vote: $average/5 Stars</div>
-  <div class="stars">
-    <div class="rating$active" style="width:$width%"></div>
-HTML;
+    //state and width
+    $data->state = ($data->user_vote ? '-selected' : '');
+    $data->width = ($data->user_vote ? $data->user_vote : $data->average) / 5.0 * 100;
 
     for ($i = 1; $i <= 5; $i++) {
-      $title = "$i/5 Stars";
-      //check if user needs to be logged in to vote
-      if ($metric && (($metric->require_login && is_user_logged_in()) || !$metric->require_login)) {
-        $link = self::vote_url($metric->id, $post_id, $i);
-      } else {
-        $link = 'wp-login.php?action=register';
-      }
+      $data->link[$i] = self::vote_url($metric, $post->ID, $i);
+      $data->nonce[$i] = wp_create_nonce('evaluate-vote-' . $data->metric_id . '-' . $data->content_id . '-' . $i . '-' . self::$user);
+    }
+    return $data;
+  }
+
+  public static function poll_data($metric) {
+    global $wpdb, $post;
+
+    $data = new stdClass();
+    $data->metric_id = $metric->id;
+    $data->content_id = $post->ID;
+    $data->display_name = ($metric->display_name ? $metric->nicename : null); //display name available?
+    $data->type = $metric->type;
+    $data->admin_only = $metric->admin_only;
+    //get poll question and answers
+    $params = unserialize($metric->params);
+    $data->question = $params['poll']['question'];
+    $data->answers = $params['poll']['answer'];
+    $data->votes = $wpdb->get_results(
+            $wpdb->prepare('SELECT vote, COUNT(vote) as count FROM ' . EVAL_DB_VOTES
+                    . ' WHERE metric_id=%s AND content_id=%s GROUP BY vote'
+                    , $metric->id, $post->ID)
+            , OBJECT_K); //returned array will have vote value for keys
+    //count total votes
+    $data->total_votes = 0;
+    foreach ($data->votes as $vote) {
+      $data->total_votes += $vote->count;
+    }
+    //if there are votes, check if our user voted
+    if (count($data->votes) > 0) {
+      $data->user_vote = $wpdb->get_var(
+              $wpdb->prepare('SELECT vote FROM ' . EVAL_DB_VOTES
+                      . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s'
+                      , $metric->id, $post->ID, self::$user));
+    } else {
+      $data->user_vote = false;
+    }
+    //loop through answers and calculate percentage vote
+    $data->averages = array();
+    $data->answer_votes = array();
+    foreach ($data->answers as $key => $answer) {
+      $data->averages[$key] = ($data->total_votes > 0 && isset($data->votes[$key]) ? round($data->votes[$key]->count / $data->total_votes * 100, 1) : 0);
+      $data->answer_votes[$key] = (isset($data->votes[$key]) ? $data->votes[$key]->count : 0);
+    }
+    //create nonce and other hidden form field values
+    $data->nonce = wp_create_nonce('evaluate-vote-poll-' . $metric->id . '-' . $post->ID . '-' . self::$user);
+    $data->metric_id = $metric->id;
+    $data->content_id = $post->ID;
+
+    return $data;
+  }
+
+  //*********************************************************//
+  // functions to display any metric, needs $data from above //
+  //*********************************************************//
+
+  /* convenience function to handle any metric display */
+  public static function display_metric($data) {
+    if ($data->admin_only) {
+      return;
+    }
+//    $html = '<div class="evaluate-shell" id="evaluate-shell-' . $data->metric_id . '-' . $data->content_id . '">';
+    $html = <<<HTML
+<div class="evaluate-shell" id="evaluate-shell-$data->metric_id-$data->content_id" data-user-vote="$data->user_vote">
+HTML;
+    switch ($data->type) {
+      case 'one-way':
+        $html .= self::display_one_way($data);
+        break;
+
+      case 'two-way':
+        $html .= self::display_two_way($data);
+        break;
+
+      case 'range':
+        $html .= self::display_range($data);
+        break;
+
+      case 'poll':
+        $html .= self::display_poll($data);
+        break;
+
+      default:
+        break;
+    }
+    $html .= '</div>';
+
+    return $html;
+  }
+
+  public static function display_one_way($data) {
+    $html = <<<HTML
+<span class="rate-name">$data->display_name</span>
+  <div class="rate-div">
+    <span class="up-counter">$data->counter</span>
+    <a href="$data->link" class="rate $data->style$data->state eval-link" title="$data->title" data-nonce="$data->nonce">$data->title</a>
+  </div>
+</span>
+HTML;
+
+    return $html;
+  }
+
+  public static function display_two_way($data) {
+    $html = <<<HTML
+<span class="rate-name">$data->display_name</span>
+<div class="rate-div">
+    <span class="up-counter">$data->counter_up</span>
+    <a href="$data->link_up" class="rate $data->style$data->state_up eval-link link-up" title="$data->title_up" data-nonce="$data->nonce_up">&nbsp;</a>
+      
+    <span class="up-counter">$data->counter_down</span>
+    <a href="$data->link_down" class="rate $data->style-down$data->state_down eval-link link-down" title="$data->title_down" data-nonce="$data->nonce_down">&nbsp;</a>
+</div>
+HTML;
+
+    return $html;
+  }
+
+  public static function display_range($data) {
+    $html = <<<HTML
+<span class="rate-name">$data->display_name</span>
+<div class="rate-range">
+  <div class="rating-text">Average Vote: $data->average/5 Stars</div>
+  <div class="stars">
+    <div class="rating$data->state" style="width:$data->width%"></div>
+HTML;
+    //nested divs for star links
+    for ($i = 1; $i <= 5; $i++) {
+      $link = $data->link[$i];
+      $nonce = $data->nonce[$i];
+      $title = $i . self::$titles['range'];
       $html .= <<<HTML
-      <div class="starr"><a href="$link" title="$title" class="eval-link">&nbsp;</a>
+    <div class="starr"><a href="$link" title="$title" class="eval-link link-$i" data-nonce="$nonce">&nbsp;</a>
+HTML;
+    }
+    //close nested divs
+    for ($i = 1; $i <= 5; $i++) {
+      $html .= <<<HTML
+    </div>
 HTML;
     }
 
     $html .= <<<HTML
-  </div></div></div></div></div>
-  </div>
+ </div>
 </div>
 <div class="clear"></div>
 HTML;
+
     return $html;
   }
 
-  /*
-   * display poll metric
-   * if $metric, then display the metric, if not then preview
-   */
-  public static function display_poll($metric = null, $results = false) {
-    $checked = ''; //poll form state
-    if (!$metric) {
-      $html = <<<HTML
-<div class="poll-div">
+  /* chooses between form and results according to request */
+  public static function display_poll($data) {
+    global $post;
+    //if a specific view is set, it takes precedence over default behavior
+    //assign $_POST['data'], $_REQUEST['evaluate'] or FALSE, whichever is available
+    $request = (isset($_POST['data']) ? $_POST['data'] : (isset($_REQUEST['evaluate']) ? $_REQUEST['evaluate'] : false));
+
+    $request_condition = ($request['evaluate'] == 'poll'
+            && $request['metric_id'] == $data->metric_id
+            && $request['content_id'] == $post->ID);
+
+    if ($request_condition) {
+      switch ($request['display']) {
+        case 'results':
+          return self::display_poll_results($data);
+          break;
+
+        case 'vote':
+        default:
+          return self::display_poll_form($data);
+          break;
+      }
+    }
+    if ($data->user_vote) {
+      return self::display_poll_results($data);
+    } else {
+      return self::display_poll_form($data);
+    }
+  }
+
+  public static function display_poll_form($data) {
+    $html = <<<HTML
+<span class="rate-name">$data->display_name</span>
+<div class="poll-div poll-form">
   <form method="post" action="" name="poll-form">
     <ul class="poll-list">
-      <li class="poll-question"></li>
-      <li class="poll-answer"><label><input type="radio" name="poll-preview" /></label></li>
-      <li class="poll-answer"><label><input type="radio" name="poll-preview" /></label></li>
-    </ul>
-    <input type="button" value="Cast Vote" />
-    <a href="javascript:void(0);" title="See vote results!">Show Results</a>
-  </form>
-</div>
+      <li class="poll-question">$data->question</li>
 HTML;
-    } else {
-      global $post, $wpdb;
-      $post_id = (isset($post->ID) ? $post->ID : '');
-      $params = unserialize($metric->params);
-      $question = $params['poll']['question'];
-      $answers = $params['poll']['answer'];
-      $nonce = wp_create_nonce('evaluate-poll-' . $metric->id . '-' . $post_id . '-' . self::$user);
-
-      //check previous vote by user
-      $prev_vote = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post_id, self::$user));
-
-      /* this is to achieve:
-       * if the user voted: show results
-       * if the user is not voted: show form
-       * but it can be overridden for specific metrics
-       *//*
-      $content_id = (isset($_GET['content_id']) ? $_GET['content_id'] : false);
-      if (isset($_GET['poll_display']) && $_GET['poll_display'] == 'results' && $content_id == $post_id) {
-        return self::display_poll_results($metric);
-      } elseif ($content_id != $post_id && $prev_vote) {
-        return self::display_poll_results($metric);
-      }
-*/
-      //check if user needs to be logged in to vote
-      if ($metric && (($metric->require_login && is_user_logged_in()) || !$metric->require_login)) {
-        $action = "?";
-      } else {
-        $action = '';
-      }
-
-      //construct html
-      $html = <<<HTML
-<div class="poll-div">
-  <form method="post" action="$action" name="poll-form">
-    <ul class="poll-list">
-      <li class="poll-question">$question</li>
-HTML;
-
-      foreach ($answers as $key => $answer) {
-        if ($prev_vote && $prev_vote->vote == $key) {
-          $checked = ' checked="checked"';
-        } else {
-          $checked = '';
-        }
-        $html .= '<li class="poll-answer"><label><input type="radio" name="vote" value="' . $key . '" ' . $checked . '/>' . $answer . '</label></li>';
-      }
-
+    //loop through & print answers
+    foreach ($data->answers as $key => $answer) {
+      $selected = ($data->user_vote == $key ? 'checked="checked"' : null);
       $html .= <<<HTML
-    </ul>
-    <input type="hidden" value="$nonce" name="_wpnonce" />
-    <input type="hidden" name="metric_id" value="$metric->id" />
-    <input type="hidden" name="content_id" value="$post_id" />
-    <input type="hidden" name="evaluate" value="vote" />
-    <input type="submit" value="Cast Vote" />
-    <a href="?evaluate=poll&metric_id=$metric->id&content_id=$post_id&poll_display=results" title="See vote results!">Show Results</a>
-  </form>
-</div>
+      <li class="poll-answer">
+        <label>
+          <input type="radio" name="vote" value="$key" $selected /> 
+          $answer
+        </label>
+      </li>
 HTML;
     }
+    //put hidden fields for verification & other form elements
+    $html .= <<<HTML
+    </ul>
+    <input type="hidden" value="$data->nonce" name="_wpnonce" />
+    <input type="hidden" value="$data->metric_id" name="metric_id" />
+    <input type="hidden" value="$data->content_id" name="content_id" />
+    <input type="hidden" value="vote" name="evaluate" />
+    <input type="submit" value="Cast Vote" />
+    <a href="?evaluate=poll&metric_id=$data->metric_id&content_id=$data->content_id&display=results" title="See vote results!">Show Results</a>
+  </form>
+</div>
+HTML;
 
     return $html;
   }
 
-  /*
-   * display results of a given poll
-   */
-  public static function display_poll_results($poll, $content_id = null) {
-    global $wpdb, $post;
-    $post_id = (isset($post->ID) ? $post->ID : $content_id);
-    $votes = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $poll->id, $post_id));
-    $params = unserialize($poll->params);
-    $question = $params['poll']['question'];
-    $answers = $params['poll']['answer'];
-    $answer_votes = array_fill(1, count($answers), 0);
-    $user_vote = false;
-    foreach ($votes as $vote) {
-      $answer_votes[$vote->vote]++;
-      if ($vote->user_id == self::$user) {
-        $user_vote = $vote->vote;
-      }
-    }
-
-    $total_sum = 0;
-    foreach ($answer_votes as $answer_vote) {
-      $total_sum += $answer_vote;
-    }
-
+  public static function display_poll_results($data) {
     $html = <<<HTML
-<div class="poll-div">
+<span class="rate-name">$data->display_name</span>
+<div class="poll-div poll-results">
   <ul class="poll-list">
-  <li class="poll-question">$question</li>
+    <li class="poll-question">$data->question</li>
 HTML;
-
-    foreach ($answers as $key => $answer) {
-      $average = ($total_sum < 1 ? 0 : round($answer_votes[$key] / $total_sum * 100, 1));
-      $selected = ($user_vote == $key ? '-selected' : '');
+    //loop through answers and calculate percentage vote
+    foreach ($data->answers as $key => $answer) {
+      $selected = ($data->user_vote == $key ? '-selected' : null);
+      $average = $data->averages[$key];
+      $answer_votes = $data->answer_votes[$key];
       $html .= <<<HTML
-    <li><strong>$answer:</strong> $average% ($answer_votes[$key] votes)
-      <div class="poll-result"><div class="poll-bar$selected" style="width: $average%"></div></div>
-    </li>
+     <li>
+       <strong>$answer:</strong> $average% ($answer_votes votes)
+       <div class="poll-result">
+        <div class="poll-bar$selected" style="width:$average%"></div>
+       </div>
+     </li>
 HTML;
     }
-
+    //vote form link
     $html .= <<<HTML
   </ul>
-  <a href="?evaluate=poll&metric_id=$poll->id&content_id=$post_id&poll_display=vote" title="See voting form">Back to vote</a>
+  <a href="?evaluate=poll&metric_id=$data->metric_id&content_id=$data->content_id&display=vote" title="Back to vote">Back to vote</a>
 </div>
 HTML;
 
     return $html;
   }
 
-  /*
-   * content to be displayed after every post
-   */
-  public static function content_display($content) {
-    global $post; //get current post object
-    $post_metrics = get_post_meta($post->ID, 'metric');
-    if (isset($post_metrics) && $post_metrics) {
-      foreach ($post_metrics as $metric_id) {
-        $content .= Evaluate::display_metric($metric_id, $post->ID);
-      }
-    }
+  public static function print_templates() {
+    ?>
+    <script id="evaluate-one-way" type="text/x-dot-template">
+      <span class="rate-name">{{=it.display_name}}</span>
+      <div class="rate-div">
+        <span class="up-counter">{{=it.counter}}</span>
+        <a href="{{=it.link}}" class="rate {{=it.style}}{{=it.state}} eval-link" title="{{=it.title}}" data-nonce="{{=it.nonce}}">{{=it.title}}</a>
+      </div>
+    </span>
+    </script>
 
-    return $content;
+    <script id="evaluate-two-way" type="text/x-dot-template">
+      <span class="rate-name">{{=it.display_name}}</span>
+      <div class="rate-div">
+        <span class="up-counter">{{=it.counter_up}}</span>
+        <a href="{{=it.link_up}}" class="rate {{=it.style}}{{=it.state_up}} eval-link link-up" title="{{=it.title_up}}" data-nonce="{{=it.nonce_up}}">&nbsp;</a>
+
+        <span class="up-counter">{{=it.counter_down}}</span>
+        <a href="{{=it.link_down}}" class="rate {{=it.style}}-down{{=it.state_down}} eval-link link-down" title="{{=it.title_down}}" data-nonce="{{=it.nonce_down}}">&nbsp;</a>
+      </div>
+    </script>
+
+    <script id="evaluate-range" type="text/x-dot-template">
+      <span class="rate-name">{{=it.display_name}}</span>
+      <div class="rate-range">
+        <div class="rating-text">Average Vote: {{=it.average}}/5 Stars</div>
+        <div class="stars">
+          <div class="rating{{=it.state}}" style="width:{{=it.width}}%"></div>
+          {{ for(var prop in it.link) { }}
+          <div class="starr"><a href="{{=it.link[prop]}}" title="" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
+          {{ } }}
+          {{ for(var prop in it.link) { }}
+          </div>
+          {{ } }}
+        </div>
+      </div>
+      <div class="clear"></div>
+    </script>
+
+    <script id="evaluate-poll-form" type="text/x-dot-template">
+      <span class="rate-name">{{=it.display_name}}</span>
+      <div class="poll-div poll-form">
+        <form method="post" action="" name="poll-form">
+          <ul class="poll-list">
+            <li class="poll-question">{{=it.question}}</li>
+            {{ for(var prop in it.answers) { }}
+            {{? it.user_vote == prop }}
+            <li class="poll-answer">
+              <label>
+                <input type="radio" name="vote" value="{{=prop}}" checked="checked" /> 
+                {{=it.answers[prop]}}
+              </label>
+            </li>
+            {{??}}
+            <li class="poll-answer">
+              <label>
+                <input type="radio" name="vote" value="{{=prop}}" /> 
+                {{=it.answers[prop]}}
+              </label>
+            </li>
+            {{?}}
+            {{ } }}
+          </ul>
+          <input type="hidden" value="{{=it.nonce}}" name="_wpnonce" />
+          <input type="hidden" value="{{=it.metric_id}}" name="metric_id" />
+          <input type="hidden" value="{{=it.content_id}}" name="content_id" />
+          <input type="hidden" value="vote" name="evaluate" />
+          <input type="submit" value="Cast Vote" />
+          <a href="?evaluate=poll&metric_id={{=it.metric_id}}&content_id={{=it.content_id}}&display=results" title="See vote results!">Show Results</a>
+        </form>
+      </div>
+    </script>
+
+    <script id="evaluate-poll-results" type="text/x-dot-template">
+      <div class="poll-div poll-results">
+        <ul class="poll-list">
+          <li class="poll-question">{{=it.question}}</li>
+          {{ for(prop in it.answers) { }}
+          <li>
+            <strong>{{=it.answers[prop]}}</strong> {{=it.averages[prop]}} ({{=it.answer_votes[prop]}} votes)
+            <div class="poll-result">
+              {{? it.user_vote == prop }}
+              <div class="poll-bar-selected" style="width:{{=it.averages[prop]}}%"></div>
+              {{??}}
+              <div class="poll-bar" style="width:{{=it.averages[prop]}}%"></div>
+              {{?}}
+            </div>
+          </li>
+          {{ } }}
+        </ul>
+        <a href="?evaluate=poll&metric_id={{=it.metric_id}}&content_id={{=it.content_id}}&display=vote" title="Back to vote">Back to vote</a>
+      </div>
+    </script>
+    <?php
+
   }
 
 }
-
 ?>

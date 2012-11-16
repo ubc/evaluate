@@ -12,7 +12,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
         'plural' => 'metrics',
         'ajax' => false
     ));
-    $this->metric_id = $_GET['metric'];
+    $this->metric_id = $_GET['metric_id'];
   }
 
   function get_columns() {
@@ -81,6 +81,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
         'numberposts' => -1,
         'meta_key' => 'metric',
         'meta_value' => $this->metric_id,
+        'meta_compare' => '!=',
         'post_type' => array(
             'post',
             'page'
@@ -106,7 +107,8 @@ class Evaluate_Content_List_Table extends WP_List_Table {
       $item->categories = $cats;
 
       $score = $wpdb->get_var($wpdb->prepare('SELECT SUM(vote) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $this->metric_id, $post->ID));
-      if ($score) {
+      
+      if (isset($score)) {
         $item->score = $score;
       } else {
         $item->score = 0;
@@ -156,7 +158,6 @@ class Evaluate_Content_List_Table extends WP_List_Table {
                 $item_date = new DateTime($item->date);
                 $month_filter .= '01';
                 $month = new DateTime($month_filter);
-                vd(($item_date->diff($month)->invert)); //after the date
                 if (!$item_date->diff($month)->invert)
                   return false;
                 $month->add(new DateInterval('P1M')); //get start of next month
@@ -193,7 +194,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
       <input type="hidden" name="page" value="evaluate" />
       <input type="hidden" name="view" value="metric" />
       <input type="hidden" name="section" value="content" />
-      <input type="hidden" name="metric" value="<?php echo $this->metric_id; ?>" />
+      <input type="hidden" name="metric_id" value="<?php echo $this->metric_id; ?>" />
     </form>
     <?php
   }

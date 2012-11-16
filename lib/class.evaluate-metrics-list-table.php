@@ -47,7 +47,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
    * extra column for the checkbox next to each row
    */
   function column_cb($item) {
-    return sprintf('<input type="checkbox" name="metric[]" value="%s" />', $item->slug);
+    return sprintf('<input type="checkbox" name="metric[]" value="%s" />', $item->id);
   }
 
   function column_default($item, $column) {
@@ -55,9 +55,9 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
       case 'nicename':
         $name_link = sprintf('<a href="?page=evaluate&view=metric&metric=%s"><b>%s</b></a>', $item->id, $item->nicename);
         $row_actions = array(
-            'view' => sprintf('<a href="?page=evaluate&view=metric&metric=%s">View Details</a>', $item->id),
-            'edit' => sprintf('<a href="?page=evaluate&view=edit&metric=%s">Edit</a>', $item->slug),
-            'delete' => sprintf('<span class="trash"><a href="?page=evaluate&view=main&action=delete&metric=%s&_wpnonce=%s">Delete</a></span>', $item->slug, wp_create_nonce('evaluate-delete-' . $item->slug))
+            'view' => sprintf('<a href="?page=evaluate&view=metric&metric_id=%s">View Details</a>', $item->id),
+            'edit' => sprintf('<a href="?page=evaluate&view=form&metric_id=%s">Edit</a>', $item->id),
+            'delete' => sprintf('<span class="trash"><a href="?page=evaluate&view=main&action=delete&metric_id=%s&_wpnonce=%s">Delete</a></span>', $item->id, wp_create_nonce('evaluate-delete-' . $item->id))
         );
         return sprintf('%s %s', $name_link, $this->row_actions($row_actions));
         break;
