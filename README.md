@@ -8,11 +8,11 @@ Wordpress Evaluate Plugin
 - multiple style options for one-way and two-way metrics
 - same metric for multiple content
 - ajax support
+- nodejs & socketio support
+- hooks into pre_get_posts to change sort order / criteria
 
 ## TODO
-- hook into pre_get_posts to display posts according to custom sort criteria
-- migrate ajax actions into Node.js
-- responsive results and metric displays
+- stream updates to posts discard metrics
 
 ## Ideas
 - checkout google moderator http://www.google.com/moderator/
