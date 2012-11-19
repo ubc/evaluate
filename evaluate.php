@@ -76,15 +76,4 @@ add_filter('the_content', array('Evaluate', 'content_display'));
 //hook for ajax voting
 add_action('wp_ajax_evaluate-vote', array('Evaluate', 'ajax_handler'));
 add_action('wp_ajax_nopriv_evaluate-vote', array('Evaluate', 'ajax_handler'));
-
-/* returns the first non-null argument */
-function coalesce() {
-  $args = func_get_args();
-  foreach ($args as $arg) {
-    if (!empty($arg)) {
-      return $arg;
-    }
-  }
-  return NULL;
-}
 ?>

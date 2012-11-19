@@ -122,6 +122,7 @@ class Evaluate_Admin {
 
       default:
         self::metrics_table();
+        self::plugin_options();
         break;
     }
   }
@@ -589,13 +590,13 @@ HTML;
           <th>Preview</th>
           <td>
             <div id="preview_name" class="metric_preview"></div>
-            <div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                   ?></div>
-            <div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                   ?></div>
-            <div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                   ?></div>
-            <div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                   ?></div>
-            <div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                   ?></div>
-            <div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                   ?></div>
-            <div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                   ?></div>
+            <div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                      ?></div>
+            <div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                      ?></div>
+            <div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                      ?></div>
+            <div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                      ?></div>
+            <div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                      ?></div>
+            <div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                      ?></div>
+            <div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                      ?></div>
           </td>
         </tr>
       </table>
@@ -622,13 +623,12 @@ HTML;
   /* callback to construct the meta box in post edit pages */
   public static function meta_box_add() {
     //we need one for every type of post we want the metabox to appear in
-    add_meta_box(//post
-            'evaluate-post-meta', __('Evaluate', 'lol'), array('Evaluate_Admin', 'evaluate_meta_box'), 'post', 'side', 'default'
-    );
-
-    add_meta_box(//page
-            'evaluate-post-meta', __('Evaluate', 'lol'), array('Evaluate_Admin', 'evaluate_meta_box'), 'page', 'side', 'default'
-    );
+    $post_types = get_post_types(array('public' => true));
+    foreach ($post_types as $post_type) {
+      add_meta_box(//post
+              'evaluate-post-meta', __('Evaluate', 'Metrics'), array('Evaluate_Admin', 'evaluate_meta_box'), $post_type, 'side', 'default'
+      );
+    }
   }
 
   /* callback to construct contents of the meta box */
@@ -654,7 +654,7 @@ HTML;
             <p>
               <input type="hidden" name="evaluate_cb[<?php echo $metric->id; ?>]" value="0" />
               <label>
-                <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (in_array($metric->id, $post_meta) || !$post_meta) echo 'checked="checked"'; ?> />
+                <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (in_array($metric->id, $post_meta)) echo 'checked="checked"'; ?> />
                 <?php echo $metric->nicename . ' - ' . $metric->type . ' - ' . $metric->style; ?>
               </label>
             </p>
@@ -667,7 +667,7 @@ HTML;
 
   /* handle saving the post meta after any add/edit action to posts */
   public static function save_post_meta($post_id, $post_object) {
-    global $meta_box;
+    global $meta_box, $wpdb;
 
     //validate nonce
     if (!isset($_POST['evaluate_nonce']) || !wp_verify_nonce($_POST['evaluate_nonce'], 'evaluate_post-meta')) {
@@ -690,11 +690,23 @@ HTML;
     $post_meta = get_post_meta($post_id, 'metric');
     foreach ($_POST['evaluate_cb'] as $key => $cb) {
       if (!$cb) {
-        delete_post_meta($post_id, 'metric', $key);
+        //we want to keep track of total votes and score for the metrics NOT in the list
+        $total_votes = $wpdb->get_var(
+                $wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s'
+                        , $key, $post_id));
+
+        $score = Evaluate::get_score($key, $post_id);
+        delete_post_meta($post_id, 'metric', $key); //remove metric from blacklist
+        update_post_meta($post_id, 'metric-' . $key . '-votes', $total_votes);
+        update_post_meta($post_id, 'metric-' . $key . '-score', $score);
       } elseif ($cb == 'on' && !in_array($key, $post_meta)) {
-        add_post_meta($post_id, 'metric', $key);
+        add_post_meta($post_id, 'metric', $key); //add metric to blacklist
+        //remove unneeded metadata
+        delete_post_meta($post_id, 'metric-' . $key . '-votes');
+        delete_post_meta($post_id, 'metric-' . $key . '-score');
       }
     }
+
 
     return true;
   }

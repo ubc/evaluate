@@ -171,6 +171,11 @@ class Evaluate {
       case 'vote':
         return self::vote($_REQUEST['metric_id'], $_REQUEST['content_id'], $_REQUEST['vote'], $_REQUEST['_wpnonce']);
         break;
+
+      case 'sort':
+        //hook for changing post query
+        add_action('pre_get_posts', array('Evaluate', 'pre_query'));
+        break;
     }
   }
 
@@ -199,7 +204,9 @@ class Evaluate {
     $excluded = get_post_meta($post->ID, 'metric');
 
     foreach ($metrics as $metric) {
-      if (!in_array($metric->id, $excluded)) { //not excluded
+      $params = unserialize($metric->params);
+      $content_types = $params['content_types'];
+      if (!in_array($metric->id, $excluded) && in_array($post->post_type, $content_types)) { //not excluded
         $data = self::get_metric_data($metric);
         $content .= self::display_metric($data);
       }
@@ -245,15 +252,21 @@ class Evaluate {
     if ($result) {
       $metric_data = self::get_data_by_id($data['metric_id'], $data['content_id']);
       $metric_data->user = self::$user;
-      if (self::$stream_active) { //notify CTLT_Stream on success if enabled
-//        CTLT_Stream::send('evaluate', array(
-//            'data' => $metric_data
-//                ), 'vote');
+      if (self::$stream_active) {
         CTLT_Stream::send('evaluate', $metric_data, 'vote');
       } else {
-        return self::display_metric($metric_data);
+        self::display_metric($metric_data);
       }
     }
+
+    $total_votes = $wpdb->get_var(
+            $wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s'
+                    , $metric_id, $content_id));
+
+    $score = Evaluate::get_score($metric_id, $content_id);
+
+    update_post_meta($content_id, 'metric-' . $metric_id . '-votes', $total_votes);
+    update_post_meta($content_id, 'metric-' . $metric_id . '-score', $score);
 
     return $result;
   }
@@ -426,6 +439,7 @@ class Evaluate {
     } else {
       $data->average = 0;
     }
+    $data->total_votes = $total_votes;
     $data->average = round($data->average, 1);
 
     //if there are votes, check to see if our user voted
@@ -503,7 +517,9 @@ class Evaluate {
   /* convenience function to handle any metric display */
   public static function display_metric($data) {
     if ($data->admin_only) {
-      return;
+      if(!current_user_can('administrator')) {
+        return;
+      }
     }
 //    $html = '<div class="evaluate-shell" id="evaluate-shell-' . $data->metric_id . '-' . $data->content_id . '">';
     $html = <<<HTML
@@ -692,6 +708,7 @@ HTML;
     return $html;
   }
 
+  /* prints out metric templates for ajax viewing */
   public static function print_templates() {
     ?>
     <script id="evaluate-one-way" type="text/x-dot-template">
@@ -722,8 +739,8 @@ HTML;
           <div class="rating{{=it.state}}" style="width:{{=it.width}}%"></div>
           {{ for(var prop in it.link) { }}
           <div class="starr"><a href="{{=it.link[prop]}}" title="" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
-          {{ } }}
-          {{ for(var prop in it.link) { }}
+            {{ } }}
+            {{ for(var prop in it.link) { }}
           </div>
           {{ } }}
         </div>
@@ -787,6 +804,107 @@ HTML;
     </script>
     <?php
 
+  }
+
+  public static function pre_query($query) {
+    if ($query->is_home() && $query->is_main_query()) {
+      global $wpdb;
+      /*
+       * score asc/desc : score
+       * total votes asc/desc : popularity (most/least)
+       * has user votes
+       */
+      if(!isset($_REQUEST['sort'])) {
+        return;
+      }
+      
+      switch ($_REQUEST['sort']) {
+        case 'score':
+          $metric_id = (isset($_REQUEST['metric_id']) ? $_REQUEST['metric_id'] : false);
+          $order = (isset($_REQUEST['order']) ? $_REQUEST['order'] : 'desc');
+          $query->set('meta_key', 'metric-' . $metric_id . '-score');
+          $query->set('orderby', 'meta_value_num');
+          $query->set('order', $order);
+          break;
+        
+        case 'total_votes':
+          $metric_id = (isset($_REQUEST['metric_id']) ? $_REQUEST['metric_id'] : false);
+          $order = (isset($_REQUEST['order']) ? $_REQUEST['order'] : 'desc');
+          $query->set('meta_key', 'metric-' . $metric_id . '-votes');
+          $query->set('orderby', 'meta_value_num');
+          $query->set('order', $order);
+          break;
+        
+        case 'user_votes':
+          $posts = $wpdb->get_col(
+                  $wpdb->prepare('SELECT content_id FROM ' . EVAL_DB_VOTES . ' WHERE user_id=%s'
+                          , self::$user));
+          $query->set('post__in', $posts);
+          break;
+      }
+    }
+  }
+
+  /* get score for any metric-post pair */
+  public static function get_score($metric_id, $content_id) {
+    $data = self::get_data_by_id($metric_id, $content_id);
+    switch ($data->type) {
+      case 'one-way':
+        return $data->counter;
+        break;
+
+      case 'two-way':
+        return self::calculate_wilson_score($data->counter_up, $data->counter_total);
+        break;
+
+      case 'range':
+        return self::calculate_bayesian_score($data->average, $data->total_votes);
+        break;
+    }
+  }
+
+  /* assumes score inherently tends to 3 out of 5 i.e. bayesian prior is 3 */
+  public static function calculate_bayesian_score($average, $total) {
+    return (3 + $average * $total) / (1 + $total);
+  }
+
+  /* taken from http://derivante.com/2009/09/01/php-content-rating-confidence/ 
+   * calculates the wilson score: a lower bound on the "true" value of
+   * the ratio of positive votes and total votes, given a confidence level
+   */
+  public static function calculate_wilson_score($positive, $total, $power = '0.05') {
+    if ($total == 0)
+      return 0;
+    $z = self::pnormaldist(1 - $power / 2);
+    $p = 1.0 * $positive / $total;
+    $s = ($p + $z * $z / (2 * $total) - $z * sqrt(($p * (1 - $p) + $z * $z / (4 * $total)) / $total)) / (1 + $z * $z / $total);
+    return $s;
+  }
+
+  /* taken from http://derivante.com/2009/09/01/php-content-rating-confidence/ 
+   * calculates z value for a given pct point $qn in the standard normal distribution
+   * with sigma=1 and mean=0
+   */
+  public static function pnormaldist($qn) {
+    $b = array(
+        1.570796288, 0.03706987906, -0.8364353589e-3,
+        -0.2250947176e-3, 0.6841218299e-5, 0.5824238515e-5,
+        -0.104527497e-5, 0.8360937017e-7, -0.3231081277e-8,
+        0.3657763036e-10, 0.6936233982e-12);
+    if ($qn < 0.0 || 1.0 < $qn)
+      return 0.0;
+    if ($qn == 0.5)
+      return 0.0;
+    $w1 = $qn;
+    if ($qn > 0.5)
+      $w1 = 1.0 - $w1;
+    $w3 = - log(4.0 * $w1 * (1.0 - $w1));
+    $w1 = $b[0];
+    for ($i = 1; $i <= 10; $i++)
+      $w1 += $b[$i] * pow($w3, $i);
+    if ($qn > 0.5)
+      return sqrt($w1 * $w3);
+    return - sqrt($w1 * $w3);
   }
 
 }
