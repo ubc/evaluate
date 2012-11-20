@@ -569,9 +569,11 @@ HTML;
           <td>
             <?php
             foreach ($content_types as $content_type) {
-              ?>
+              ?><div>
               <label><input type="checkbox" name="evalu_form[content_type][<?php echo $content_type; ?>]" value="true" <?php echo (isset($formdata['content_type'][$content_type]) ? 'checked="checked"' : null); ?> /> <?php echo $content_type; ?></label>
-              <?php
+              
+                </div>
+                  <?php
             }
             ?>
           </td>
