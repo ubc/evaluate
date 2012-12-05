@@ -3,7 +3,6 @@
 class Evaluate_Admin {
 
   static $options = array();
-  static $stream_active = null;
 
   /* first code block that runs */
   public static function init() {
@@ -13,10 +12,15 @@ class Evaluate_Admin {
       include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
     }
 
-    self::$stream_active = is_plugin_active('stream/stream.php');
     //ajax use option
-    self::$options['EVAL_AJAX'] = (!self::$stream_active ? false : get_option('EVAL_AJAX'));
-    //js and css script hook
+    self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
+    self::$options['EVAL_STREAM'] = is_plugin_active('stream/stream.php');
+
+    //options settings
+    register_setting('evaluate_options', 'EVAL_AJAX', array(__CLASS__, 'register_callback'));
+    add_settings_section('evaluate_settings', 'Evaluate Settings', array(__CLASS__, 'settings_callback'), 'evaluate');
+    add_settings_field('plugin_text_string', 'Use AJAX voting', array(__CLASS__, 'settings_field_callback'), 'evaluate', 'evaluate_settings');
+
     add_action('admin_enqueue_scripts', array('Evaluate_Admin', 'enqueue_scripts'));
   }
 
@@ -42,6 +46,22 @@ class Evaluate_Admin {
     wp_enqueue_script('evaluate-admin-js');
   }
 
+  /* settings validation callback: does nothing */
+  public static function register_callback($options) {
+    return $options;
+  }
+
+  /* settings section callback: does nothing */
+  public static function settings_callback() {
+    
+  }
+
+  /* settings field callback that prints the input element */
+  public static function settings_field_callback() {
+    echo '<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" ' .
+    checked(1, get_option('EVAL_AJAX'), false) . '/>';
+  }
+
   /* this is the 'controller' to display the correct page in the admin view */
   public static function page() {
     $view = (isset($_REQUEST['view']) ? $_REQUEST['view'] : false);
@@ -49,19 +69,19 @@ class Evaluate_Admin {
 //    vd($_POST);
     switch ($view) {
       case 'main':
-        $link = '<a href="options-general.php?page=evaluate&view=form" class="add-new-h2" title="Add New Metric">Add New</a>';
-        break;
+	$link = '<a href="options-general.php?page=evaluate&view=form" class="add-new-h2" title="Add New Metric">Add New</a>';
+	break;
 
       case 'form':
-        $link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
-        break;
+	$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
+	break;
 
       case 'metric':
-        $link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
-        break;
+	$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
+	break;
 
       default:
-        $link = '<a href="options-general.php?page=evaluate&view=form" class="add-new-h2" title="Add New Metric">Add New</a>';
+	$link = '<a href="options-general.php?page=evaluate&view=form" class="add-new-h2" title="Add New Metric">Add New</a>';
     }
     ?>
 
@@ -77,75 +97,75 @@ class Evaluate_Admin {
       case 'new':
 
       case 'edit':
-        try {
-          self::add_metric();
-          self::alert('Metric saved!', 'updated');
-        } catch (Exception $e) {
-          self::alert($e->getMessage(), 'error');
-          self::metric_form();
-        }
+	try {
+	  self::add_metric();
+	  self::alert('Metric saved!', 'updated');
+	} catch (Exception $e) {
+	  self::alert($e->getMessage(), 'error');
+	  self::metric_form();
+	}
 
-        break;
+	break;
 
       case 'delete':
-        $metrics_for_deletion = array();
-        if (isset($_REQUEST['metric_id'])) {
-          $metrics_for_deletion[] = $_REQUEST['metric_id'];
-        } else if (isset($_REQUEST['metric'])) {
-          $metrics_for_deletion = $_REQUEST['metric'];
-        }
-        foreach ($metrics_for_deletion as $metric_for_deletion) {
-          try {
-            self::delete_metric($metric_for_deletion);
-            self::alert('Metric deleted.', 'updated');
-          } catch (Exception $e) {
-            self::alert($e->getMessage(), 'error');
-          }
-        }
-        break;
+	$metrics_for_deletion = array();
+	if (isset($_REQUEST['metric_id'])) {
+	  $metrics_for_deletion[] = $_REQUEST['metric_id'];
+	} else if (isset($_REQUEST['metric'])) {
+	  $metrics_for_deletion = $_REQUEST['metric'];
+	}
+	foreach ($metrics_for_deletion as $metric_for_deletion) {
+	  try {
+	    self::delete_metric($metric_for_deletion);
+	    self::alert('Metric deleted.', 'updated');
+	  } catch (Exception $e) {
+	    self::alert($e->getMessage(), 'error');
+	  }
+	}
+	break;
     }
 
     switch ($view) {
       case 'form':
-        self::metric_form();
-        break;
+	self::metric_form();
+	break;
 
       case 'metric':
-        try {
-          self::details_table();
-        } catch (Exception $e) {
-          self::alert($e->getMessage(), 'error');
-        }
-        break;
+	try {
+	  self::details_table();
+	} catch (Exception $e) {
+	  self::alert($e->getMessage(), 'error');
+	}
+	break;
 
       case 'main':
 
       default:
-        self::metrics_table();
-        self::plugin_options();
-        break;
+	self::metrics_table();
+	self::plugin_options();
+	break;
     }
   }
 
   /* plugin options section for admin panel */
   public static function plugin_options() {
-    if (self::$options['EVAL_AJAX'] == 'disabled') {
-      $checked = 'disabled="true"';
-      echo 'CTLT_Stream plugin not found! Ajax not available.';
-    } else {
-      $checked = (self::$options['EVAL_AJAX'] ? 'checked="checked"' : '');
-    }
-    $html = <<<HTML
-<form id="evaluate-options" method="post" action="">
-  <label>
-  <input type="checkbox" $checked name="use_ajax" />
-  Use AJAX voting
-  </label>
-  <input type="hidden" name="action" value="options" />
-  <input type="submit" value="Save Changes" />
-</form>
-HTML;
-    echo $html;
+    ?>
+    <form id="evaluate-options" method="post" action="options.php">
+      <?php
+      if (self::$options['EVAL_STREAM']) {
+	$stream_status = '<strong>active</strong>. Node server will be used.';
+      } else {
+	$stream_status = '<strong>not active</strong>. Node server will not be used.';
+      }
+      ?>
+      <?php
+      settings_fields('evaluate_options');
+      do_settings_sections('evaluate');
+      ?>
+      <div>CTLT_Stream plugin is <?php echo $stream_status; ?></div>
+      <input type="submit" value="Save Changes" />
+    </form>
+    <?php
   }
 
   /* outputs main metrics list table */
@@ -168,7 +188,7 @@ HTML;
       <div class="metric-details-inner">
         <p># Votes across all contents: <?php echo $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric_id)); ?></p>
         <div> 
-          <?php echo Evaluate::display_metric($metric_data); ?>
+	  <?php echo Evaluate::display_metric($metric_data); ?>
         </div>
       </div>
     </div>
@@ -177,16 +197,16 @@ HTML;
     $content_is_active = true;
     switch ($section) {
       case 'user':
-        $content_is_active = false;
-        $details_table = new Evaluate_Users_List_Table();
-        break;
+	$content_is_active = false;
+	$details_table = new Evaluate_Users_List_Table();
+	break;
 
       case 'content':
 
       default:
-        $content_is_active = true;
-        $details_table = new Evaluate_Content_List_Table();
-        break;
+	$content_is_active = true;
+	$details_table = new Evaluate_Content_List_Table();
+	break;
     }
     ?>
     <h3 class = "nav-tab-wrapper">
@@ -232,7 +252,7 @@ HTML;
 
     //delete the metric itself
     $result = $wpdb->query(
-            $wpdb->prepare('DELETE FROM ' . EVAL_DB_METRICS . ' WHERE id=%s', $metric_id));
+	    $wpdb->prepare('DELETE FROM ' . EVAL_DB_METRICS . ' WHERE id=%s', $metric_id));
 
     if ($result === FALSE) { //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
       throw new Exception('Database error during delete operation.');
@@ -242,7 +262,7 @@ HTML;
 
     //delete its votes
     $result = $wpdb->query(
-            $wpdb->prepare('DELETE FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric_id));
+	    $wpdb->prepare('DELETE FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric_id));
 
     if ($result === FALSE) { //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
       throw new Exception('Database error during delete operation.');
@@ -269,8 +289,8 @@ HTML;
     if ($is_update) {
       $metric_id = $_REQUEST['metric_id'];
       $current_data = $wpdb->get_row(
-              $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS
-                      . ' WHERE id=%s', $metric_id));
+	      $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS
+		      . ' WHERE id=%s', $metric_id));
     }
 
     $metric = array(); //to hold the data
@@ -284,10 +304,10 @@ HTML;
     //check if name is unique
     if ($is_update) {
       $check_name_query = $wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_METRICS
-              . ' WHERE slug=%s AND id<>%s', $metric['slug'], $current_data->id);
+	      . ' WHERE slug=%s AND id<>%s', $metric['slug'], $current_data->id);
     } else {
       $check_name_query = $wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_METRICS
-              . ' WHERE slug=%s', $metric['slug']);
+	      . ' WHERE slug=%s', $metric['slug']);
     }
     $count = $wpdb->get_var($check_name_query);
     if ($count > 0) {
@@ -308,9 +328,9 @@ HTML;
       $metric['style'] = 'poll';
     } else {
       if (!isset($formdata['style'])) {
-        throw new Exception('You must choose a style!');
+	throw new Exception('You must choose a style!');
       } else {
-        $metric['style'] = $formdata['style'];
+	$metric['style'] = $formdata['style'];
       }
     }
     $wpdb->escape($metric['style']);
@@ -324,10 +344,10 @@ HTML;
     $poll_answers = array_filter($formdata['poll']['answer']);
     if ($metric['type'] == 'poll') {
       if (!$formdata['poll']['question']) {
-        throw new Exception('You must provide a question for the poll.');
+	throw new Exception('You must provide a question for the poll.');
       }
       if (count($poll_answers) < 2) {
-        throw new Exception('You must provide at least 2 answers for the poll.');
+	throw new Exception('You must provide at least 2 answers for the poll.');
       }
       $metric['params']['poll']['question'] = $formdata['poll']['question']; //question
       $metric['params']['poll']['answer'] = $poll_answers; //filtered answers
@@ -336,7 +356,7 @@ HTML;
     $content_types = get_post_types(array('public' => true));
     foreach ($content_types as $content_type) {
       if (isset($formdata['content_type'][$content_type])) {
-        $metric['params']['content_types'][] = $content_type;
+	$metric['params']['content_types'][] = $content_type;
       }
     }
     //serialize params
@@ -350,18 +370,18 @@ HTML;
     if ($is_update) {
       $num_votes = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $current_data->id));
       if ($num_votes > 0 && $formdata['type'] != $current_data->type) {
-        throw new Exception('You cannot change the type of this metric because there are votes registered.');
+	throw new Exception('You cannot change the type of this metric because there are votes registered.');
       }
       if ($wpdb->update(EVAL_DB_METRICS, $metric, array('id' => $current_data->id))) {
-        return true;
+	return true;
       } else {
-        throw new Exception($wpdb->print_error());
+	throw new Exception($wpdb->print_error());
       }
     } else {
       if ($wpdb->insert(EVAL_DB_METRICS, $metric)) { //attempt to insert into DB
-        return true;
+	return true;
       } else {
-        throw new Exception($wpdb->print_error());
+	throw new Exception($wpdb->print_error());
       }
     }
   }
@@ -374,12 +394,12 @@ HTML;
       global $wpdb;
 
       $metric = $wpdb->get_row(
-              $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS
-                      . ' WHERE id=%s'
-                      , $metric_id));
+	      $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS
+		      . ' WHERE id=%s'
+		      , $metric_id));
 
       if (!$metric) {
-        throw new Exception('The metric you are trying to edit does not exist!');
+	throw new Exception('The metric you are trying to edit does not exist!');
       }
 
       $formdata['metric_id'] = $metric->id;
@@ -391,9 +411,9 @@ HTML;
       $formdata['poll'] = (isset($params['poll']) ? $params['poll'] : null);
 
       if (isset($params['content_types'])) {
-        foreach ($params['content_types'] as $content_type) {
-          $formdata['content_type'][$content_type] = true;
-        }
+	foreach ($params['content_types'] as $content_type) {
+	  $formdata['content_type'][$content_type] = true;
+	}
       }
 
       $formdata['admin_only'] = $metric->admin_only;
@@ -403,39 +423,39 @@ HTML;
       $formdata['view'] = 'main';
     } else {
       if (isset($_POST['evalu_form'])) {
-        $postdata = $_POST['evalu_form'];
-        $formdata['name'] = (isset($postdata['name']) ? $postdata['name'] : null);
-        $formdata['display_name'] = (isset($postdata['display_name']) ? $postdata['display_name'] : null);
-        $formdata['type'] = (isset($postdata['type']) ? $postdata['type'] : null);
-        $formdata['style'] = (isset($postdata['style']) ? $postdata['style'] : null);
-        $formdata['poll'] = (isset($postdata['poll']) ? $postdata['poll'] : null);
-        $formdata['admin_only'] = (isset($postdata['admin_only']) ? $postdata['admin_only'] : null);
-        $formdata['require_login'] = (isset($postdata['require_login']) ? $postdata['require_login'] : null);
+	$postdata = $_POST['evalu_form'];
+	$formdata['name'] = (isset($postdata['name']) ? $postdata['name'] : null);
+	$formdata['display_name'] = (isset($postdata['display_name']) ? $postdata['display_name'] : null);
+	$formdata['type'] = (isset($postdata['type']) ? $postdata['type'] : null);
+	$formdata['style'] = (isset($postdata['style']) ? $postdata['style'] : null);
+	$formdata['poll'] = (isset($postdata['poll']) ? $postdata['poll'] : null);
+	$formdata['admin_only'] = (isset($postdata['admin_only']) ? $postdata['admin_only'] : null);
+	$formdata['require_login'] = (isset($postdata['require_login']) ? $postdata['require_login'] : null);
 
-        if (isset($postdata['content_type'])) {
-          foreach ($postdata['content_type'] as $content_type => $bool) {
-            $formdata['content_type'][$content_type] = true;
-          }
-        }
+	if (isset($postdata['content_type'])) {
+	  foreach ($postdata['content_type'] as $content_type => $bool) {
+	    $formdata['content_type'][$content_type] = true;
+	  }
+	}
 
-        $formdata['action'] = 'edit';
-        $formdata['view'] = 'main';
+	$formdata['action'] = 'edit';
+	$formdata['view'] = 'main';
       } else {
-        $formdata['metric_id'] = null;
-        $formdata['name'] = null;
-        $formdata['display_name'] = null;
-        $formdata['type'] = null;
-        $formdata['style'] = null;
-        $formdata['poll'] = null;
-        $formdata['admin_only'] = null;
-        $formdata['require_login'] = null;
+	$formdata['metric_id'] = null;
+	$formdata['name'] = null;
+	$formdata['display_name'] = null;
+	$formdata['type'] = null;
+	$formdata['style'] = null;
+	$formdata['poll'] = null;
+	$formdata['admin_only'] = null;
+	$formdata['require_login'] = null;
 
-        foreach ($content_types as $content_type) {
-          $formdata['content_type'][$content_type] = true;
-        }
+	foreach ($content_types as $content_type) {
+	  $formdata['content_type'][$content_type] = true;
+	}
 
-        $formdata['action'] = 'new';
-        $formdata['view'] = 'main';
+	$formdata['action'] = 'new';
+	$formdata['view'] = 'main';
       }
     }
     $html_title = ($metric_id != null ? "Edit Metric" : "Add New Metric");
@@ -446,8 +466,8 @@ HTML;
         <tr>
           <th><label for="evalu_form[name]">Name</label></th>
           <td>
-            <input name="evalu_form[name]" type="text" class="regular-text" value="<?php echo $formdata['name']; ?>" /><br/>
-            <label><input type="checkbox" name="evalu_form[display_name]" value="true" <?php echo ($formdata['display_name'] ? 'checked="checked"' : null); ?> /> Display metric name above evaluation</label>
+    	<input name="evalu_form[name]" type="text" class="regular-text" value="<?php echo $formdata['name']; ?>" /><br/>
+    	<label><input type="checkbox" name="evalu_form[display_name]" value="true" <?php echo ($formdata['display_name'] ? 'checked="checked"' : null); ?> /> Display metric name above evaluation</label>
           </td>
         </tr>
 
@@ -455,111 +475,111 @@ HTML;
           <th>Metric Type</th>
           <td>
 
-            <ul class="type_options">
-              <li> <!-- one-way options -->
-                <label class="type_label">
-                  <input type="radio" name="evalu_form[type]" value="one-way" <?php echo ($formdata['type'] == 'one-way' ? 'checked="checked"' : null); ?> />
-                  One-way Voting
-                </label>
-                <ul class="indent"> <!-- one way style -->
-                  <li>
-                    <label>
-                      <input type="radio" name="evalu_form[style]" value="thumb"<?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'thumb' ? 'checked="checked"' : null); ?> />
-                      0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>"><?php echo Evaluate::$titles['thumb']['up']; ?></a>
-                    </label>
-                  </li>
-                  <li>
-                    <label>
-                      <input type="radio" name="evalu_form[style]" value="arrow" <?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'arrow' ? 'checked="checked"' : null); ?> />
-                      0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>"><?php echo Evaluate::$titles['arrow']['up']; ?></a>
-                    </label>
-                  </li>
-                  <li>
-                    <label>
-                      <input type="radio" name="evalu_form[style]" value="heart" <?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'heart' ? 'checked="checked"' : null); ?> />
-                      0 <a class="rate heart" title="<?php echo Evaluate::$titles['heart']['up']; ?>"><?php echo Evaluate::$titles['heart']['up']; ?></a>
-                    </label>
-                  </li>
-                </ul>
-              </li>
+    	<ul class="type_options">
+    	  <li> <!-- one-way options -->
+    	    <label class="type_label">
+    	      <input type="radio" name="evalu_form[type]" value="one-way" <?php echo ($formdata['type'] == 'one-way' ? 'checked="checked"' : null); ?> />
+    	      One-way Voting
+    	    </label>
+    	    <ul class="indent"> <!-- one way style -->
+    	      <li>
+    		<label>
+    		  <input type="radio" name="evalu_form[style]" value="thumb"<?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'thumb' ? 'checked="checked"' : null); ?> />
+    		  0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>"><?php echo Evaluate::$titles['thumb']['up']; ?></a>
+    		</label>
+    	      </li>
+    	      <li>
+    		<label>
+    		  <input type="radio" name="evalu_form[style]" value="arrow" <?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'arrow' ? 'checked="checked"' : null); ?> />
+    		  0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>"><?php echo Evaluate::$titles['arrow']['up']; ?></a>
+    		</label>
+    	      </li>
+    	      <li>
+    		<label>
+    		  <input type="radio" name="evalu_form[style]" value="heart" <?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'heart' ? 'checked="checked"' : null); ?> />
+    		  0 <a class="rate heart" title="<?php echo Evaluate::$titles['heart']['up']; ?>"><?php echo Evaluate::$titles['heart']['up']; ?></a>
+    		</label>
+    	      </li>
+    	    </ul>
+    	  </li>
 
-              <li> <!-- two-way options -->
-                <label class="type_label">
-                  <input type="radio" name="evalu_form[type]" value="two-way" <?php echo ($formdata['type'] == 'two-way' ? 'checked="checked"' : null); ?> />
-                  Two-way Voting
-                </label>
-                <ul class="indent"> <!-- two-way style selection -->
-                  <li>
-                    <label>
-                      <input type="radio" name="evalu_form[style]" value="thumb" <?php echo ($formdata['type'] == 'two-way' && $formdata['style'] == 'thumb' ? 'checked="checked"' : null); ?>/>
-                      0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>">&nbsp;</a>
-                      0 <a class="rate thumb-down" title="<?php echo Evaluate::$titles['thumb']['down']; ?>">&nbsp;</a>
-                    </label>
-                  </li>
-                  <li>
-                    <label>
-                      <input type="radio" name="evalu_form[style]" value="arrow" <?php echo ($formdata['type'] == 'two-way' && $formdata['style'] == 'arrow' ? 'checked="checked"' : null); ?>/>
-                      0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>">&nbsp;</a>
-                      0 <a class="rate arrow-down" title="<?php echo Evaluate::$titles['arrow']['down']; ?>">&nbsp;</a>
-                    </label>
-                  </li>
-                </ul>                
-              </li>
+    	  <li> <!-- two-way options -->
+    	    <label class="type_label">
+    	      <input type="radio" name="evalu_form[type]" value="two-way" <?php echo ($formdata['type'] == 'two-way' ? 'checked="checked"' : null); ?> />
+    	      Two-way Voting
+    	    </label>
+    	    <ul class="indent"> <!-- two-way style selection -->
+    	      <li>
+    		<label>
+    		  <input type="radio" name="evalu_form[style]" value="thumb" <?php echo ($formdata['type'] == 'two-way' && $formdata['style'] == 'thumb' ? 'checked="checked"' : null); ?>/>
+    		  0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>">&nbsp;</a>
+    		  0 <a class="rate thumb-down" title="<?php echo Evaluate::$titles['thumb']['down']; ?>">&nbsp;</a>
+    		</label>
+    	      </li>
+    	      <li>
+    		<label>
+    		  <input type="radio" name="evalu_form[style]" value="arrow" <?php echo ($formdata['type'] == 'two-way' && $formdata['style'] == 'arrow' ? 'checked="checked"' : null); ?>/>
+    		  0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>">&nbsp;</a>
+    		  0 <a class="rate arrow-down" title="<?php echo Evaluate::$titles['arrow']['down']; ?>">&nbsp;</a>
+    		</label>
+    	      </li>
+    	    </ul>                
+    	  </li>
 
-              <li> <!-- range options -->
-                <label class="type_label">
-                  <input type="radio" name="evalu_form[type]" value="range" <?php echo ($formdata['type'] == 'range' ? 'checked="checked"' : null); ?> />
-                  Stars
-                  <div class="rate-range">
-                    <div class="stars">
-                      <div class="rating" style="width:50%"></div>
-                      <div class="starr"><a title="1<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-                        <div class="starr"><a title="2<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-                          <div class="starr"><a title="3<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-                            <div class="starr"><a title="4<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-                              <div class="starr"><a title="5<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-              </li>
+    	  <li> <!-- range options -->
+    	    <label class="type_label">
+    	      <input type="radio" name="evalu_form[type]" value="range" <?php echo ($formdata['type'] == 'range' ? 'checked="checked"' : null); ?> />
+    	      Stars
+    	      <div class="rate-range">
+    		<div class="stars">
+    		  <div class="rating" style="width:50%"></div>
+    		  <div class="starr"><a title="1<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+    		    <div class="starr"><a title="2<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+    		      <div class="starr"><a title="3<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+    			<div class="starr"><a title="4<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+    			  <div class="starr"><a title="5<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+    			  </div>
+    			</div>
+    		      </div>
+    		    </div>
+    		  </div>
+    		</div>
+    	      </div>
+    	    </label>
+    	  </li>
 
-              <li> <!-- poll options -->
-                <label class="type_label">
-                  <input type="radio" name="evalu_form[type]" value="poll" <?php echo ($formdata['type'] == 'poll' ? 'checked="checked"' : null); ?> />
-                  Poll
-                </label>
-                <div class="indent">
-                  <label>Question: <input type="text" class="regular-text" name="evalu_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
-                </div>
-                <div class="indent">
-                  <label>Answer 1: <input type="text" class="regular-text" name="evalu_form[poll][answer][1]" value="<?php echo $formdata['poll']['answer'][1]; ?>" /></label>
-                </div>
-                <div class="indent">
-                  <label>Answer 2: <input type="text" class="regular-text" name="evalu_form[poll][answer][2]" value="<?php echo $formdata['poll']['answer'][2]; ?>" /></label>
-                </div>
-                <?php
-                if (count($formdata['poll']['answer']) > 2) {
-                  for ($i = 3; $i <= count($formdata['poll']['answer']); $i++) {
-                    ?>
-                    <div class="indent">
-                      <label>Answer <?php echo $i; ?>: <input type="text" class="regular-text" name="evalu_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" /></label>
-                    </div
-                    <?php
-                  }
-                }
-                ?>
-                <div class="indent">
-                  <a href="javascript:Evaluate_Admin.addNewAnswer()" title="Add New Answer">[+] Add New Answer</a>
-                  <a href="javascript:Evaluate_Admin.removeLastAnswer()" title="Remove Last Answer">[-] Remove Last Answer</a>
-                </div>
-              </li>
+    	  <li> <!-- poll options -->
+    	    <label class="type_label">
+    	      <input type="radio" name="evalu_form[type]" value="poll" <?php echo ($formdata['type'] == 'poll' ? 'checked="checked"' : null); ?> />
+    	      Poll
+    	    </label>
+    	    <div class="indent">
+    	      <label>Question: <input type="text" class="regular-text" name="evalu_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
+    	    </div>
+    	    <div class="indent">
+    	      <label>Answer 1: <input type="text" class="regular-text" name="evalu_form[poll][answer][1]" value="<?php echo $formdata['poll']['answer'][1]; ?>" /></label>
+    	    </div>
+    	    <div class="indent">
+    	      <label>Answer 2: <input type="text" class="regular-text" name="evalu_form[poll][answer][2]" value="<?php echo $formdata['poll']['answer'][2]; ?>" /></label>
+    	    </div>
+		<?php
+		if (count($formdata['poll']['answer']) > 2) {
+		  for ($i = 3; $i <= count($formdata['poll']['answer']); $i++) {
+		    ?>
+		    <div class="indent">
+		      <label>Answer <?php echo $i; ?>: <input type="text" class="regular-text" name="evalu_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" /></label>
+		    </div
+		    <?php
+		  }
+		}
+		?>
+    	    <div class="indent">
+    	      <a href="javascript:Evaluate_Admin.addNewAnswer()" title="Add New Answer">[+] Add New Answer</a>
+    	      <a href="javascript:Evaluate_Admin.removeLastAnswer()" title="Remove Last Answer">[-] Remove Last Answer</a>
+    	    </div>
+    	  </li>
 
-            </ul>
+    	</ul>
 
           </td>
         </tr>
@@ -567,38 +587,38 @@ HTML;
         <tr>
           <th>Content Types</th>
           <td>
-            <?php
-            foreach ($content_types as $content_type) {
-              ?><div>
-              <label><input type="checkbox" name="evalu_form[content_type][<?php echo $content_type; ?>]" value="true" <?php echo (isset($formdata['content_type'][$content_type]) ? 'checked="checked"' : null); ?> /> <?php echo $content_type; ?></label>
-              
-                </div>
-                  <?php
-            }
-            ?>
+	    <?php
+	    foreach ($content_types as $content_type) {
+	      ?><div>
+      	  <label><input type="checkbox" name="evalu_form[content_type][<?php echo $content_type; ?>]" value="true" <?php echo (isset($formdata['content_type'][$content_type]) ? 'checked="checked"' : null); ?> /> <?php echo $content_type; ?></label>
+
+      	</div>
+	      <?php
+	    }
+	    ?>
           </td>
         </tr>
 
         <tr>
           <th>Display Options</th>
           <td>
-            <label><input type="checkbox" name="evalu_form[require_login]" value="true" <?php echo ($formdata['require_login'] ? 'checked="checked"' : null); ?> /> Users have to be logged in to vote.</label>
-            <br />
-            <label><input type="checkbox" name="evalu_form[admin_only]" value="true" <?php echo ($formdata['admin_only'] ? 'checked="checked"' : null); ?> /> Only Admins can see this metric.</label>
+    	<label><input type="checkbox" name="evalu_form[require_login]" value="true" <?php echo ($formdata['require_login'] ? 'checked="checked"' : null); ?> /> Users have to be logged in to vote.</label>
+    	<br />
+    	<label><input type="checkbox" name="evalu_form[admin_only]" value="true" <?php echo ($formdata['admin_only'] ? 'checked="checked"' : null); ?> /> Only Admins can see this metric.</label>
           </td>
         </tr>
 
         <tr>
           <th>Preview</th>
           <td>
-            <div id="preview_name" class="metric_preview"></div>
-            <div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                      ?></div>
-            <div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                      ?></div>
-            <div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                      ?></div>
-            <div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                      ?></div>
-            <div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                      ?></div>
-            <div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                      ?></div>
-            <div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                      ?></div>
+    	<div id="preview_name" class="metric_preview"></div>
+    	<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                       ?></div>
+    	<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                       ?></div>
+    	<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                       ?></div>
+    	<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                       ?></div>
+    	<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                       ?></div>
+    	<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                       ?></div>
+    	<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                       ?></div>
           </td>
         </tr>
       </table>
@@ -606,9 +626,9 @@ HTML;
       <input type = "hidden" name="action" value="<?php echo $formdata['action']; ?>" />
       <?php
       if (isset($formdata['metric_id'])) {
-        ?>
+	?>
         <input type="hidden" name="metric_id" value="<?php echo $formdata['metric_id']; ?>" />
-        <?php
+	<?php
       }
       wp_nonce_field('evaluate-' . $formdata['action']);
       submit_button();
@@ -628,7 +648,7 @@ HTML;
     $post_types = get_post_types(array('public' => true));
     foreach ($post_types as $post_type) {
       add_meta_box(//post
-              'evaluate-post-meta', __('Evaluate', 'Metrics'), array('Evaluate_Admin', 'evaluate_meta_box'), $post_type, 'side', 'default'
+	      'evaluate-post-meta', __('Evaluate', 'Metrics'), array('Evaluate_Admin', 'evaluate_meta_box'), $post_type, 'side', 'default'
       );
     }
   }
@@ -650,19 +670,19 @@ HTML;
     foreach ($metrics as $metric) { //sift through metrics and try to find ones that match the current $post_type
       $params = unserialize($metric->params);
       if (isset($params['content_types'])) {
-        foreach ($params['content_types'] as $content_type) {
-          if ($content_type == $post_type) {
-            ?>
-            <p>
-              <input type="hidden" name="evaluate_cb[<?php echo $metric->id; ?>]" value="0" />
-              <label>
-                <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (in_array($metric->id, $post_meta)) echo 'checked="checked"'; ?> />
-                <?php echo $metric->nicename . ' - ' . $metric->type . ' - ' . $metric->style; ?>
-              </label>
-            </p>
-            <?php
-          }
-        }
+	foreach ($params['content_types'] as $content_type) {
+	  if ($content_type == $post_type) {
+	    ?>
+	    <p>
+	      <input type="hidden" name="evaluate_cb[<?php echo $metric->id; ?>]" value="0" />
+	      <label>
+	        <input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php if (in_array($metric->id, $post_meta)) echo 'checked="checked"'; ?> />
+		<?php echo $metric->nicename . ' - ' . $metric->type . ' - ' . $metric->style; ?>
+	      </label>
+	    </p>
+	    <?php
+	  }
+	}
       }
     }
   }
@@ -679,7 +699,7 @@ HTML;
     //check user permissions
     if ($_POST['post_type'] == 'page') {
       if (!current_user_can('edit_page', $post_id)) {
-        return $post_id;
+	return $post_id;
       }
     } elseif (!current_user_can('edit_post', $post_id)) {
       return $post_id;
@@ -692,20 +712,20 @@ HTML;
     $post_meta = get_post_meta($post_id, 'metric');
     foreach ($_POST['evaluate_cb'] as $key => $cb) {
       if (!$cb) {
-        //we want to keep track of total votes and score for the metrics NOT in the list
-        $total_votes = $wpdb->get_var(
-                $wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s'
-                        , $key, $post_id));
+	//we want to keep track of total votes and score for the metrics NOT in the list
+	$total_votes = $wpdb->get_var(
+		$wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s'
+			, $key, $post_id));
 
-        $score = Evaluate::get_score($key, $post_id);
-        delete_post_meta($post_id, 'metric', $key); //remove metric from blacklist
-        update_post_meta($post_id, 'metric-' . $key . '-votes', $total_votes);
-        update_post_meta($post_id, 'metric-' . $key . '-score', $score);
+	$score = Evaluate::get_score($key, $post_id);
+	delete_post_meta($post_id, 'metric', $key); //remove metric from blacklist
+	update_post_meta($post_id, 'metric-' . $key . '-votes', $total_votes);
+	update_post_meta($post_id, 'metric-' . $key . '-score', $score);
       } elseif ($cb == 'on' && !in_array($key, $post_meta)) {
-        add_post_meta($post_id, 'metric', $key); //add metric to blacklist
-        //remove unneeded metadata
-        delete_post_meta($post_id, 'metric-' . $key . '-votes');
-        delete_post_meta($post_id, 'metric-' . $key . '-score');
+	add_post_meta($post_id, 'metric', $key); //add metric to blacklist
+	//remove unneeded metadata
+	delete_post_meta($post_id, 'metric-' . $key . '-votes');
+	delete_post_meta($post_id, 'metric-' . $key . '-score');
       }
     }
 
