@@ -163,7 +163,7 @@ class Evaluate_Admin {
       do_settings_sections('evaluate');
       ?>
       <div>CTLT_Stream plugin is <?php echo $stream_status; ?></div>
-      <input type="submit" value="Save Changes" />
+      <input type="submit" class="button-primary" value="Save Changes" />
     </form>
     <?php
   }
