@@ -16,10 +16,8 @@ class Evaluate_Admin {
     self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
     self::$options['EVAL_STREAM'] = is_plugin_active('stream/stream.php');
 
-    //options settings
-    register_setting('evaluate_options', 'EVAL_AJAX', array(__CLASS__, 'register_callback'));
-    add_settings_section('evaluate_settings', 'Evaluate Settings', array(__CLASS__, 'settings_callback'), 'evaluate');
-    add_settings_field('plugin_text_string', 'Use AJAX voting', array(__CLASS__, 'settings_field_callback'), 'evaluate', 'evaluate_settings');
+    //register plugin settings
+    self::register_settings();
 
     add_action('admin_enqueue_scripts', array('Evaluate_Admin', 'enqueue_scripts'));
   }
@@ -46,20 +44,32 @@ class Evaluate_Admin {
     wp_enqueue_script('evaluate-admin-js');
   }
 
-  /* settings validation callback: does nothing */
-  public static function register_callback($options) {
-    return $options;
+  public static function register_settings() {
+    register_setting('evaluate_options', 'EVAL_AJAX');
+    add_settings_section('evaluate_settings', 'Evaluate Settings', array(__CLASS__, 'settings_section_callback'), 'evaluate');
+
+    add_settings_field('use_ajax_voting', 'Use AJAX voting', function() {
+	      echo '<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" ' .
+	      checked(1, get_option('EVAL_AJAX'), false) . '/>';
+	    }
+	    , 'evaluate', 'evaluate_settings');
+
+    add_settings_field('ctlt_stream_found', 'CTLT_Stream plugin found', function() {
+	      echo '<input id="ctlt_stream_status" name="ctlt_stream_status" type="checkbox" disabled="disabled" ' .
+	      checked(1, Evaluate_Admin::$options['EVAL_STREAM'], false) . '/>';
+	    }, 'evaluate', 'evaluate_settings');
+
+    if (self::$options['EVAL_STREAM']) {
+      add_settings_field('nodejs_server_status', 'NodeJS Server status', function() {
+		echo '<input id="nodejs_server_status" name="nodejs_server_status" type="checkbox" disabled="disabled"' .
+		checked(1, CTLT_Stream::is_node_active(), false) . '/>';
+	      }, 'evaluate', 'evaluate_settings');
+    }
   }
 
   /* settings section callback: does nothing */
-  public static function settings_callback() {
-    
-  }
-
-  /* settings field callback that prints the input element */
-  public static function settings_field_callback() {
-    echo '<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" ' .
-    checked(1, get_option('EVAL_AJAX'), false) . '/>';
+  public static function settings_section_callback() {
+    echo 'Settings and CTLT_Stream/NodeJS Status';
   }
 
   /* this is the 'controller' to display the correct page in the admin view */
@@ -162,7 +172,6 @@ class Evaluate_Admin {
       settings_fields('evaluate_options');
       do_settings_sections('evaluate');
       ?>
-      <div>CTLT_Stream plugin is <?php echo $stream_status; ?></div>
       <input type="submit" class="button-primary" value="Save Changes" />
     </form>
     <?php
@@ -612,13 +621,13 @@ HTML;
           <th>Preview</th>
           <td>
     	<div id="preview_name" class="metric_preview"></div>
-    	<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                       ?></div>
-    	<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                       ?></div>
-    	<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                       ?></div>
-    	<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                       ?></div>
-    	<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                       ?></div>
-    	<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                       ?></div>
-    	<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                       ?></div>
+    	<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                          ?></div>
+    	<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                          ?></div>
+    	<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                          ?></div>
+    	<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                          ?></div>
+    	<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                          ?></div>
+    	<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                          ?></div>
+    	<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                          ?></div>
           </td>
         </tr>
       </table>
