@@ -75,15 +75,15 @@ var template = {
 jQuery(window).load(function() {
   Evaluate.attach();
   
-  if(CTLT_Stream) {
+  if(typeof CTLT_Stream != "undefined") {
     CTLT_Stream.on('server-push', function (data) {
-      //    console.log('server-push event detected');
-      //    console.dir(data);
+      //if data received is relevant to evaluate
       if( 'evaluate' == data.type ){
-	var element = jQuery('div[id^=evaluate-shell-'+data.data.metric_id+'-'+data.data.content_id+']');
+	var element = jQuery('div[id^=evaluate-shell-'+data.data.metric_id+'-'+data.data.content_id+']'); //element to be changed
+	//check metric type and make the adjustments needed
 	switch(data.data.type) {
 	  case 'one-way':
-	    data.data.nonce = element.find('.eval-link').data('nonce');
+	    data.data.nonce = element.find('.eval-link').data('nonce'); //re-fill nonce field
 	    if( data.data.user == evaluate_ajax.user ) {
 	      element.data('user-vote', data.data.user_vote);
 	    } else {
@@ -94,7 +94,6 @@ jQuery(window).load(function() {
 		data.data.state = '';
 	      }
 	    }
-	    //	  console.dir(data.data);
 	    element.html(template['one-way'](data.data));
 	    break;
           
@@ -116,7 +115,6 @@ jQuery(window).load(function() {
 		data.data.state_down = '';
 	      }
 	    }
-	    //	  console.dir(data.data);
 	    element.html(template['two-way'](data.data));
 	    break;
           
@@ -137,7 +135,6 @@ jQuery(window).load(function() {
 	      }
 	    }
 	    element.html(template['range'](data.data));
-	    //	  console.dir(data.data);
 	    break;
           
 	  case 'poll':
