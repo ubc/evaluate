@@ -163,12 +163,30 @@ class Evaluate {
   //*************************************//
   // event and request handler functions //
   //*************************************//
+  
+  //clear evaluate arguments from the url, mainly after voting
+  public static function clear_url() {
+    //check if ajax voting is off
+    if (self::$options['EVAL_AJAX']) {
+      return;
+    }
+
+    $redirect = remove_query_arg(array(
+	'evaluate',
+	'metric_id',
+	'content_id',
+	'vote',
+	'_wpnonce'));
+    wp_redirect($redirect);
+    exit();
+  }
 
   /* handles events requested from anywhere within wp */
   public static function event_handler() {
     switch ($_REQUEST['evaluate']) {
       case 'vote':
-	return self::vote($_REQUEST['metric_id'], $_REQUEST['content_id'], $_REQUEST['vote'], $_REQUEST['_wpnonce']);
+	self::vote($_REQUEST['metric_id'], $_REQUEST['content_id'], $_REQUEST['vote'], $_REQUEST['_wpnonce']);
+	self::clear_url();
 	break;
 
       case 'sort':
@@ -619,7 +637,11 @@ HTML;
     global $post;
     //if a specific view is set, it takes precedence over default behavior
     //assign $_POST['data'], $_REQUEST['evaluate'] or FALSE, whichever is available
-    $request = (isset($_POST['data']) ? $_POST['data'] : (isset($_REQUEST['evaluate']) ? $_REQUEST['evaluate'] : false));
+    if (isset($_POST['data'])) {
+      $request = $_POST['data'];
+    } else {
+      $request = $_REQUEST;
+    }
 
     $request_condition = (isset($request['evaluate']) && $request['evaluate'] == 'poll'
 	    && $request['metric_id'] == $data->metric_id
