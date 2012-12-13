@@ -46,7 +46,9 @@ class Evaluate_Admin {
 
   public static function register_settings() {
     register_setting('evaluate_options', 'EVAL_AJAX');
-    add_settings_section('evaluate_settings', 'Evaluate Settings', array(__CLASS__, 'settings_section_callback'), 'evaluate');
+    add_settings_section('evaluate_settings', 'Evaluate Settings', function() {
+    echo 'Settings and CTLT_Stream/NodeJS Status';
+    }, 'evaluate');
 
     add_settings_field('use_ajax_voting', 'Use AJAX voting', function() {
 	      echo '<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" ' .
@@ -65,11 +67,6 @@ class Evaluate_Admin {
 		checked(1, CTLT_Stream::is_node_active(), false) . '/>';
 	      }, 'evaluate', 'evaluate_settings');
     }
-  }
-
-  /* settings section callback: does nothing */
-  public static function settings_section_callback() {
-    echo 'Settings and CTLT_Stream/NodeJS Status';
   }
 
   /* this is the 'controller' to display the correct page in the admin view */
