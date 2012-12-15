@@ -172,3 +172,8 @@
   background-color: #333333;
   height: 10px;
 }
+
+/* if Pulse-CPT plugin is enabled, the metrics will be hidden at first */
+.evaluate-pulse-wrapper {
+  display: none;
+}

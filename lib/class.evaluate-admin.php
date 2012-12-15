@@ -44,11 +44,12 @@ class Evaluate_Admin {
     wp_enqueue_script('evaluate-admin-js');
   }
 
+  /* register and initialize settings for the plugin */
   public static function register_settings() {
     register_setting('evaluate_options', 'EVAL_AJAX');
     add_settings_section('evaluate_settings', 'Evaluate Settings', function() {
-    echo 'Settings and CTLT_Stream/NodeJS Status';
-    }, 'evaluate');
+	      echo 'Settings and CTLT_Stream/NodeJS Status';
+	    }, 'evaluate');
 
     add_settings_field('use_ajax_voting', 'Use AJAX voting', function() {
 	      echo '<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" ' .
@@ -159,14 +160,6 @@ class Evaluate_Admin {
     ?>
     <form id="evaluate-options" method="post" action="options.php">
       <?php
-      if (self::$options['EVAL_STREAM']) {
-	$stream_status = '<strong>active</strong>. Node server will be used.';
-      } else {
-	$stream_status = '<strong>not active</strong>. Node server will not be used.';
-      }
-      ?>
-      <?php
-      settings_fields('evaluate_options');
       do_settings_sections('evaluate');
       ?>
       <input type="submit" class="button-primary" value="Save Changes" />
@@ -618,13 +611,13 @@ HTML;
           <th>Preview</th>
           <td>
     	<div id="preview_name" class="metric_preview"></div>
-    	<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                          ?></div>
-    	<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                          ?></div>
-    	<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                          ?></div>
-    	<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                          ?></div>
-    	<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                          ?></div>
-    	<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                          ?></div>
-    	<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                          ?></div>
+    	<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                           ?></div>
+    	<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                           ?></div>
+    	<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                           ?></div>
+    	<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                           ?></div>
+    	<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                           ?></div>
+    	<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                           ?></div>
+    	<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                           ?></div>
           </td>
         </tr>
       </table>

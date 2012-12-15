@@ -106,7 +106,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
     //pagination arguments
     $per_page = 10;
     $current_page = $this->get_pagenum();
-    $total_items = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_METRICS));
+    $total_items = $wpdb->get_var('SELECT COUNT(*) FROM ' . EVAL_DB_METRICS);
 
     $this->set_pagination_args(array(
         'total_items' => $total_items,
@@ -116,13 +116,9 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
     //prepare query
     $start = ($current_page-1)*$per_page;
     $end = $start + $per_page;
-    $query = $wpdb->prepare(
-            "SELECT * FROM " . EVAL_DB_METRICS . ""
-            . ' ORDER BY ' . $orderby . ' ' . $order
-            . ' LIMIT ' . $start . ', ' . $end
-    );
-
-    $this->items = $wpdb->get_results($query);
+    $this->items = $wpdb->get_results('SELECT * FROM ' . EVAL_DB_METRICS
+	    . ' ORDER BY ' . $wpdb->escape($orderby) . ' ' . $wpdb->escape($order)
+	    . ' LIMIT ' . $start . ', ' . $end);
   }
 
   public function render() {

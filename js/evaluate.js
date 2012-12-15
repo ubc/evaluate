@@ -21,7 +21,7 @@ var Evaluate = {
     }, function(data) {
       if(evaluate_ajax.use_ajax && !evaluate_ajax.stream_active) {
 	jQuery(element).closest('.evaluate-shell').replaceWith(data);
-      }
+      } //else client will receive the update from socketio
     });
   },
   
