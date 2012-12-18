@@ -126,7 +126,7 @@ class Evaluate {
     wp_enqueue_style('evaluate');
 
     //put js
-    wp_register_script('doT', EVAL_DIR_URL . '/js/doT.js', false, false, true);
+    wp_register_script('doT', EVAL_DIR_URL . '/js/doT.min.js', false, false, true);
     wp_register_script('evaluate-js', EVAL_DIR_URL . '/js/evaluate.js', array('jquery', 'doT'), false, true);
     wp_enqueue_script('doT');
     wp_enqueue_script('evaluate-js');
@@ -217,17 +217,29 @@ class Evaluate {
     global $wpdb, $post;
 
     //get all metrics, then filter out excluded ones
-    $metrics = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS));
+    $metrics = $wpdb->get_results('SELECT * FROM ' . EVAL_DB_METRICS);
     $excluded = get_post_meta($post->ID, 'metric');
 
+    //overall wrapper - also check for pulse-cpt
+    if($post->post_type == 'pulse-cpt') {
+      $content .= '<div class="evaluate-pulse-wrapper">';
+    } else {
+      $content .= '<div class="evaluate-metrics-wrapper">';
+    }
+    
     foreach ($metrics as $metric) {
       $params = unserialize($metric->params);
+      if(!array_key_exists('content_types', $params)) {
+	continue; //metric has no association, move on..
+      }
       $content_types = $params['content_types'];
       if (!in_array($metric->id, $excluded) && in_array($post->post_type, $content_types)) { //not excluded
 	$data = self::get_metric_data($metric);
 	$content .= self::display_metric($data);
       }
     }
+    
+    $content .= '</div>';
 
     return $content;
   }
@@ -315,7 +327,7 @@ class Evaluate {
 		    , $metric_id));
     if ($metric) {
       //force specific post data
-      $post = wp_get_single_post($content_id);
+      $post = get_post($content_id);
       if (isset($post)) {
 	setup_postdata($post);
       } else { //no post id set, avoid warnings
@@ -542,7 +554,6 @@ class Evaluate {
 	return;
       }
     }
-//    $html = '<div class="evaluate-shell" id="evaluate-shell-' . $data->metric_id . '-' . $data->content_id . '">';
     $html = <<<HTML
 <div class="evaluate-shell" id="evaluate-shell-$data->metric_id-$data->content_id" data-user-vote="$data->user_vote">
 HTML;
