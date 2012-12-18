@@ -611,13 +611,13 @@ HTML;
           <th>Preview</th>
           <td>
     	<div id="preview_name" class="metric_preview"></div>
-    	<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                           ?></div>
-    	<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                           ?></div>
-    	<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                           ?></div>
-    	<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                           ?></div>
-    	<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                           ?></div>
-    	<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                           ?></div>
-    	<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                           ?></div>
+    	<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart');                            ?></div>
+    	<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb');                            ?></div>
+    	<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow');                            ?></div>
+    	<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb');                            ?></div>
+    	<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow');                            ?></div>
+    	<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null);                            ?></div>
+    	<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null);                            ?></div>
           </td>
         </tr>
       </table>
@@ -659,8 +659,7 @@ HTML;
     <?php
     global $wpdb;
 
-    $query = $wpdb->prepare('SELECT * FROM ' . EVAL_DB_METRICS . ''); //get all metrics
-    $metrics = $wpdb->get_results($query);
+    $metrics = $wpdb->get_results('SELECT * FROM ' . EVAL_DB_METRICS);
     $post_type = get_post_type($object->ID);
     wp_nonce_field('evaluate_post-meta', 'evaluate_nonce');
 
@@ -690,13 +689,19 @@ HTML;
   public static function save_post_meta($post_id, $post_object) {
     global $meta_box, $wpdb;
 
-    //validate nonce
-    if (!isset($_POST['evaluate_nonce']) || !wp_verify_nonce($_POST['evaluate_nonce'], 'evaluate_post-meta')) {
+    //check autosave
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+      return;
+    }
+
+    //validate nonce - also check for pulse
+    if (!isset($_POST['evaluate_nonce']) || (!wp_verify_nonce($_POST['evaluate_nonce'], 'evaluate_post-meta') && !wp_verify_nonce($_POST['evaluate_nonce'], 'evaluate_pulse-meta'))) {
+      echo 'EVAL NONCE FAIL';
       return $post_id;
     }
 
     //check user permissions
-    if ($_POST['post_type'] == 'page') {
+    if (isset($_REQUEST['post_type']) && $_REQUEST['post_type'] == 'page') {
       if (!current_user_can('edit_page', $post_id)) {
 	return $post_id;
       }
@@ -709,7 +714,27 @@ HTML;
       return;
 
     $post_meta = get_post_meta($post_id, 'metric');
-    foreach ($_POST['evaluate_cb'] as $key => $cb) {
+
+    //pulses are handled differently because of the custom form
+    $pulse_metrics = array();
+
+    if (wp_verify_nonce($_POST['evaluate_nonce'], 'evaluate_pulse-meta')) {
+      $metrics = $wpdb->get_results('SELECT * FROM ' . EVAL_DB_METRICS);
+      foreach ($metrics as $metric) { //sift through metrics and try to find ones that match the current $post_type
+	$params = unserialize($metric->params);
+	if (isset($params['content_types'])) {
+	  foreach ($params['content_types'] as $content_type) {
+	    if ($content_type == 'pulse-cpt') {
+	      $pulse_metrics[$metric->id] = false;
+	    }
+	  }
+	}
+      }
+    }
+
+    $metric_list = (isset($_POST['evaluate_cb']) ? $_POST['evaluate_cb'] : $pulse_metrics);
+
+    foreach ($metric_list as $key => $cb) {
       if (!$cb) {
 	//we want to keep track of total votes and score for the metrics NOT in the list
 	$total_votes = $wpdb->get_var(
@@ -727,7 +752,6 @@ HTML;
 	delete_post_meta($post_id, 'metric-' . $key . '-score');
       }
     }
-
 
     return true;
   }
