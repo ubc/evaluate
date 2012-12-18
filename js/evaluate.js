@@ -40,6 +40,7 @@ var Evaluate = {
     event.preventDefault();
     var element = this;
     var args = Evaluate.parseUrl('?' + jQuery(element).serialize());
+    if(typeof args['vote'] == 'undefined') return;
     jQuery.post(evaluate_ajax.ajaxurl, {
       action: 'evaluate-vote',
       data: args
