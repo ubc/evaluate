@@ -79,15 +79,10 @@ class Evaluate_Content_List_Table extends WP_List_Table {
     //fetch posts
     $posts = get_posts(array(
         'numberposts' => -1,
-        'meta_key' => 'metric',
-        'meta_value' => $this->metric_id,
-        'meta_compare' => '!=',
-        'post_type' => array(
-            'post',
-            'page'
-        )
+        'meta_key' => 'metric-'.$this->metric_id.'-votes',
+	'post_type' => get_post_types(array('public' => true)) //we want to list ALL public post types
             ));
-
+    
     //preprocess proper info for item objects
     $items = array();
     foreach ($posts as $post) {
