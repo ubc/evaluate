@@ -158,4 +158,13 @@ jQuery(window).load(function() {
   if(jQuery('input[name="evalu_form[type]"]').length) { //length > 0 i.e element exists
     Evaluate_Admin.addFormReady();
   }
+  //disable metric links if on admin panel
+  links = jQuery('.evaluate-shell a');
+  forms = jQuery('.evaluate-shell form');
+  if(links.length > 0) {
+    jQuery.each(links, function(index, value){jQuery(value).attr('href', 'javascript:void(0)')});
+  }
+  if(forms.length > 0) {
+    jQuery.each(forms, function(index, value){jQuery(value).live('submit', function(event){event.preventDefault();})});
+  }
 });
