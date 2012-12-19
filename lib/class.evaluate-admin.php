@@ -161,6 +161,7 @@ class Evaluate_Admin {
     <form id="evaluate-options" method="post" action="options.php">
       <?php
       do_settings_sections('evaluate');
+      settings_fields('evaluate_options');
       ?>
       <input type="submit" class="button-primary" value="Save Changes" />
     </form>
