@@ -697,7 +697,6 @@ HTML;
 
     //validate nonce - also check for pulse
     if (!isset($_POST['evaluate_nonce']) || (!wp_verify_nonce($_POST['evaluate_nonce'], 'evaluate_post-meta') && !wp_verify_nonce($_POST['evaluate_nonce'], 'evaluate_pulse-meta'))) {
-      echo 'EVAL NONCE FAIL';
       return $post_id;
     }
 
