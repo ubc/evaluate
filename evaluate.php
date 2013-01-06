@@ -3,9 +3,9 @@
 /*
   Plugin Name: Evaluate
   Plugin URI: http://URI_Of_Page_Describing_Plugin_and_Updates
-  Description: An evaluation plugin which can handle one-way (Like), two-way (Up/Down), star and poll with question and answers.
+  Description: An evaluation plugin which can handle one-way (Like), two-way (Up/Down), star rating and polls.
   Version: 1.0
-  Author: Bugra Firat
+  Author: Bugra Firat, CTLT_Dev
   Author URI: http://URI_Of_The_Plugin_Author
   License: GPLv2 or later.
  */
