@@ -60,6 +60,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 
     $items = array();
     foreach ($results as $result) {
+      $item = new stdClass();
       $item->title = get_the_title($result->content_id);
       $item->permalink = get_permalink($result->content_id);
 

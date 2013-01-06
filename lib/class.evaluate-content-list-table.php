@@ -86,6 +86,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
     //preprocess proper info for item objects
     $items = array();
     foreach ($posts as $post) {
+      $item = new stdClass();
       $item->title = $post->post_title;
 
       $author = get_user_by('id', $post->post_author);
