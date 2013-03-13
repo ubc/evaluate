@@ -1,35 +1,36 @@
 .indent {
-  margin-left: 25px;
+    margin-left: 25px;
 }
 
 .metric_preview {
-  display: none;
+    display: none;
 }
 
-/* for some reason some css elements look different in admin section,
+/**
+ * For some reason some css elements look different in admin section,
  * likely has to do with stylesheet inheritance 
-*/
+ */
 
 .rating-text { /* pad 3px from top so the stars and text align */
-  padding-top: 3px;
-  display: inline-block;
+    padding-top: 3px;
+    display: inline-block;
 }
 
 .metric-details {
-  padding: 0px !important;
-  margin: 0px !important;
+    padding: 0px !important;
+    margin: 0px !important;
 }
 
 .metric-details-inner {
-  padding-left: 15px;
-  padding-bottom: 15px;
+    padding-left: 15px;
+    padding-bottom: 15px;
 }
 
 .metric-details h3 {
-  padding: 5px;
-  font-family: Georgia,​serif;
-  font-size: 14px;
-  font-weight: 400;
+    padding: 5px;
+    font-family: Georgia,​serif;
+    font-size: 14px;
+    font-weight: 400;
 }
 
 .metric-details h3:hover {
