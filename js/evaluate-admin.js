@@ -143,13 +143,11 @@ var Evaluate_Admin = {
 		jQuery('.poll-question').html( jQuery('input[name="evalu_form[poll][question]"]').val() ); //sync question
 		var answer_fields = jQuery('input[name*="evalu_form[poll][answer]"]');
 		
-		for( var i = 1; i <= answer_fields.length; i++ ) { //loop through text answer fields and change answers
-			if ( jQuery('.poll-answer').get(i-1) ) { //-1 because inputs start from 1, index starts from 0
-				// Do nothing
-			} else {
+		for ( var i = 1; i <= answer_fields.length; i++ ) { //loop through text answer fields and change answers
+			if ( ! jQuery('.poll-answer').get(i-1) ) { //-1 because inputs start from 1, index starts from 0
 				// Add another answer field to the preview
 				jQuery('.poll-list').append('<li class="poll-answer"><label><input type="radio" name="poll-preview" /></label></li>');
-				jQuery('input[name*="evalu_form[poll][answer]['+i+']"]').trigger('change'); // Trigger so previewPoll runs to change the preview to match the field
+				jQuery('input[name*="evalu_form[poll][answer]['+i+']"]').trigger('keyup'); // Trigger so previewPoll runs to change the preview to match the field
 			}
 		}
 	}

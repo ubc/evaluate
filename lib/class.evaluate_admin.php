@@ -285,6 +285,7 @@ class Evaluate_Admin {
 	/* add or update metric after form entry */
 	public static function add_metric() {
 		global $wpdb;
+		
 		//try to get form data from the request
 		$formdata = ( isset( $_REQUEST['evalu_form'] ) ? $_REQUEST['evalu_form'] : false );
 		if ( ! $formdata ):
@@ -372,7 +373,7 @@ class Evaluate_Admin {
 		endif;
 		
 		//content types
-		$content_types = get_post_types(array('public' => true));
+		$content_types = get_post_types( array( 'public' => true ) );
 		foreach ( $content_types as $content_type ):
 			if ( isset( $formdata['content_type'][$content_type] ) ):
 				$metric['params']['content_types'][] = $content_type;
@@ -384,7 +385,7 @@ class Evaluate_Admin {
 		
 		//created and modified timestamps
 		if ( ! $is_update ):
-		  $metric['created'] = date('Y/m/d H:i:s');
+			$metric['created'] = date('Y/m/d H:i:s');
 		endif;
 		$metric['modified'] = date('Y/m/d H:i:s');
 		
@@ -432,13 +433,14 @@ class Evaluate_Admin {
 			$formdata['action']        = 'edit';
 			$formdata['view']          = 'main';
 			
+			$params = unserialize($metric->params);
+			
 			if ( isset( $params['content_types'] ) ):
 				foreach ($params['content_types'] as $content_type):
 					$formdata['content_type'][$content_type] = true;
 				endforeach;
 			endif;
 			
-			$params = unserialize($metric->params);
 			$formdata['poll'] = ( isset( $params['poll'] ) ? $params['poll'] : null );
 		else:
 			if ( isset( $_POST['evalu_form'] ) ):
@@ -476,7 +478,8 @@ class Evaluate_Admin {
 			endif;
 		endif;
 		
-		$html_title = ( $metric_id != null ? "Edit Metric" : "Add New Metric" );
+		$editing = $metric_id != null;
+		$html_title = ( $editing ? "Edit Metric" : "Add New Metric" );
 		?>
 		<h3><?php echo $html_title; ?></h3>
 		<form method="post" action="?page=evaluate&view=form" id="metric_form">
@@ -501,7 +504,7 @@ class Evaluate_Admin {
 								<ul class="indent"> <!-- one way style -->
 									<li>
 										<label>
-											<input type="radio" name="evalu_form[style]" value="thumb"<?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'thumb' ); ?> />
+											<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'thumb' ); ?> />
 											0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>"><?php echo Evaluate::$titles['thumb']['up']; ?></a>
 										</label>
 									</li>
@@ -572,7 +575,7 @@ class Evaluate_Admin {
 							
 							<li> <!-- poll options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="poll" <?php echo ($formdata['type'] == 'poll' ? 'checked="checked"' : null); ?> />
+									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $formdata['type'] == 'poll' ); ?> />
 									Poll
 								</label>
 								<div class="indent">
@@ -646,7 +649,7 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'heart';
 								$data->title = Evaluate::$titles['heart']['up'];
-								$data->link = '#';
+								$data->link = 'javascript:void(0);';
 								
 								echo Evaluate::display_one_way($data);
 							?>
@@ -657,7 +660,7 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'thumb';
 								$data->title = Evaluate::$titles['thumb']['up'];
-								$data->link = '#';
+								$data->link = 'javascript:void(0);';
 								
 								echo Evaluate::display_one_way($data);
 							?>
@@ -668,7 +671,7 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'arrow';
 								$data->title = Evaluate::$titles['arrow']['up'];
-								$data->link = '#';
+								$data->link = 'javascript:void(0);';
 								
 								echo Evaluate::display_one_way($data);
 							?>
@@ -679,7 +682,7 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'star';
 								$data->title = Evaluate::$titles['star']['up'];
-								$data->link = '#';
+								$data->link = 'javascript:void(0);';
 								
 								echo Evaluate::display_one_way($data);
 							?>
@@ -691,8 +694,8 @@ class Evaluate_Admin {
 								$data->style = 'thumb';
 								$data->counter_up = rand( 0, 10 );
 								$data->counter_down = rand( 0, 10 );
-								$data->link_up = '#';
-								$data->link_down = '#';
+								$data->link_up = 'javascript:void(0);';
+								$data->link_down = 'javascript:void(0);';
 								
 								echo Evaluate::display_two_way($data);
 							?>
@@ -704,8 +707,8 @@ class Evaluate_Admin {
 								$data->style = 'arrow';
 								$data->counter_up = rand( 0, 10 );
 								$data->counter_down = rand( 0, 10 );
-								$data->link_up = '#';
-								$data->link_down = '#';
+								$data->link_up = 'javascript:void(0);';
+								$data->link_down = 'javascript:void(0);';
 								
 								echo Evaluate::display_two_way($data);
 							?>
@@ -714,7 +717,7 @@ class Evaluate_Admin {
 							<?php
 								$data = new stdClass();
 								$data->preview = TRUE;
-								$data->link = array( '#', '#', '#', '#', '#' );
+								$data->link = array( 'javascript:void(0);', 'javascript:void(0);', 'javascript:void(0);', 'javascript:void(0);', 'javascript:void(0);' );
 								$data->average = rand( 0, 50 ) / 10;
 								$data->width = $data->average / 5 * 100;
 								

@@ -576,7 +576,6 @@ class Evaluate {
 	}
   
 	public static function display_two_way( $data ) {
-		error_log(print_r($data, TRUE));
 		ob_start();
 		?>
 		<span class="rate-name"><?php echo $data->display_name; ?></span>
