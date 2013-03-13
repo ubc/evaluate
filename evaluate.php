@@ -33,7 +33,7 @@ define( 'EVAL_OPTION',         'evaluate'                       );
 
 //require the plugin scripts
 require( 'lib/class.evaluate.php' );
-require( 'lib/class.evaluate-admin.php' );
+require( 'lib/class.evaluate_admin.php' );
 
 //needed for WP_List_Table displays
 if ( ! class_exists('WP_List_Table') ) {
@@ -41,9 +41,9 @@ if ( ! class_exists('WP_List_Table') ) {
 }
 
 //various list table displays for admin side
-require( 'lib/class.evaluate-metrics-list-table.php' );
-require( 'lib/class.evaluate-content-list-table.php' );
-require( 'lib/class.evaluate-users-list-table.php' );
+require( 'lib/class.evaluate_metrics-list-table.php' );
+require( 'lib/class.evaluate_content-list-table.php' );
+require( 'lib/class.evaluate_users-list-table.php' );
 
 //register the three activation hooks for the plugin
 register_activation_hook(   'Evaluate', 'activate'   );

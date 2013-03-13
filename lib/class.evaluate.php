@@ -20,6 +20,9 @@ class Evaluate {
 		'heart' => array(
 			'up' => 'Heart!',
 		),
+		'star' => array(
+			'up' => 'Star!',
+		),
 		'range' => '/5 Stars'
 	);
   
@@ -573,6 +576,7 @@ class Evaluate {
 	}
   
 	public static function display_two_way( $data ) {
+		error_log(print_r($data, TRUE));
 		ob_start();
 		?>
 		<span class="rate-name"><?php echo $data->display_name; ?></span>
@@ -580,8 +584,8 @@ class Evaluate {
 			<span class="up-counter"><?php echo $data->counter_up; ?></span>
 			<a href="<?php echo $data->link_up; ?>" class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>" data-nonce="<?php echo $data->nonce_up; ?>">&nbsp;</a>
 			
-			<span class="up-counter"><?php echo $data->counter_down; ?></span>
-			<a href="<?php echo $data->link_down; ?>" class="rate <?php echo $data->style-down.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>" data-nonce="<?php echo $data->nonce_down; ?>">&nbsp;</a>
+			<span class="down-counter"><?php echo $data->counter_down; ?></span>
+			<a href="<?php echo $data->link_down; ?>" class="rate <?php echo $data->style.'-down'.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>" data-nonce="<?php echo $data->nonce_down; ?>">&nbsp;</a>
 		</div>
 		<?php
 		$html = ob_get_contents();
@@ -603,7 +607,7 @@ class Evaluate {
 					$nonce = $data->nonce[$i];
 					$title = $i . self::$titles['range'];
 					?>
-					<div class="starr"><a href="$link" title="$title" class="eval-link link-$i" data-nonce="$nonce">&nbsp;</a>
+					<div class="starr"><a href="<?php echo $link; ?>" title="<?php echo $title; ?>" class="eval-link link-<?php echo $i; ?>" data-nonce="<?php echo $nonce; ?>">&nbsp;</a>
 				<?php endfor; ?>
 				<?php for ( $i = 1; $i <= 5; $i++ ): //close nested divs ?>
 					</div>
@@ -654,29 +658,45 @@ class Evaluate {
   
 	public static function display_poll_form( $data ) {
 		ob_start();
+		
+		$url = ( $data->preview ? "#" : "?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=results" )
 		?>
 		<span class="rate-name"><?php echo $data->display_name; ?></span>
 		<div class="poll-div poll-form">
+			<?php if ( ! $data->preview ): ?>
 			<form method="post" action="" name="poll-form">
+			<?php endif; ?>
 				<ul class="poll-list">
 					<li class="poll-question"><?php echo $data->question; ?></li>
 					<?php foreach ( $data->answers as $key => $answer ): //loop through & print answers ?>
+						<?php $hold = $answer; ?>
+						<?php print_r($key); ?>
+						 => 
+						<?php print_r($answer); ?>
 						<li class="poll-answer">
+							<?php print_r($answer); ?>
 							<label>
-								<input type="radio" name="vote" value="$key" <?php checked( $data->user_vote == $key ); ?>/> 
+								<?php print_r($answer); ?>
+								<?php print_r($hold); ?>
+								<input type="radio" name="vote" value="<?php echo $key; ?>" <?php checked( $data->user_vote == $key ); ?>/> 
 								<?php echo $answer; ?>
 							</label>
 						</li>
 					<?php endforeach; ?>
 				</ul>
+				
 				<!-- Add hidden fields for verification & other form elements -->
-				<input type="hidden" value="<?php echo $data->nonce; ?>" name="_wpnonce" />
-				<input type="hidden" value="<?php echo $data->metric_id; ?>" name="metric_id" />
-				<input type="hidden" value="<?php echo $data->content_id; ?>" name="content_id" />
-				<input type="hidden" value="vote" name="evaluate" />
-				<input type="submit" value="Cast Vote" />
-				<a href="?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=results" title="See vote results!">Show Results</a>
+				<?php if ( ! $data->preview ): ?>
+					<input type="hidden" value="<?php echo $data->nonce; ?>" name="_wpnonce" />
+					<input type="hidden" value="<?php echo $data->metric_id; ?>" name="metric_id" />
+					<input type="hidden" value="<?php echo $data->content_id; ?>" name="content_id" />
+					<input type="hidden" value="vote" name="evaluate" />
+				<?php endif; ?>
+				<input type="submit" <?php disabled( $data->preview ); ?> value="Cast Vote" />
+				<a href="<?php echo $url; ?>" title="See vote results!">Show Results</a>
+			<?php if ( ! $data->preview ): ?>
 			</form>
+			<?php endif; ?>
 		</div>
 		<?php
 		$html = ob_get_contents();

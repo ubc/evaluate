@@ -1,5 +1,4 @@
 <?php
-
 class Evaluate_Admin {
 	
 	static $options = array();
@@ -25,7 +24,7 @@ class Evaluate_Admin {
 	/* displays the admin menu link in wp-admin */
 	public static function admin_menu() {
 		//params: page title, menu title, capability, ?page=, function name
-		add_options_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( 'Evaluate_Admin', 'page' ) );
+		add_options_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( __CLASS__, 'page' ) );
 	}
 	
 	/* queue the css styles and js scripts */
@@ -45,27 +44,51 @@ class Evaluate_Admin {
 	
 	/* register and initialize settings for the plugin */
 	public static function register_settings() {
-		register_setting('evaluate_options', 'EVAL_AJAX');
-		add_settings_section('evaluate_settings', 'Evaluate Settings', function() {
-			echo 'Settings and CTLT_Stream/NodeJS Status';
-		}, 'evaluate');
-	  
-		add_settings_field('use_ajax_voting', 'Use AJAX voting', function() {
-			echo '<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" ' .
-			checked(1, get_option('EVAL_AJAX'), false) . '/>';
-		}, 'evaluate', 'evaluate_settings');
-	  
-		add_settings_field('ctlt_stream_found', 'CTLT_Stream plugin found', function() {
-			echo '<input id="ctlt_stream_status" name="ctlt_stream_status" type="checkbox" disabled="disabled" ' .
-			checked(1, Evaluate_Admin::$options['EVAL_STREAM'], false) . '/>';
-		}, 'evaluate', 'evaluate_settings');
+		register_setting( 'evaluate_options', 'EVAL_AJAX' );
+		
+		add_settings_section( 'evaluate_settings', 'Evaluate Settings', array( __CLASS__, 'setting_section' ), 'evaluate' );
+		add_settings_field( 'use_ajax_voting',   'Use AJAX voting',          array( __CLASS__, 'setting_ajax_vote' ), 'evaluate', 'evaluate_settings' );
+		add_settings_field( 'ctlt_stream_found', 'CTLT_Stream plugin found', array( __CLASS__, 'setting_stream_plugin' ), 'evaluate', 'evaluate_settings' );
 	  
 		if (self::$options['EVAL_STREAM']):
-			add_settings_field('nodejs_server_status', 'NodeJS Server status', function() {
-				echo '<input id="nodejs_server_status" name="nodejs_server_status" type="checkbox" disabled="disabled"' .
-				checked(1, CTLT_Stream::is_node_active(), false) . '/>';
-			}, 'evaluate', 'evaluate_settings');
+			add_settings_field( 'nodejs_server_status', 'NodeJS Server status', array( __CLASS__, 'setting_nodejs_server' ), 'evaluate', 'evaluate_settings' );
 		endif;
+	}
+	
+	public static function setting_section() {
+		?>
+		Settings and CTLT Stream/NodeJS Status
+		<?php
+	}
+	
+	public static function setting_ajax_vote() {
+		?>
+		<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" <?php checked( 1, get_option('EVAL_AJAX'), false ); ?> />
+		<?php
+	}
+	
+	public static function setting_stream_plugin() {
+		?>
+		<input id="ctlt_stream_status" name="ctlt_stream_status" type="checkbox" style="display: none" disabled="disabled" <?php checked( self::$options['EVAL_STREAM'] ); ?>/>
+		
+		<?php if ( self::$options['EVAL_STREAM'] == true ): ?>
+			<div style="color: green">Enabled</div>
+		<?php else: ?>
+			<div style="color: red">Not Found</div>
+		<?php endif;
+	}
+	
+	public static function setting_nodejs_server() {
+		?>
+		<input id="nodejs_server_status" name="nodejs_server_status" type="checkbox" disabled="disabled" style="display: none" <?php checked( CTLT_Stream::is_node_active() ); ?> />
+		
+		<?php if ( self::$options['EVAL_STREAM'] != true ): ?>
+			<div style="color: red">Stream Plugin Not Found</div>
+		<?php elseif ( CTLT_Stream::is_node_active() ): ?>
+			<div style="color: green">Connected</div>
+		<?php else: ?>
+			<div style="color: red">Server Not Found</div>
+		<?php endif;
 	}
 	
 	/* this is the 'controller' to display the correct page in the admin view */
@@ -74,15 +97,11 @@ class Evaluate_Admin {
 		$action = (isset($_REQUEST['action']) ? $_REQUEST['action'] : false);
 		
 		switch ($view):
-		case 'main':
-			$link = '<a href="options-general.php?page=evaluate&view=form" class="add-new-h2" title="Add New Metric">Add New</a>';
-			break;
 		case 'form':
-			$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
-			break;
 		case 'metric':
 			$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
 			break;
+		case 'main':
 		default:
 			$link = '<a href="options-general.php?page=evaluate&view=form" class="add-new-h2" title="Add New Metric">Add New</a>';
 		endswitch;
@@ -98,14 +117,13 @@ class Evaluate_Admin {
 		<?php
 		switch ($action):
 		case 'new':
-			
 		case 'edit':
 			try {
-			  self::add_metric();
-			  self::alert('Metric saved!', 'updated');
+				self::add_metric();
+				self::alert( 'Metric saved!', 'updated' );
 			} catch (Exception $e) {
-			  self::alert($e->getMessage(), 'error');
-			  self::metric_form();
+				self::alert( $e->getMessage(), 'error' );
+				self::metric_form();
 			}
 			break;
 		case 'delete':
@@ -155,6 +173,7 @@ class Evaluate_Admin {
 			do_settings_sections('evaluate');
 			settings_fields('evaluate_options');
 			?>
+			<br />
 			<input type="submit" class="button-primary" value="Save Changes" />
 		</form>
 		<?php
@@ -219,7 +238,7 @@ class Evaluate_Admin {
 	 */
 	public static function alert($message, $type) {
 		?>
-		<div class="$type">$message</div>
+		<div class="<?php echo $type; ?>"><?php echo $message; ?></div>
 		<?php
 	}
 	
@@ -469,88 +488,97 @@ class Evaluate_Admin {
 						<label><input type="checkbox" name="evalu_form[display_name]" value="true" <?php echo ($formdata['display_name'] ? 'checked="checked"' : null); ?> /> Display metric name above evaluation</label>
 					</td>
 				</tr>
-		  
+				
 				<tr>
 					<th>Metric Type</th>
 					<td>
-					
 						<ul class="type_options">
 							<li> <!-- one-way options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="one-way" <?php echo ($formdata['type'] == 'one-way' ? 'checked="checked"' : null); ?> />
+									<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $formdata['type'] == 'one-way' ); ?> />
 									One-way Voting
 								</label>
 								<ul class="indent"> <!-- one way style -->
 									<li>
 										<label>
-											<input type="radio" name="evalu_form[style]" value="thumb"<?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'thumb' ? 'checked="checked"' : null); ?> />
+											<input type="radio" name="evalu_form[style]" value="thumb"<?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'thumb' ); ?> />
 											0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>"><?php echo Evaluate::$titles['thumb']['up']; ?></a>
 										</label>
 									</li>
 									<li>
 										<label>
-											<input type="radio" name="evalu_form[style]" value="arrow" <?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'arrow' ? 'checked="checked"' : null); ?> />
+											<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'arrow' ); ?> />
 											0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>"><?php echo Evaluate::$titles['arrow']['up']; ?></a>
 										</label>
 									</li>
 									<li>
 										<label>
-											<input type="radio" name="evalu_form[style]" value="heart" <?php echo ($formdata['type'] == 'one-way' && $formdata['style'] == 'heart' ? 'checked="checked"' : null); ?> />
+											<input type="radio" name="evalu_form[style]" value="heart" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'heart' ); ?> />
 											0 <a class="rate heart" title="<?php echo Evaluate::$titles['heart']['up']; ?>"><?php echo Evaluate::$titles['heart']['up']; ?></a>
+										</label>
+									</li>
+									<li>
+										<label>
+											<input type="radio" name="evalu_form[style]" value="star" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'star' ); ?> />
+											0 <a class="rate star" title="<?php echo Evaluate::$titles['star']['up']; ?>"><?php echo Evaluate::$titles['star']['up']; ?></a>
 										</label>
 									</li>
 								</ul>
 							</li>
-					
+							
 							<li> <!-- two-way options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="two-way" <?php echo ($formdata['type'] == 'two-way' ? 'checked="checked"' : null); ?> />
+									<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $formdata['type'] == 'two-way' ); ?> />
 									Two-way Voting
 								</label>
 								<ul class="indent"> <!-- two-way style selection -->
 									<li>
 										<label>
-											<input type="radio" name="evalu_form[style]" value="thumb" <?php echo ($formdata['type'] == 'two-way' && $formdata['style'] == 'thumb' ? 'checked="checked"' : null); ?>/>
+											<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $formdata['type'] == 'two-way' && $formdata['style'] == 'thumb' ); ?>/>
 											0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>">&nbsp;</a>
 											0 <a class="rate thumb-down" title="<?php echo Evaluate::$titles['thumb']['down']; ?>">&nbsp;</a>
 										</label>
 									</li>
 									<li>
 										<label>
-											<input type="radio" name="evalu_form[style]" value="arrow" <?php echo ($formdata['type'] == 'two-way' && $formdata['style'] == 'arrow' ? 'checked="checked"' : null); ?>/>
+											<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $formdata['type'] == 'two-way' && $formdata['style'] == 'arrow' ); ?>/>
 											0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>">&nbsp;</a>
 											0 <a class="rate arrow-down" title="<?php echo Evaluate::$titles['arrow']['down']; ?>">&nbsp;</a>
 										</label>
 									</li>
 								</ul>                
 							</li>
-					
+							
 							<li> <!-- range options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="range" <?php echo ($formdata['type'] == 'range' ? 'checked="checked"' : null); ?> />
+									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> />
 									Stars
-									<div class="rate-range">
-										<div class="stars">
-											<div class="rating" style="width:50%"></div>
-											<div class="starr"><a title="1<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-												<div class="starr"><a title="2<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-													<div class="starr"><a title="3<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-														<div class="starr"><a title="4<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-															<div class="starr"><a title="5<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a></div>
-														</div>
+								</label>
+								<div class="rate-range">
+									<div class="stars">
+										<div class="rating" style="width:50%"></div>
+										<div class="starr"><a title="1<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+											<div class="starr"><a title="2<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+												<div class="starr"><a title="3<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+													<div class="starr"><a title="4<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+														<div class="starr"><a title="5<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a></div>
 													</div>
 												</div>
 											</div>
 										</div>
 									</div>
-								</label>
+								</div>
 							</li>
-					
+							
 							<li> <!-- poll options -->
 								<label class="type_label">
 									<input type="radio" name="evalu_form[type]" value="poll" <?php echo ($formdata['type'] == 'poll' ? 'checked="checked"' : null); ?> />
 									Poll
 								</label>
+								<div class="indent">
+									<a href="javascript:Evaluate_Admin.addNewAnswer()" style="text-decoration: none" title="Add New Answer">[+] Add New Answer</a>
+									<a href="javascript:Evaluate_Admin.removeLastAnswer()" style="text-decoration: none" title="Remove Last Answer">[-] Remove Last Answer</a>
+								</div>
 								<div class="indent">
 									<label>Question: <input type="text" class="regular-text" name="evalu_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
 								</div>
@@ -565,19 +593,15 @@ class Evaluate_Admin {
 									for ( $i = 3; $i <= count( $formdata['poll']['answer'] ); $i++ ):
 										?>
 										<div class="indent">
-											  <label>
-												  Answer <?php echo $i; ?>:
-												  <input type="text" class="regular-text" name="evalu_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" />
-											  </label>
+											<label>
+												Answer <?php echo $i; ?>:
+												<input type="text" class="regular-text" name="evalu_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" />
+											</label>
 										</div
 										<?php
 									endfor;
 								endif;
 								?>
-								<div class="indent">
-									<a href="javascript:Evaluate_Admin.addNewAnswer()" title="Add New Answer">[+] Add New Answer</a>
-									<a href="javascript:Evaluate_Admin.removeLastAnswer()" title="Remove Last Answer">[-] Remove Last Answer</a>
-								</div>
 							</li>
 						</ul>
 					</td>
@@ -589,7 +613,7 @@ class Evaluate_Admin {
 						<?php foreach ( $content_types as $content_type ): ?>
 							<div>
 								<label>
-									<input type="checkbox" name="evalu_form[content_type][<?php echo $content_type; ?>]" value="true" <?php echo (isset($formdata['content_type'][$content_type]) ? 'checked="checked"' : null); ?> />
+									<input type="checkbox" name="evalu_form[content_type][<?php echo $content_type; ?>]" value="true" <?php checked( isset( $formdata['content_type'][$content_type] ) ); ?> />
 									 <?php echo $content_type; ?>
 								</label>
 							</div>
@@ -601,12 +625,12 @@ class Evaluate_Admin {
 					<th>Display Options</th>
 					<td>
 						<label>
-							<input type="checkbox" name="evalu_form[require_login]" value="true" <?php echo ($formdata['require_login'] ? 'checked="checked"' : null); ?> />
+							<input type="checkbox" name="evalu_form[require_login]" value="true" <?php checked( $formdata['require_login'] ); ?> />
 							 Users have to be logged in to vote.
 						</label>
 						<br />
 						<label>
-							<input type="checkbox" name="evalu_form[admin_only]" value="true" <?php echo ($formdata['admin_only'] ? 'checked="checked"' : null); ?> />
+							<input type="checkbox" name="evalu_form[admin_only]" value="true" <?php checked( $formdata['admin_only'] ); ?> />
 							 Only Admins can see this metric.
 						</label>
 					</td>
@@ -616,23 +640,104 @@ class Evaluate_Admin {
 					<th>Preview</th>
 					<td>
 						<div id="preview_name" class="metric_preview"></div>
-						<div id="prev_one-way_heart" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'heart'); ?></div>
-						<div id="prev_one-way_thumb" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'thumb'); ?></div>
-						<div id="prev_one-way_arrow" class="metric_preview"><?php //echo Evaluate::display_one_way(null, 'arrow'); ?></div>
-						<div id="prev_two-way_thumb" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'thumb'); ?></div>
-						<div id="prev_two-way_arrow" class="metric_preview"><?php //echo Evaluate::display_two_way(null, 'arrow'); ?></div>
-						<div id="prev_range_" class="metric_preview"><?php //echo Evaluate::display_range(null); ?></div>
-						<div id="prev_poll_" class="metric_preview"><?php //echo Evaluate::display_poll(null); ?></div>
+						<div id="prev_one-way_heart" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								$data->style = 'heart';
+								$data->title = Evaluate::$titles['heart']['up'];
+								$data->link = '#';
+								
+								echo Evaluate::display_one_way($data);
+							?>
+						</div>
+						<div id="prev_one-way_thumb" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								$data->style = 'thumb';
+								$data->title = Evaluate::$titles['thumb']['up'];
+								$data->link = '#';
+								
+								echo Evaluate::display_one_way($data);
+							?>
+						</div>
+						<div id="prev_one-way_arrow" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								$data->style = 'arrow';
+								$data->title = Evaluate::$titles['arrow']['up'];
+								$data->link = '#';
+								
+								echo Evaluate::display_one_way($data);
+							?>
+						</div>
+						<div id="prev_one-way_star" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								$data->style = 'star';
+								$data->title = Evaluate::$titles['star']['up'];
+								$data->link = '#';
+								
+								echo Evaluate::display_one_way($data);
+							?>
+						</div>
+						<div id="prev_two-way_thumb" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								$data->style = 'thumb';
+								$data->counter_up = rand( 0, 10 );
+								$data->counter_down = rand( 0, 10 );
+								$data->link_up = '#';
+								$data->link_down = '#';
+								
+								echo Evaluate::display_two_way($data);
+							?>
+						</div>
+						<div id="prev_two-way_arrow" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								$data->style = 'arrow';
+								$data->counter_up = rand( 0, 10 );
+								$data->counter_down = rand( 0, 10 );
+								$data->link_up = '#';
+								$data->link_down = '#';
+								
+								echo Evaluate::display_two_way($data);
+							?>
+						</div>
+						<div id="prev_range_" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								$data->link = array( '#', '#', '#', '#', '#' );
+								$data->average = rand( 0, 50 ) / 10;
+								$data->width = $data->average / 5 * 100;
+								
+								echo Evaluate::display_range($data);
+							?>
+						</div>
+						<div id="prev_poll_" class="metric_preview">
+							<?php
+								$data = new stdClass();
+								$data->preview = TRUE;
+								
+								echo Evaluate::display_poll($data);
+							?>
+						</div>
 					</td>
 				</tr>
 			</table>
 			<input type="hidden" name="view" value="<?php echo $formdata['view']; ?>" />
-			<input type = "hidden" name="action" value="<?php echo $formdata['action']; ?>" />
+			<input type="hidden" name="action" value="<?php echo $formdata['action']; ?>" />
 			<?php
-			
 			if ( isset( $formdata['metric_id'] ) ):
 				?>
-					<input type="hidden" name="metric_id" value="<?php echo $formdata['metric_id']; ?>" />
+				<input type="hidden" name="metric_id" value="<?php echo $formdata['metric_id']; ?>" />
 				<?php
 			endif;
 			

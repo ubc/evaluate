@@ -1,8 +1,55 @@
 var Evaluate_Admin = {
-	////the two global variables, required to display
-	//a preview of the metric before form submission
+	// The two global variables, required to display a preview of the metric before form submission.
 	type: new String,
 	style: new String,
+  
+	/*
+	 * Function to run after the DOM loads in the metric form
+	 */
+	onReady: function() {
+		//remove style selection details at the start
+		Evaluate_Admin.showTypeSub();
+		
+		//event handler for type selection
+		jQuery('input[name="evalu_form[type]"]').on( 'focus click', function(event) {
+			if ( event.type == 'focus' || event.type == 'click' ) {
+				//"this" refers to the DOM element itself
+				Evaluate_Admin.type = jQuery(this).val();
+				Evaluate_Admin.style = ''; //reset style in case old entry exists
+				Evaluate_Admin.showTypeSub(this);
+				Evaluate_Admin.refreshPreview();
+			}
+		} );
+		
+		//trigger type selection event if something is already selected upon page load
+		jQuery('.type_label input:checked').trigger('focus');
+	  
+		//event handler for style selection
+		jQuery('input[name="evalu_form[style]"]').on('focus click', function(event) {
+			if ( event.type == 'focus' || event.type == 'click' ) {
+				Evaluate_Admin.style = jQuery(this).val();
+				Evaluate_Admin.refreshPreview();
+			}
+		});
+		
+		//trigger style selection event if there is preexisting data
+		jQuery('input[name="evalu_form[style]"]:checked').trigger('focus');
+	  
+		//event handler for display_name text change
+		jQuery('input[name="evalu_form[name]"]').on( 'keyup', Evaluate_Admin.refreshPreview );
+		jQuery('input[name="evalu_form[display_name]"]').on( 'focus click', Evaluate_Admin.refreshPreview );
+		
+		//event handler for poll preview
+		jQuery('input[name*="evalu_form[poll]"]').on( 'keyup', function(element) {
+			Evaluate_Admin.previewPoll(element);
+		} );
+		
+		//trigger change in case the poll data remains from a previous attempt
+		jQuery('input[name*="evalu_form[poll]"]').trigger('change');
+		
+		//finally refresh poll preview if possible
+		Evaluate_Admin.refreshPoll();
+	},
   
 	/*
 	 * Adds a new poll question answer in the metric form
@@ -48,54 +95,6 @@ var Evaluate_Admin = {
 	},
   
 	/*
-	 * Function to run after the DOM loads in the metric form
-	 */
-	addFormReady: function() {
-		//remove style selection details at the start
-		Evaluate_Admin.showTypeSub();
-		
-		//event handler for type selection
-		jQuery('input[name="evalu_form[type]"]').on( 'focus click', function(event) {
-			if ( event.type == 'focus' || event.type == 'click' ) {
-				//"this" refers to the DOM element itself
-				Evaluate_Admin.type = jQuery(this).val();
-				Evaluate_Admin.style = ''; //reset style in case old entry exists
-				Evaluate_Admin.showTypeSub(this);
-				Evaluate_Admin.refreshPreview();
-			}
-		} );
-		
-		//trigger type selection event if something is already selected upon page load
-		jQuery('.type_label input:checked').trigger('focus');
-	  
-		//event handler for style selection
-		jQuery('input[name="evalu_form[style]"]').on('focus click', function(event) {
-			if ( event.type == 'focus' || event.type == 'click' ) {
-				Evaluate_Admin.style = jQuery(this).val();
-				Evaluate_Admin.refreshPreview();
-			}
-		});
-		
-		//trigger style selection event if there is preexisting data
-		jQuery('input[name="evalu_form[style]"]:checked').trigger('focus');
-	  
-		//event handler for display_name text change
-		jQuery('input[name="evalu_form[name]"]').on( 'change', Evaluate_Admin.refreshPreview );
-		jQuery('input[name="evalu_form[display_name]"]').on( 'focus click', Evaluate_Admin.refreshPreview );
-		
-		//event handler for poll preview
-		jQuery('input[name*="evalu_form[poll]"]').on( 'change', function(element) { 
-			Evaluate_Admin.previewPoll(element);
-		} );
-		
-		//trigger change in case the poll data remains from a previous attempt
-		jQuery('input[name*="evalu_form[poll]"]').trigger('change');
-		
-		//finally refresh poll preview if possible
-		Evaluate_Admin.refreshPoll();
-	},
-  
-	/*
 	 * Shows/hides further options in the metric form when specific parts are toggled
 	 */
 	showTypeSub: function( element ) {
@@ -107,13 +106,12 @@ var Evaluate_Admin = {
 	},
   
 	/*
-	 * Refreshes the compoenents required to display a preview
-	 * before submitting the form
+	 * Refreshes the compoenents required to display a preview before submitting the form
 	 */
 	refreshPreview: function( element ) {
 		jQuery('div[id*="prev_"]').hide();
 		if ( Evaluate_Admin.type != '' ) { //prevent premature refresh if no type is selected
-			jQuery('div[id*="prev_'+Evaluate_Admin.type+'_'+Evaluate_Admin.style+'"]').show();
+			jQuery('#prev_'+Evaluate_Admin.type+'_'+Evaluate_Admin.style).show();
 		}
 		
 		jQuery('#preview_name').html( jQuery('input[name="evalu_form[name]"]').val() );
@@ -129,11 +127,11 @@ var Evaluate_Admin = {
 		if ( element.attr('name') == 'evalu_form[poll][question]' ) {
 			jQuery('.poll-question').html(element.val());
 		} else {
-			// The index is actually -2, because jQuery uses 0-indexes, and the answers are within individual divs,
+			// The index is actually -3, because jQuery uses 0-indexes, and the answers are within individual divs,
 			// with a leading element for the question
-			var index = element.parent().parent().index() - 2;
+			var index = element.parent().parent().index() - 3;
 			var answer = jQuery('.poll-answer').get(index);
-			jQuery(answer).html('<label><input type="radio" name="poll-preview" />'+element.val()+'</label>');
+			jQuery(answer).html('<label><input type="radio" name="poll-preview" /> '+element.val()+'</label>');
 		}
 	},
 	
@@ -163,17 +161,17 @@ var Evaluate_Admin = {
  */
 jQuery(window).load(function() {  
 	if ( jQuery('input[name="evalu_form[type]"]').length ) { //length > 0 i.e element exists
-		Evaluate_Admin.addFormReady();
+		Evaluate_Admin.onReady();
 	}
 	
 	//disable metric links if on admin panel
 	links = jQuery('.evaluate-shell a');
 	if ( links.length > 0 ) {
-		jQuery.each(links, function(index, value){jQuery(value).attr('href', 'javascript:void(0)')});
+		jQuery.each( links, function( index, value ) { jQuery(value).attr( 'href', 'javascript:void(0)' ); } );
 	}
 	
 	forms = jQuery('.evaluate-shell form');
 	if ( forms.length > 0 ) {
-		jQuery.each(forms, function(index, value){jQuery(value).live('submit', function(event){event.preventDefault();})});
+		jQuery.each( forms, function( index, value ) { jQuery(value).live( 'submit', function( event ) { event.preventDefault(); } ) } );
 	}
 });
