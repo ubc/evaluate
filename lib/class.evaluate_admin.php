@@ -480,6 +480,15 @@ class Evaluate_Admin {
 		
 		$editing = $metric_id != null;
 		$html_title = ( $editing ? "Edit Metric" : "Add New Metric" );
+		
+		if ($editing):
+			$num_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) );
+			$no_type_change = $num_votes > 0;
+		else:
+			$no_type_change = FALSE;
+		endif;
+		
+		$hidden = ( $no_type_change ? 'hidden="hidden"' : '' );
 		?>
 		<h3><?php echo $html_title; ?></h3>
 		<form method="post" action="?page=evaluate&view=form" id="metric_form">
@@ -488,73 +497,93 @@ class Evaluate_Admin {
 					<th><label for="evalu_form[name]">Name</label></th>
 					<td>
 						<input name="evalu_form[name]" type="text" class="regular-text" value="<?php echo $formdata['name']; ?>" /><br/>
-						<label><input type="checkbox" name="evalu_form[display_name]" value="true" <?php echo ($formdata['display_name'] ? 'checked="checked"' : null); ?> /> Display metric name above evaluation</label>
+						<label><input type="checkbox" name="evalu_form[display_name]" value="true" <?php checked( $formdata['display_name'] ); ?> /> Display metric name above evaluation</label>
 					</td>
 				</tr>
 				
 				<tr>
 					<th>Metric Type</th>
 					<td>
+						<?php if ( $no_type_change ): ?>
+							<div style="color: darkred;"> <!-- no type change -->
+								You cannot change the type of this metric because there are votes registered.
+							</div>
+						<?php endif; ?>
 						<ul class="type_options">
-							<li> <!-- one-way options -->
-								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $formdata['type'] == 'one-way' ); ?> />
-									One-way Voting
-								</label>
-								<ul class="indent"> <!-- one way style -->
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'thumb' ); ?> />
-											0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>"><?php echo Evaluate::$titles['thumb']['up']; ?></a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'arrow' ); ?> />
-											0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>"><?php echo Evaluate::$titles['arrow']['up']; ?></a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="heart" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'heart' ); ?> />
-											0 <a class="rate heart" title="<?php echo Evaluate::$titles['heart']['up']; ?>"><?php echo Evaluate::$titles['heart']['up']; ?></a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="star" <?php checked( $formdata['type'] == 'one-way' && $formdata['style'] == 'star' ); ?> />
-											0 <a class="rate star" title="<?php echo Evaluate::$titles['star']['up']; ?>"><?php echo Evaluate::$titles['star']['up']; ?></a>
-										</label>
-									</li>
-								</ul>
-							</li>
+							<?php
+								$selected = $formdata['type'] == 'one-way';
+							?>
 							
-							<li> <!-- two-way options -->
-								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $formdata['type'] == 'two-way' ); ?> />
-									Two-way Voting
-								</label>
-								<ul class="indent"> <!-- two-way style selection -->
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $formdata['type'] == 'two-way' && $formdata['style'] == 'thumb' ); ?>/>
-											0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>">&nbsp;</a>
-											0 <a class="rate thumb-down" title="<?php echo Evaluate::$titles['thumb']['down']; ?>">&nbsp;</a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $formdata['type'] == 'two-way' && $formdata['style'] == 'arrow' ); ?>/>
-											0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>">&nbsp;</a>
-											0 <a class="rate arrow-down" title="<?php echo Evaluate::$titles['arrow']['down']; ?>">&nbsp;</a>
-										</label>
-									</li>
-								</ul>                
-							</li>
+							<?php if ( ! $no_type_change || $selected ): ?>
+								<li> <!-- one-way options -->
+									<label class="type_label">
+										<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $selected ); ?> <?php echo $hidden; ?> />
+										One-way Voting
+									</label>
+									<ul class="indent"> <!-- one way style -->
+										<li>
+											<label>
+												<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $selected && $formdata['style'] == 'thumb' ); ?> />
+												0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>"><?php echo Evaluate::$titles['thumb']['up']; ?></a>
+											</label>
+										</li>
+										<li>
+											<label>
+												<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $selected && $formdata['style'] == 'arrow' ); ?> />
+												0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>"><?php echo Evaluate::$titles['arrow']['up']; ?></a>
+											</label>
+										</li>
+										<li>
+											<label>
+												<input type="radio" name="evalu_form[style]" value="heart" <?php checked( $selected && $formdata['style'] == 'heart' ); ?> />
+												0 <a class="rate heart" title="<?php echo Evaluate::$titles['heart']['up']; ?>"><?php echo Evaluate::$titles['heart']['up']; ?></a>
+											</label>
+										</li>
+										<li>
+											<label>
+												<input type="radio" name="evalu_form[style]" value="star" <?php checked( $selected && $formdata['style'] == 'star' ); ?> />
+												0 <a class="rate star" title="<?php echo Evaluate::$titles['star']['up']; ?>"><?php echo Evaluate::$titles['star']['up']; ?></a>
+											</label>
+										</li>
+									</ul>
+								</li>
+							<?php endif; ?>
 							
+							<?php
+								$selected = $formdata['type'] == 'two-way';
+							?>
+							<?php if ( ! $no_type_change || $selected ): ?>
+								<li> <!-- two-way options -->
+									<label class="type_label">
+										<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $selected ); ?> <?php echo $hidden; ?> />
+										Two-way Voting
+									</label>
+									<ul class="indent"> <!-- two-way style selection -->
+										<li>
+											<label>
+												<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $selected && $formdata['style'] == 'thumb' ); ?>/>
+												0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>">&nbsp;</a>
+												0 <a class="rate thumb-down" title="<?php echo Evaluate::$titles['thumb']['down']; ?>">&nbsp;</a>
+											</label>
+										</li>
+										<li>
+											<label>
+												<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $selected && $formdata['style'] == 'arrow' ); ?>/>
+												0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>">&nbsp;</a>
+												0 <a class="rate arrow-down" title="<?php echo Evaluate::$titles['arrow']['down']; ?>">&nbsp;</a>
+											</label>
+										</li>
+									</ul>                
+								</li>
+							<?php endif; ?>
+							
+							<?php
+								$selected = $formdata['type'] == 'range';
+							?>
+							<?php if ( ! $no_type_change || $selected ): ?>
 							<li> <!-- range options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> />
+									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php echo $hidden; ?> />
 									Stars
 								</label>
 								<div class="rate-range">
@@ -572,10 +601,15 @@ class Evaluate_Admin {
 									</div>
 								</div>
 							</li>
+							<?php endif; ?>
 							
+							<?php
+								$selected = $formdata['type'] == 'poll';
+							?>
+							<?php if ( ! $no_type_change || $selected ): ?>
 							<li> <!-- poll options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $formdata['type'] == 'poll' ); ?> />
+									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $selected ); ?> <?php echo $hidden; ?> />
 									Poll
 								</label>
 								<div class="indent">
@@ -606,6 +640,7 @@ class Evaluate_Admin {
 								endif;
 								?>
 							</li>
+							<?php endif; ?>
 						</ul>
 					</td>
 				</tr>
