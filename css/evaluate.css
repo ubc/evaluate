@@ -14,7 +14,8 @@
 /* range (star) rating */
 .rate-range {
     display: block;
-    height: 25px;
+    margin-top: 2px;
+    height: 16px;
     overflow: hidden;
 }
 
@@ -27,22 +28,24 @@
     position: relative; 
     float: left; 
     background: url('../img/sprite.gif') repeat-x left top; 
-    background-position: 0px -150px;
+    background-position: 0px -96px;
     cursor: default; 
 }
 
 .stars .starr { 
-    height: 25px;
-    padding-left: 25px;
+    height: 16px;
+    padding-left: 16px;
+    /*
     background: transparent none repeat-x left top; 
     display: inline-block;
     position: relative;
+    */
 }
 
 .stars .starr a {
     display: inline-block;
-    width: 25px;
-    height: 25px;
+    width: 16px;
+    height: 16px;
     position: absolute;
     top: 0;
     left: 0;
@@ -51,26 +54,26 @@
 
 .stars:hover .starr { 
     background-image: url(../img/sprite.gif);  
-    background-position: 0px -150px;
+    background-position: 0px -96px;
 }
 
 .stars:hover .starr:hover, .stars-selected {
     background-image: url(../img/sprite.gif); 
-    background-position: 0px -200px !important;
+    background-position: 0px -128px !important;
 }
 
 .stars .rating { 
     position: absolute; 
     height: 100%; 
     background: url(../img/sprite.gif) repeat-x left top;  
-    background-position: 0px -175px;
+    background-position: 0px -112px;
 }
 
 .stars .rating-selected { 
     position: absolute; 
     height: 100%; 
     background: url(../img/sprite.gif) repeat-x left top;  
-    background-position: 0px -200px;
+    background-position: 0px -128px;
 }
 
 .stars:hover .rating { 
@@ -81,9 +84,9 @@
 .rate {
     background: url(../img/sprite.gif);
     background-repeat: no-repeat;
-    padding-left: 25px; /* space between icon and link text */
+    padding-left: 20px; /* space between icon and link text */
     display: inline-block; /* make sure it sticks to rate-count on the same line */
-    height: 25px; /* height of the icon */
+    height: 16px; /* height of the icon */
     text-decoration: none;
 }
 
@@ -93,51 +96,51 @@
 }
 
 .heart:hover, .heart-selected {
-    background-position: 0px -25px;
+    background-position: 0px -16px;
 }
 
 .thumb {
-    background-position: 0px -50px;
+    background-position: 0px -32px;
 }
 
 .thumb:hover, .thumb-selected {
-    background-position: 0px -75px;
+    background-position: 0px -48px;
 }
 
 .thumb-down {
-    background-position: 0px -100px;
+    background-position: 0px -64px;
 }
 
 .thumb-down:hover, .thumb-down-selected {
-    background-position: 0px -125px;
-}
-
-.arrow {
-    background-position: 0px -225px;
-}
-
-.arrow:hover, .arrow-selected {
-    background-position: 0px -250px;
-}
-
-.arrow-down {
-    background-position: 0px -275px;
-}
-
-.arrow-down:hover, .arrow-down-selected {
-    background-position: 0px -300px;
+    background-position: 0px -80px;
 }
 
 .star {
-    background-position: 0px -150px;
+    background-position: 0px -96px;
 }
 
 .star-selected {
-    background-position: 0px -175px;
+    background-position: 0px -112px;
 }
 
 .star:hover {
-    background-position: 0px -200px;
+    background-position: 0px -128px;
+}
+
+.arrow {
+    background-position: 0px -144px;
+}
+
+.arrow:hover, .arrow-selected {
+    background-position: 0px -160px;
+}
+
+.arrow-down {
+    background-position: 0px -176px;
+}
+
+.arrow-down:hover, .arrow-down-selected {
+    background-position: 0px -192px;
 }
 
 /* poll */

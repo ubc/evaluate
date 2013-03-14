@@ -668,15 +668,8 @@ class Evaluate {
 				<ul class="poll-list">
 					<li class="poll-question"><?php echo $data->question; ?></li>
 					<?php foreach ( $data->answers as $key => $answer ): //loop through & print answers ?>
-						<?php $hold = $answer; ?>
-						<?php print_r($key); ?>
-						 => 
-						<?php print_r($answer); ?>
 						<li class="poll-answer">
-							<?php print_r($answer); ?>
 							<label>
-								<?php print_r($answer); ?>
-								<?php print_r($hold); ?>
 								<input type="radio" name="vote" value="<?php echo $key; ?>" <?php checked( $data->user_vote == $key ); ?>/> 
 								<?php echo $answer; ?>
 							</label>

@@ -6,16 +6,6 @@
     display: none;
 }
 
-/**
- * For some reason some css elements look different in admin section,
- * likely has to do with stylesheet inheritance 
- */
-
-.rating-text { /* pad 3px from top so the stars and text align */
-    padding-top: 3px;
-    display: inline-block;
-}
-
 .metric-details {
     padding: 0px !important;
     margin: 0px !important;
