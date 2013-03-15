@@ -45,15 +45,13 @@ var Evaluate = {
         return false;
     },
     
-    onPollSubmit: function(event) {
+    onPollSubmit: function( element ) {
         if ( ! evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
-            return; // use url directly
+            return true; // use url directly
         }
         
-        event.preventDefault();
-        var element = this;
         var args = Evaluate.parseUrl('?' + jQuery(element).serialize());
-        if ( typeof args['vote'] == 'undefined' ) return;
+        if ( typeof args['vote'] == 'undefined' ) return false;
         
         var data = {
             action: 'evaluate-vote',
@@ -65,12 +63,12 @@ var Evaluate = {
                 jQuery(element).closest('.evaluate-shell').replaceWith(response);
             }
         } );
+        
+        return false;
     },
     
-    onPollLinkClick: function( event ) {
-        event.preventDefault();
-        var element = this;
-        var args = Evaluate.parseUrl(this.href);
+    onPollLinkClick: function( element ) {
+        var args = Evaluate.parseUrl( element.href );
         
         var data = {
             action: 'evaluate-vote',

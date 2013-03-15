@@ -386,7 +386,7 @@ class Evaluate {
 		$data = new stdClass(); //data declaration
 		$data->metric_id = $metric->id;
 		$data->content_id = $post->ID;
-		$data->display_name = ( $metric->display_name ? $metric->nicename : null ); //check if display name is enabled
+		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //check if display name is enabled
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
 		//count the number of votes
@@ -415,7 +415,7 @@ class Evaluate {
 		$data = new stdClass();
 		$data->metric_id = $metric->id;
 		$data->content_id = $post->ID;
-		$data->display_name = ( $metric->display_name ? $metric->nicename : null ); //name display
+		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //name display
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
 		
@@ -460,7 +460,7 @@ class Evaluate {
 		$data = new stdClass(); //data object
 		$data->metric_id = $metric->id;
 		$data->content_id = $post->ID;
-		$data->display_name = ( $metric->display_name ? $metric->nicename : null ); //display name available?
+		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //display name available?
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
 		
@@ -508,7 +508,7 @@ class Evaluate {
 		$data = new stdClass();
 		$data->metric_id = $metric->id;
 		$data->content_id = $post->ID;
-		$data->display_name = ( $metric->display_name ? $metric->nicename : null ); //display name available?
+		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //display name available?
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
 		
@@ -690,12 +690,12 @@ class Evaluate {
 	public static function display_poll_form( $data ) {
 		ob_start();
 		
-		$url = ( $data->preview ? "#" : "?evaluate=poll&metric_id=".$data->metric_id."&content_id=".$data->content_id."&display=results" )
+		$url = ( $data->preview ? "#" : "?evaluate=poll&metric_id=".$data->metric_id."&content_id=".$data->content_id."&display=results" );
 		?>
 		<span class="rate-name"><?php echo $data->display_name; ?></span>
 		<div class="poll-div poll-form">
 			<?php if ( ! $data->preview ): ?>
-			<form method="post" action="" name="poll-form">
+			<form method="post" action="" name="poll-form" onsubmit="<?php echo $data->onsubmit; ?>">
 			<?php endif; ?>
 				<ul class="poll-list">
 					<li class="poll-question"><?php echo $data->question; ?></li>
@@ -719,7 +719,7 @@ class Evaluate {
 					<input type="hidden" value="vote" name="evaluate" />
 				<?php endif; ?>
 				<input type="submit" <?php disabled( $data->preview ); ?> value="Cast Vote" />
-				<a href="<?php echo $url; ?>" title="See vote results!">Show Results</a>
+				<a href="<?php echo $url; ?>" title="See vote results!" onclick="<?php echo $data->onclick; ?>">Show Results</a>
 			<?php if ( ! $data->preview ): ?>
 			</form>
 			<?php endif; ?>
@@ -751,7 +751,7 @@ class Evaluate {
 					</li>
 				<?php endforeach; ?>
 			</ul>
-			<a href="?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=vote" title="Back to vote">Back to vote</a>
+			<a href="?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=vote" onclick="<?php echo $data->onclick; ?>" title="Back to vote">Back to vote</a>
 		</div>
 		<?php
 		$html = ob_get_contents();
@@ -763,15 +763,6 @@ class Evaluate {
 	/* prints out metric templates for ajax viewing */
 	public static function print_templates() {
 		?>
-		<script id="evaluate-one-way" type="text/x-dot-template">
-			<span class="rate-name">{{=it.display_name}}</span>
-			<div class="rate-div">
-				<span class="up-counter">{{=it.counter}}</span>
-				<a href="{{=it.link}}" onclick="{{=it.onclick}}" class="rate {{=it.style}}{{=it.state}} eval-link" title="{{=it.title}}" data-nonce="{{=it.nonce}}">{{=it.title}}</a>
-			</div>
-			</span>
-		</script>
-		
 		<script id="evaluate-two-way" type="text/x-dot-template">
 			<span class="rate-name">{{=it.display_name}}</span>
 			<div class="rate-div">
@@ -789,10 +780,11 @@ class Evaluate {
 				<div class="rating-text">Average Vote: {{=it.average}}/5 Stars</div>
 				<div class="stars">
 					<div class="rating{{=it.state}}" style="width:{{=it.width}}%"></div>
+					{{ for (var prop in it.link) { }}
+						<div class="starr">
+							<a href="{{=it.link[prop]}}" onclick="{{=it.onclick}}" title="" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
+					{{ } }}
 					{{ for(var prop in it.link) { }}
-						<div class="starr"><a onclick="{{=it.link[prop]}}" href="{{=it.onclick}}" title="" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
-							{{ } }}
-							{{ for(var prop in it.link) { }}
 						</div>
 					{{ } }}
 				</div>
@@ -803,25 +795,25 @@ class Evaluate {
 		<script id="evaluate-poll-form" type="text/x-dot-template">
 			<span class="rate-name">{{=it.display_name}}</span>
 			<div class="poll-div poll-form">
-				<form method="post" action="" name="poll-form">
+				<form method="post" action="" name="poll-form" onclick="{{=it.onsubmit}}">
 					<ul class="poll-list">
 						<li class="poll-question">{{=it.question}}</li>
-							{{ for(var prop in it.answers) { }}
+						{{ for(var prop in it.answers) { }}
 							{{? it.user_vote == prop }}
-						<li class="poll-answer">
-							<label>
-								<input type="radio" name="vote" value="{{=prop}}" checked="checked" /> 
-								{{=it.answers[prop]}}
-							</label>
-						</li>
-						{{??}}
-						<li class="poll-answer">
-							<label>
-								<input type="radio" name="vote" value="{{=prop}}" /> 
-								{{=it.answers[prop]}}
-							</label>
-						</li>
-						{{?}}
+							<li class="poll-answer">
+								<label>
+									<input type="radio" name="vote" value="{{=prop}}" checked="checked" /> 
+									{{=it.answers[prop]}}
+								</label>
+							</li>
+							{{??}}
+							<li class="poll-answer">
+								<label>
+									<input type="radio" name="vote" value="{{=prop}}" /> 
+									{{=it.answers[prop]}}
+								</label>
+							</li>
+							{{?}}
 						{{ } }}
 					</ul>
 					<input type="hidden" value="{{=it.nonce}}" name="_wpnonce" />
@@ -829,7 +821,7 @@ class Evaluate {
 					<input type="hidden" value="{{=it.content_id}}" name="content_id" />
 					<input type="hidden" value="vote" name="evaluate" />
 					<input type="submit" value="Cast Vote" />
-					<a href="?evaluate=poll&metric_id={{=it.metric_id}}&content_id={{=it.content_id}}&display=results" title="See vote results!">Show Results</a>
+					<a href="?evaluate=poll&metric_id={{=it.metric_id}}&content_id={{=it.content_id}}&display=results" onclick="{{=it.onclick}}" title="See vote results!">Show Results</a>
 				</form>
 			</div>
 		</script>
@@ -851,7 +843,7 @@ class Evaluate {
 					</li>
 					{{ } }}
 				</ul>
-				<a href="?evaluate=poll&metric_id={{=it.metric_id}}&content_id={{=it.content_id}}&display=vote" title="Back to vote">Back to vote</a>
+				<a href="?evaluate=poll&metric_id={{=it.metric_id}}&content_id={{=it.content_id}}&display=vote" onclick="{{=it.onclick}}" title="Back to vote">Back to vote</a>
 			</div>
 		</script>
 		<?php
