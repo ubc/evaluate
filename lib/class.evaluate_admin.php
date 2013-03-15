@@ -336,9 +336,9 @@ class Evaluate_Admin {
 		$wpdb->escape($metric['type']);
 		
 		//style
-		if ($metric['type'] == 'range'):
+		if ( $metric['type'] == 'range' ):
 			$metric['style'] = 'star';
-		elseif ($metric['type'] == 'poll'):
+		elseif ( $metric['type'] == 'poll' ):
 			$metric['style'] = 'poll';
 		else:
 			if ( ! isset( $formdata['style'] )):
@@ -402,7 +402,7 @@ class Evaluate_Admin {
 				throw new Exception($wpdb->print_error());
 			endif;
 		else:
-			if ($wpdb->insert(EVAL_DB_METRICS, $metric)): //attempt to insert into DB
+			if ( $wpdb->insert( EVAL_DB_METRICS, $metric ) ): //attempt to insert into DB
 				return true;
 			else:
 				throw new Exception($wpdb->print_error());

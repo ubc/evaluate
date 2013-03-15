@@ -14,13 +14,18 @@
 /* range (star) rating */
 .rate-range {
     display: block;
-    margin-top: 2px;
+    margin-top: 1px;
     height: 16px;
     overflow: hidden;
 }
 
+.rate-range .stars {
+    margin-top: 1px;
+}
+
 .rating-text {
     padding-top: 0px;
+    margin-left: 5px;
     display: inline-block;
 }
 
@@ -35,11 +40,9 @@
 .stars .starr { 
     height: 16px;
     padding-left: 16px;
-    /*
     background: transparent none repeat-x left top; 
     display: inline-block;
     position: relative;
-    */
 }
 
 .stars .starr a {
@@ -84,10 +87,12 @@
 .rate {
     background: url(../img/sprite.gif);
     background-repeat: no-repeat;
-    padding-left: 20px; /* space between icon and link text */
+    padding-left: 14px; /* space between icon and link text */
     display: inline-block; /* make sure it sticks to rate-count on the same line */
     height: 16px; /* height of the icon */
     text-decoration: none;
+    position: relative;
+    top: 1px;
 }
 
 /* background positions for rating sprite */
@@ -173,9 +178,4 @@
 .poll-bar-selected { 
     background-color: #333333;
     height: 10px;
-}
-
-/* If Pulse-CPT plugin is enabled, the metrics will be hidden at first */
-.evaluate-pulse-wrapper {
-    display: none;
 }

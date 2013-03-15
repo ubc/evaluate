@@ -1,44 +1,51 @@
 var Evaluate = {
-    attach: function() {
+    init: function() {
         if ( evaluate_ajax.use_ajax ) {
-            jQuery('.eval-link').live( 'click', Evaluate.attachToLink );
-            jQuery('form[name="poll-form"]').live( 'submit', Evaluate.attachToPoll );
-            jQuery('.poll-div a').live( 'click', Evaluate.attachToPollLink );
+            jQuery('form[name="poll-form"]').on( 'submit', Evaluate.onPollSubmit );
+            jQuery('.poll-div a').on( 'click', Evaluate.onPollLinkClick );
         }
     },
     
-    attachToLink: function(event) {
-        if ( ! evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
-            return; // use url directly
-        }
-        
-        event.preventDefault();
-        var args = Evaluate.parseUrl(this.href);
-        var element = this;
-        args['_wpnonce'] = jQuery(this).data('nonce');
-        
-        var data = {
-            action: 'evaluate-vote',
-            data: args
-        }
-        
-        jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
-            if ( evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
-                jQuery(element).closest('.evaluate-shell').replaceWith(response);
-            } //else client will receive the update from socketio
-        } );
-    },
-    
-    parseUrl: function(string) {
+    parseUrl: function( string ) {
         var vars = {};
-        var parts = string.replace(/[?&]+([^=&]+)=([^&]*)/gi, function( m, key, value ) {
+        var parts = string.replace( /[?&]+([^=&]+)=([^&]*)/gi, function( m, key, value ) {
             vars[key] = value;
-        });
+        } );
         
         return vars;
     },
     
-    attachToPoll: function(event) {
+    onLinkClick: function( element ) {
+        if ( ! evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
+            return true; // use url directly
+        }
+        
+        element = jQuery(element);
+        
+        console.debug(element);
+        
+        var args = Evaluate.parseUrl( element.attr('href') );
+        args['_wpnonce'] = element.data('nonce');
+        
+        var data = {
+            action: 'evaluate-vote',
+            data: args,
+        }
+        
+        console.debug(data);
+        
+        jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
+            console.log("Received Response:");
+            console.log(response);
+            if ( evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
+                element.closest('.evaluate-shell').replaceWith(response);
+            } //else client will receive the update from socketio
+        } );
+        
+        return false;
+    },
+    
+    onPollSubmit: function(event) {
         if ( ! evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
             return; // use url directly
         }
@@ -60,7 +67,7 @@ var Evaluate = {
         } );
     },
     
-    attachToPollLink: function( event ) {
+    onPollLinkClick: function( event ) {
         event.preventDefault();
         var element = this;
         var args = Evaluate.parseUrl(this.href);
@@ -86,7 +93,7 @@ var template = {
 
 /* page load */
 jQuery(window).load(function() {
-    Evaluate.attach();
+    Evaluate.init();
     
     if ( typeof CTLT_Stream != "undefined" ) {
         CTLT_Stream.on('server-push', function (data) {
