@@ -194,20 +194,20 @@ class Evaluate_Admin {
 			throw new Exception("You haven't supplied a metric!");
 		endif;
 		
-		$metric_data = Evaluate::get_data_by_id($metric_id, 0);
+		$metric_data = Evaluate::get_data_by_id( $metric_id, 0 );
 		?>
 		<div class="postbox metric-details">
 			<h3>Metric Details</h3>
 			<div class="metric-details-inner">
-				<p>Votes across all content types: <?php echo $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s', $metric_id)); ?></p>
+				<p>Votes across all content types: <?php echo $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) ); ?></p>
 				<div> 
-					<?php echo Evaluate::display_metric($metric_data); ?>
+					<?php echo Evaluate::display_metric( $metric_data ); ?>
 				</div>
 			</div>
 		</div>
 		<?php
 		
-		$section = (isset($_GET['section']) ? $_GET['section'] : 'content');
+		$section = ( isset( $_GET['section'] ) ? $_GET['section'] : 'content' );
 		$content_is_active = true;
 		switch ($section):
 		case 'user':

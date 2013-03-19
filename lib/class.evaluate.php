@@ -72,7 +72,7 @@ class Evaluate {
 	 */
 	public static function activate() {
 		global $wpdb;
-		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		require_once( ABSPATH.'wp-admin/includes/upgrade.php' );
 		
 		$metrics_table = EVAL_DB_METRICS;
 		$sql = "CREATE TABLE $metrics_table (
@@ -244,6 +244,7 @@ class Evaluate {
 		
 		?>
 		</div>
+		<br />
 		<?php
 		
 		return ob_get_clean();
@@ -317,7 +318,7 @@ class Evaluate {
   
 	/* create a url to vote */
 	public static function vote_url( $metric, $content_id, $vote, $nonce ) {
-		if ( $metric->admin_only && ! current_user_can('manage_options') ):
+		if ( $metric->admin_only && ! current_user_can( 'manage_options' ) ):
 			return 'javascript:void(0);';
 		endif;
 		
@@ -370,11 +371,13 @@ class Evaluate {
 			return null;
 		endswitch;
 		
-		if ( $metric->type == 'poll' ):
-			$data->onclick = "Evaluate.onPollLinkClick(this);";
-			$data->onsubmit = "Evaluate.onPollSubmit(this);";
-		else:
-			$data->onclick = "return Evaluate.onLinkClick(this);";
+		if ( ! $metric->require_login || is_user_logged_in() ):
+			if ( $metric->type == 'poll' ):
+				$data->onclick = "Evaluate.onPollLinkClick(this);";
+				$data->onsubmit = "Evaluate.onPollSubmit(this);";
+			else:
+				$data->onclick = "return Evaluate.onLinkClick(this);";
+			endif;
 		endif;
 		
 		return $data;
@@ -389,6 +392,8 @@ class Evaluate {
 		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //check if display name is enabled
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
+		$data->require_login = $metric->require_login;
+		
 		//count the number of votes
 		$data->counter = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s', $metric->id, $post->ID ) );
 		
@@ -418,6 +423,7 @@ class Evaluate {
 		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //name display
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
+		$data->require_login = $metric->require_login;
 		
 		//get votes
 		$data->counter = $wpdb->get_results( $wpdb->prepare('SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s GROUP BY vote', $metric->id, $post->ID ), OBJECT_K ); //key gets the value of vote column for easy access below
@@ -463,6 +469,7 @@ class Evaluate {
 		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //display name available?
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
+		$data->require_login = $metric->require_login;
 		
 		//get sum of votes and the total number of votes
 		$data->votes = $wpdb->get_results( $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s GROUP BY vote', $metric->id, $post->ID ), OBJECT_K );
@@ -511,6 +518,7 @@ class Evaluate {
 		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); //display name available?
 		$data->type = $metric->type;
 		$data->admin_only = $metric->admin_only;
+		$data->require_login = $metric->require_login;
 		
 		//get poll question and answers
 		$params = unserialize($metric->params);
@@ -555,10 +563,8 @@ class Evaluate {
 	public static function display_metric( $data ) {
 		error_log("Display ".print_r($data, TRUE));
 		
-		if ( $data->admin_only ):
-			if ( ! current_user_can('administrator') ):
-				return;
-			endif;
+		if ( $data->admin_only && ! current_user_can('administrator') ):
+			return;
 		endif;
 		
 		ob_start();
@@ -654,7 +660,7 @@ class Evaluate {
 	}
   
 	/* chooses between form and results according to request */
-	public static function display_poll($data) {
+	public static function display_poll( $data ) {
 		global $post;
 		
 		//if a specific view is set, it takes precedence over default behavior
@@ -665,10 +671,16 @@ class Evaluate {
 			$request = $_REQUEST;
 		endif;
 		
+		error_log( "Data ".print_r( $data, TRUE ) );
+		
 		$request_condition = ( isset( $request['evaluate'] )
 			&& $request['evaluate'] == 'poll'
 			&& $request['metric_id'] == $data->metric_id
 			&& $request['content_id'] == $post->ID );
+		
+		if ( $data->require_login && ! is_user_logged_in() ):
+			return self::display_poll_results($data);
+		endif;
 		
 		if ( $request_condition ):
 			switch ( $request['display'] ):
@@ -751,7 +763,9 @@ class Evaluate {
 					</li>
 				<?php endforeach; ?>
 			</ul>
-			<a href="?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=vote" onclick="<?php echo $data->onclick; ?>" title="Back to vote">Back to vote</a>
+			<?php if ( ! $data->require_login || is_user_logged_in() ): ?>
+				<a href="?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=vote" onclick="<?php echo $data->onclick; ?>" title="Back to vote">Back to vote</a>
+			<?php endif; ?>
 		</div>
 		<?php
 		$html = ob_get_contents();
