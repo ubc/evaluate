@@ -32,11 +32,7 @@ var Evaluate = {
             data: args,
         }
         
-        console.debug(data);
-        
         jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
-            console.log("Received Response:");
-            console.log(response);
             if ( evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
                 element.closest('.evaluate-shell').replaceWith(response);
             } //else client will receive the update from socketio

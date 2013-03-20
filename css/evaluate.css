@@ -1,3 +1,7 @@
+.evaluate-shell {
+    margin-bottom: 10px;
+}
+
 /* clear after floated elements */
 .clear {
     clear: both;

@@ -227,24 +227,21 @@ class Evaluate {
 		
 		?>
 		<div class="evaluate-metrics-wrapper">
-		<?php
-		
-		foreach ( $metrics as $metric ):
-			$params = unserialize( $metric->params );
-			
-			if ( ! array_key_exists( 'content_types', $params ) ):
-				continue; //metric has no association, move on..
-			endif;
-			
-			$content_types = $params['content_types'];
-			if ( ! in_array( $metric->id, $excluded ) && in_array( $post->post_type, $content_types ) ): //not excluded
-				echo self::display_metric( self::get_metric_data( $metric ) );
-			endif;
-		endforeach;
-		
-		?>
+			<?php
+			foreach ( $metrics as $metric ):
+				$params = unserialize( $metric->params );
+				
+				if ( ! array_key_exists( 'content_types', $params ) ):
+					continue; //metric has no association, move on..
+				endif;
+				
+				$content_types = $params['content_types'];
+				if ( ! in_array( $metric->id, $excluded ) && in_array( $post->post_type, $content_types ) ): //not excluded
+					echo self::display_metric( self::get_metric_data( $metric ) );
+				endif;
+			endforeach;
+			?>
 		</div>
-		<br />
 		<?php
 		
 		return ob_get_clean();
@@ -383,7 +380,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function one_way_data($metric) {
+	public static function one_way_data( $metric ) {
 		global $wpdb, $post;
 		
 		$data = new stdClass(); //data declaration
@@ -561,8 +558,6 @@ class Evaluate {
   
 	/* convenience function to handle any metric display */
 	public static function display_metric( $data ) {
-		error_log("Display ".print_r($data, TRUE));
-		
 		if ( $data->admin_only && ! current_user_can('administrator') ):
 			return;
 		endif;
