@@ -419,6 +419,7 @@ class Evaluate {
 		$data->title_up = '{{=it.title_up}}';
 		$data->title_down = '{{=it.title_down}}';
 		
+		$data->shell_class = '{{=it.shell_class}}';
 		$data->user_vote = '{{=it.user_vote}}';
 		$data->votes = '{{=it.votes}}';
 		$data->total_votes = '{{=it.total_votes}}';
@@ -568,6 +569,10 @@ class Evaluate {
 			$data->link[$key] = self::get_vote_url( $metric, $post->ID, $key, $data->nonce[$key] );
 		endforeach;
 		
+		if ( $data->user_vote == false ):
+			$data->shell_class = 'hide-results';
+		endif;
+		
 		return $data;
 	}
   
@@ -585,7 +590,7 @@ class Evaluate {
 		?>
 		<div class="evaluate-shell" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>">
 			<span class="rate-name"><?php echo $data->display_name; ?></span>
-			<div class="rate-div rate-<?php echo $data->type; ?>">
+			<div class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
 				<?php
 				switch ( $data->type ):
 				case 'one-way':
@@ -661,146 +666,41 @@ class Evaluate {
   
 	/** Chooses between form and results according to request */
 	public static function display_poll( $data ) {
-		return self::display_poll_results($data);
-	
-		global $post;
-		
-		// If a specific view is set, it takes precedence over default behavior
-		// assign $_POST['data'], $_REQUEST['evaluate'] or FALSE, whichever is available
-		if ( isset( $_POST['data'] ) ):
-			$request = $_POST['data'];
-		else:
-			$request = $_REQUEST;
-		endif;
-		
-		$request_condition = ( isset( $request['evaluate'] )
-			&& $request['evaluate'] == 'poll'
-			&& $request['metric_id'] == $data->metric_id
-			&& $request['content_id'] == $post->ID );
-		
-		if ( $data->require_login && ! is_user_logged_in() ):
-			return self::display_poll_results($data);
-		endif;
-		
-		if ( $request_condition ):
-			switch ( $request['display'] ):
-			case 'results':
-				return self::display_poll_results($data);
-			case 'vote':
-			default:
-				return self::display_poll_form($data);
-			endswitch;
-		endif;
-		
-		if ( $data->user_vote ):
-			return self::display_poll_results($data);
-		else:
-			return self::display_poll_form($data);
-		endif;
-	}
-  
-	public static function display_poll_form( $data ) {
-		$url = ( $data->preview ? "#" : "?evaluate=poll&metric_id=".$data->metric_id."&content_id=".$data->content_id."&display=results" );
 		?>
-		<?php if ( ! $data->preview ): ?>
-		<form method="post" action="" name="poll-form" class="poll-form" onsubmit="<?php echo $data->onsubmit; ?>">
-		<?php endif; ?>
-			<ul class="poll-list">
-				<li class="poll-question"><?php echo $data->question; ?></li>
-				<?php if ( $data->template ): ?>
-					{{ for ( var prop in it.answers ) { }}
-						{{? it.user_vote == prop }}
+		<ul class="poll-list">
+			<li class="poll-question"><?php echo $data->question; ?></li>
+			<?php if ( $data->template ): ?>
+				{{ for(prop in it.answers) { }}
+				<a href="{{=it.link[prop]}}" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="{{=it.nonce[prop]}}">
+					<li class="poll-answer">
+						<strong>{{=it.answers[prop]}}</strong><span class="poll-average">: {{=it.averages[prop]}}% ({{=it.answer_votes[prop]}} votes)</span>
+						<div class="poll-result">
+							{{? it.user_vote == prop }}
+							<div class="poll-bar selected" style="width:{{=it.averages[prop]}}%"></div>
+							{{??}}
+							<div class="poll-bar" style="width:{{=it.averages[prop]}}%"></div>
+							{{?}}
+						</div>
+					</li>
+				</a>
+				{{ } }}
+			<?php else: ?>
+				<?php foreach ( $data->answers as $key => $answer ): //loop through answers and calculate percentage vote
+					$selected = ( $data->user_vote == $key ? 'selected' : null );
+					$average = $data->averages[$key];
+					$answer_votes = $data->answer_votes[$key];
+					?>
+					<a href="<?php echo $data->link[$key]; ?>" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="<?php echo $data->nonce[$key]; ?>">
 						<li class="poll-answer">
-							<label>
-								<input type="radio" name="vote" value="{{=prop}}" checked="checked" /> 
-								{{=it.answers[prop]}}
-							</label>
-						</li>
-						{{??}}
-						<li class="poll-answer">
-							<label>
-								<input type="radio" name="vote" value="{{=prop}}" /> 
-								{{=it.answers[prop]}}
-							</label>
-						</li>
-						{{?}}
-					{{ } }}
-				<?php else: ?>
-					<?php if ( is_array( $data->answers ) ): ?>
-						<?php foreach ( $data->answers as $key => $answer ): //loop through & print answers ?>
-							<li class="poll-answer">
-								<label>
-									<input type="radio" name="vote" value="<?php echo $key; ?>" <?php checked( $data->user_vote == $key ); ?>/> 
-									<?php echo $answer; ?>
-								</label>
-							</li>
-						<?php endforeach; ?>
-					<?php endif; ?>
-				<?php endif; ?>
-			</ul>
-			
-			<?php if ( ! $data->preview ): ?>
-				<!-- Add hidden fields for verification & other form elements -->
-				<input type="hidden" value="<?php echo $data->nonce; ?>" name="_wpnonce" />
-				<input type="hidden" value="<?php echo $data->metric_id; ?>" name="metric_id" />
-				<input type="hidden" value="<?php echo $data->content_id; ?>" name="content_id" />
-				<input type="hidden" value="vote" name="evaluate" />
-			<?php endif; ?>
-			
-			<div class="poll-actions">
-				<input type="submit" <?php disabled( $data->preview ); ?> value="Cast Vote" />
-				<a href="<?php echo $url; ?>" title="See vote results!" onclick="<?php echo $data->onclick; ?>">Show Results</a>
-			</div>
-		<?php if ( ! $data->preview ): ?>
-		</form>
-		<?php endif;
-	}
-  
-	public static function display_poll_results( $data ) {
-		?>
-		<div class="poll-results">
-			<ul class="poll-list">
-				<li class="poll-question"><?php echo $data->question; ?></li>
-				<?php if ( $data->template ): ?>
-					{{ for(prop in it.answers) { }}
-					<a href="{{=it.link[prop]}}" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="{{=it.nonce[prop]}}">
-						<li>
-							<strong>{{=it.answers[prop]}}</strong><span class="poll-average">: {{=it.averages[prop]}}% ({{=it.answer_votes[prop]}} votes)</span>
+							<strong><?php echo $answer; ?></strong><span class="poll-average">: <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)</span>
 							<div class="poll-result">
-								{{? it.user_vote == prop }}
-								<div class="poll-bar selected" style="width:{{=it.averages[prop]}}%"></div>
-								{{??}}
-								<div class="poll-bar" style="width:{{=it.averages[prop]}}%"></div>
-								{{?}}
+								<div class="poll-bar <?php echo $selected; ?>" style="width: <?php echo $average; ?>%"></div>
 							</div>
 						</li>
 					</a>
-					{{ } }}
-				<?php else: ?>
-					<?php foreach ( $data->answers as $key => $answer ): //loop through answers and calculate percentage vote
-						$selected = ( $data->user_vote == $key ? 'selected' : null );
-						$average = $data->averages[$key];
-						$answer_votes = $data->answer_votes[$key];
-						?>
-						<a href="<?php echo $data->link[$key]; ?>" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="<?php echo $data->nonce[$key]; ?>">
-							<li>
-								<strong><?php echo $answer; ?></strong><span class="poll-average">: <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)</span>
-								<div class="poll-result">
-									<div class="poll-bar <?php echo $selected; ?>" style="width: <?php echo $average; ?>%"></div>
-								</div>
-							</li>
-						</a>
-					<?php endforeach; ?>
-				<?php endif; ?>
-			</ul>
-			<!--
-			<?php if ( ! $data->require_login || is_user_logged_in() ): ?>
-				<div class="poll-actions">
-					<a href="?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=vote" onclick="<?php echo $data->onclick; ?>" title="Back to vote">Back to vote</a>
-				</div>
+				<?php endforeach; ?>
 			<?php endif; ?>
-			-->
-		</div>
+		</ul>
 		<?php
 	}
   
@@ -811,16 +711,13 @@ class Evaluate {
 		self::print_template( 'one-way', $data );
 		self::print_template( 'two-way', $data );
 		self::print_template( 'range', $data );
-		self::print_template( 'poll', $data, 'results' );
-		unset( $data->user_vote );
-		self::print_template( 'poll', $data, 'form' );
+		self::print_template( 'poll', $data );
 	}
 	
-	public static function print_template( $type, $data, $append = '' ) {
+	public static function print_template( $type, $data ) {
 		$data->type = $type;
-		if ($append != '') $append = '-'.$append;
 		?>
-		<script id="evaluate-<?php echo $type; ?><?php echo $append; ?>" type="text/x-dot-template">
+		<script id="evaluate-<?php echo $type; ?>" type="text/x-dot-template">
 			<?php echo self::display_metric( $data ); ?>
 		</script>
 		<?php

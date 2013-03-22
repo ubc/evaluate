@@ -157,25 +157,25 @@
 .rate-poll ul {
     margin: 0;
     padding: 0;
+    list-style: none;
 }
 
 .poll-question {
     font-weight: bold;
 }
 
-.poll-list.hide-results .poll-result,
-.poll-list.hide-results .poll-average {
+.rate-poll.hide-results .poll-result,
+.rate-poll.hide-results .poll-average {
     display: none;
 }
 
-.poll-list li {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
+.rate-poll.hide-results li.poll-answer {
+    margin: 3px 6px;
 }
 
-.poll-list li.poll-answer {
-    margin: 2px 4px;
+.poll-list li {
+    margin: 0;
+    padding: 0;
 }
 
 .poll-actions {

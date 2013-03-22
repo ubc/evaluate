@@ -59,12 +59,9 @@ var Evaluate_Admin = {
 		var num = answers.length + 1; //determine answer number
 		var last_field = answers.splice( -1, 1 ); // get last element
 		
-		//insert new answer field after the current last one
-		//since we select by input name, the parent of parent i.e. <div class="indent"> will be the element
-		//which we add the last field after.
-		jQuery(last_field).parent().parent().after(
-			'<div class="indent"><label>Answer '+num+': <input type="text" name="evalu_form[poll][answer]['+num+']" class="regular-text" /></label></div>'
-		);
+		// Insert new answer field after the current last one
+		// Since we select by input name, the parent i.e. <label> will be the element which we add the last field after.
+		jQuery(last_field).parent().after('<label>Answer '+num+': <input type="text" name="evalu_form[poll][answer]['+num+']" class="regular-text" /></label>');
 		
 		//add another answer field to the preview
 		jQuery('.poll-list').append('<li class="poll-answer"><label><input type="radio" name="poll-preview" /></label></li>');
@@ -88,7 +85,8 @@ var Evaluate_Admin = {
 			var index = jQuery(removed).parent().parent().index() - 2;
 			var answer = jQuery('.poll-answer').get(index);
 			jQuery(answer).remove(); //remove answer from preview
-			jQuery(removed).parent().parent().remove(); //remove the parent-parent (grandparent? lol) of the input field
+			jQuery(removed).parent().remove(); //remove the parent-parent (grandparent? lol) of the input field
+			jQuery(removed).parent().css('border', '1px solid red');
 		} else {
 			//do nothing, maybe display a warning?
 		}
@@ -106,7 +104,7 @@ var Evaluate_Admin = {
 	},
   
 	/*
-	 * Refreshes the compoenents required to display a preview before submitting the form
+	 * Refreshes the components required to display a preview before submitting the form
 	 */
 	refreshPreview: function( element ) {
 		jQuery('div[id*="prev_"]').hide();
@@ -127,11 +125,12 @@ var Evaluate_Admin = {
 		if ( element.attr('name') == 'evalu_form[poll][question]' ) {
 			jQuery('.poll-question').html(element.val());
 		} else {
-			// The index is actually -3, because jQuery uses 0-indexes, and the answers are within individual divs,
+			// The index is actually -2, because jQuery uses 0-indexes, and the answers are within individual divs,
 			// with a leading element for the question
-			var index = element.parent().parent().index() - 3;
+			var index = element.parent().index() - 3;
 			var answer = jQuery('.poll-answer').get(index);
 			jQuery(answer).html('<label><input type="radio" name="poll-preview" /> '+element.val()+'</label>');
+			console.log(index);
 		}
 	},
 	
@@ -158,18 +157,11 @@ var Evaluate_Admin = {
  * jQuery(document).ready() does NOT work here
  */
 jQuery(window).load(function() {  
-	if ( jQuery('input[name="evalu_form[type]"]').length ) { //length > 0 i.e element exists
-		Evaluate_Admin.onReady();
-	}
+	Evaluate_Admin.onReady();
 	
 	//disable metric links if on admin panel
-	links = jQuery('.evaluate-shell a');
+	links = jQuery('.metric-preview a');
 	if ( links.length > 0 ) {
 		jQuery.each( links, function( index, value ) { jQuery(value).attr( 'href', 'javascript:void(0)' ); } );
-	}
-	
-	forms = jQuery('.evaluate-shell form');
-	if ( forms.length > 0 ) {
-		jQuery.each( forms, function( index, value ) { jQuery(value).live( 'submit', function( event ) { event.preventDefault(); } ) } );
 	}
 });

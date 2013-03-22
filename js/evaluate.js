@@ -1,9 +1,6 @@
 var Evaluate = {
     init: function() {
-        if ( evaluate_ajax.use_ajax ) {
-            jQuery('form[name="poll-form"]').on( 'submit', Evaluate.onPollSubmit );
-            jQuery('.poll-div a').on( 'click', Evaluate.onPollLinkClick );
-        }
+        // Nothing
     },
     
     parseUrl: function( string ) {
@@ -40,49 +37,13 @@ var Evaluate = {
         
         return false;
     },
-    
-    onPollSubmit: function( element ) {
-        if ( ! evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
-            return true; // use url directly
-        }
-        
-        var args = Evaluate.parseUrl('?' + jQuery(element).serialize());
-        if ( typeof args['vote'] == 'undefined' ) return false;
-        
-        var data = {
-            action: 'evaluate-vote',
-            data: args
-        }
-        
-        jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
-            if ( evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
-                jQuery(element).closest('.evaluate-shell').replaceWith(response);
-            }
-        } );
-        
-        return false;
-    },
-    
-    onPollLinkClick: function( element ) {
-        var args = Evaluate.parseUrl( element.href );
-        
-        var data = {
-            action: 'evaluate-vote',
-            data: args
-        }
-        
-        jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
-            jQuery(element).closest('div[id^=evaluate-shell-]').html(response);
-        } );
-    },
 };
   
 var template = {
-    'one-way'     : doT.template(jQuery('#evaluate-one-way').text()),
-    'two-way'     : doT.template(jQuery('#evaluate-two-way').text()),
-    'range'       : doT.template(jQuery('#evaluate-range').text()),
-    'poll-form'   : doT.template(jQuery('#evaluate-poll-form').text()),
-    'poll-results': doT.template(jQuery('#evaluate-poll-results').text()),
+    'one-way': doT.template(jQuery('#evaluate-one-way').text()),
+    'two-way': doT.template(jQuery('#evaluate-two-way').text()),
+    'range'  : doT.template(jQuery('#evaluate-range').text()),
+    'poll'   : doT.template(jQuery('#evaluate-poll').text()),
 };
 
 /* page load */
@@ -158,16 +119,11 @@ jQuery(window).load(function() {
                 case 'poll':
                     if ( data.data.user == evaluate_ajax.user ) {
                         element.data('user-vote', data.data.user_vote);
-                        element.html(template['poll-results'](data.data));
                     } else {
                         data.data._wpnonce = element.find('input[name="_wpnonce"]').val();
                         data.data.user_vote = element.data('user-vote');
-                        if ( element.find('.poll-results').length > 0 ) {
-                            element.html(template['poll-results'](data.data));
-                        } else {
-                            element.html(template['poll-form'](data.data));
-                        }
                     }
+                    element.html(template['poll'](data.data));
                     break;
                 }
             }

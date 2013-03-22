@@ -514,7 +514,7 @@ class Evaluate_Admin {
 								$selected = $formdata['type'] == 'one-way';
 							?>
 							<?php if ( ! $no_type_change || $selected ): ?>
-								<li> <!-- one-way options -->
+							<li class="options-one-way">
 									<label class="type_label">
 										<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 										One-way Voting
@@ -552,7 +552,7 @@ class Evaluate_Admin {
 								$selected = $formdata['type'] == 'two-way';
 							?>
 							<?php if ( ! $no_type_change || $selected ): ?>
-								<li> <!-- two-way options -->
+							<li class="options-two-way">
 									<label class="type_label">
 										<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 										Two-way Voting
@@ -580,7 +580,7 @@ class Evaluate_Admin {
 								$selected = $formdata['type'] == 'range';
 							?>
 							<?php if ( ! $no_type_change || $selected ): ?>
-							<li> <!-- range options -->
+							<li class="options-range">
 								<label class="type_label">
 									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php hidden( $no_type_change ); ?> />
 									Stars
@@ -606,7 +606,7 @@ class Evaluate_Admin {
 								$selected = $formdata['type'] == 'poll';
 							?>
 							<?php if ( ! $no_type_change || $selected ): ?>
-							<li> <!-- poll options -->
+							<li class="options-poll">
 								<label class="type_label">
 									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									Poll
@@ -614,30 +614,22 @@ class Evaluate_Admin {
 								<div class="indent">
 									<a href="javascript:Evaluate_Admin.addNewAnswer()" style="text-decoration: none" title="Add New Answer">[+] Add New Answer</a>
 									<a href="javascript:Evaluate_Admin.removeLastAnswer()" style="text-decoration: none" title="Remove Last Answer">[-] Remove Last Answer</a>
-								</div>
-								<div class="indent">
 									<label>Question: <input type="text" class="regular-text" name="evalu_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
-								</div>
-								<div class="indent">
 									<label>Answer 1: <input type="text" class="regular-text" name="evalu_form[poll][answer][1]" value="<?php echo $formdata['poll']['answer'][1]; ?>" /></label>
-								</div>
-								<div class="indent">
 									<label>Answer 2: <input type="text" class="regular-text" name="evalu_form[poll][answer][2]" value="<?php echo $formdata['poll']['answer'][2]; ?>" /></label>
-								</div>
-								<?php
-								if ( count($formdata['poll']['answer']) > 2 ):
-									for ( $i = 3; $i <= count( $formdata['poll']['answer'] ); $i++ ):
-										?>
-										<div class="indent">
+									<?php
+									if ( count($formdata['poll']['answer']) > 2 ):
+										for ( $i = 3; $i <= count( $formdata['poll']['answer'] ); $i++ ):
+											?>
 											<label>
 												Answer <?php echo $i; ?>:
 												<input type="text" class="regular-text" name="evalu_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" />
 											</label>
-										</div
-										<?php
-									endfor;
-								endif;
-								?>
+											<?php
+										endfor;
+									endif;
+									?>
+								</div>
 							</li>
 							<?php endif; ?>
 						</ul>
@@ -673,7 +665,7 @@ class Evaluate_Admin {
 					</td>
 				</tr>
 				
-				<tr>
+				<tr class="metric-preview">
 					<th>Preview</th>
 					<td>
 						<div id="preview_name" class="metric_preview"></div>
@@ -900,6 +892,10 @@ class Evaluate_Admin {
 		
 		return true;
 	}
+}
+
+function hidden( $hidden, $current = true, $echo = true ) {
+	return __checked_selected_helper( $hidden, $current, $echo, 'hidden' );
 }
 
 add_action( 'admin_init', array( 'Evaluate_Admin', 'init' ) );
