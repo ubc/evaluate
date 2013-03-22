@@ -249,9 +249,12 @@ class Evaluate {
 	public static function vote( $metric_id, $content_id, $vote, $nonce ) {
 		global $wpdb;
 		
-		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() )
-			&& ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
-			throw new Exception('Nonce check failed. Did you mean to do this action?');
+		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() ) ):
+			error_log("Failed to verify ".$nonce." as ".'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() );
+			if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
+				error_log("Failed to verify ".$nonce." as ".'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() );
+				throw new Exception('Nonce check failed. Did you mean to do this action?');
+			endif;
 		endif;
 		
 		$data = array(); // To hold vote data for db
@@ -343,6 +346,8 @@ class Evaluate {
   
 	/** Convenience function to handle any metric */
 	public static function get_metric_data( $metric ) {
+		global $post;
+		
 		$data = new stdClass();
 		$data->template = false;
 		$data->metric_id = $metric->id;
@@ -370,6 +375,7 @@ class Evaluate {
 			return null;
 		endswitch;
 		
+		/*
 		if ( ! $metric->require_login || is_user_logged_in() ):
 			if ( $metric->type == 'poll' ):
 				$data->onclick = "Evaluate.onPollLinkClick(this);";
@@ -378,6 +384,8 @@ class Evaluate {
 				$data->onclick = "return Evaluate.onLinkClick(this);";
 			endif;
 		endif;
+		*/
+		$data->onclick = "return Evaluate.onLinkClick(this);";
 		
 		return $data;
 	}
@@ -385,11 +393,12 @@ class Evaluate {
 	public static function get_metric_data_js() {
 		$data = new stdClass();
 		$data->template = true;
+		$data->admin_only = false;
+		
 		$data->metric_id = '{{=it.metric_id}}';
 		$data->content_id = '{{=it.content_id}}';
 		$data->display_name = '{{=it.display_name}}';
 		$data->type = '{{=it.type}}';
-		$data->admin_only = '{{=it.admin_only}}';
 		$data->require_login = '{{=it.require_login}}';
 		$data->style = '{{=it.style}}';
 		
@@ -447,7 +456,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function two_way_data( $metric ) {
+	public static function two_way_data( $metric, $data ) {
 		global $wpdb, $post;
 		
 		// Tally the votes
@@ -550,7 +559,14 @@ class Evaluate {
 		endforeach;
 		
 		// Miscelleneous Data
-		$data->nonce = wp_create_nonce( 'evaluate-vote-poll-'.$metric->id.'-'.$post->ID.'-'.self::get_user() );
+		//$data->nonce = wp_create_nonce( 'evaluate-vote-poll-'.$metric->id.'-'.$post->ID.'-'.self::get_user() );
+		$data->nonce = array();
+		$data->link = array();
+		foreach ( $data->answers as $key => $answer ):
+			$data->nonce[$key] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user() );
+			error_log( "Created nonce ".$data->nonce[$key]." as ".'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user());
+			$data->link[$key] = self::get_vote_url( $metric, $post->ID, $key, $data->nonce[$key] );
+		endforeach;
 		
 		return $data;
 	}
@@ -630,7 +646,7 @@ class Evaluate {
 				<?php for ( $i = 1; $i <= 5; $i++ ): // Nested divs for star links 
 					$link = $data->link[$i];
 					$nonce = $data->nonce[$i];
-					$title = $i . self::$titles['range'];
+					$title = $i.self::$titles['range'];
 					?>
 					<div class="starr">
 						<a href="<?php echo $link; ?>" onclick="<?php echo $data->onclick; ?>" title="<?php echo $title; ?>" class="eval-link link-<?php echo $i; ?>" data-nonce="<?php echo $nonce; ?>">&nbsp;</a>
@@ -645,6 +661,8 @@ class Evaluate {
   
 	/** Chooses between form and results according to request */
 	public static function display_poll( $data ) {
+		return self::display_poll_results($data);
+	
 		global $post;
 		
 		// If a specific view is set, it takes precedence over default behavior
@@ -745,37 +763,43 @@ class Evaluate {
 				<li class="poll-question"><?php echo $data->question; ?></li>
 				<?php if ( $data->template ): ?>
 					{{ for(prop in it.answers) { }}
-					<li>
-						<strong>{{=it.answers[prop]}}</strong> {{=it.averages[prop]}} ({{=it.answer_votes[prop]}} votes)
-						<div class="poll-result">
-							{{? it.user_vote == prop }}
-							<div class="poll-bar-selected" style="width:{{=it.averages[prop]}}%"></div>
-							{{??}}
-							<div class="poll-bar" style="width:{{=it.averages[prop]}}%"></div>
-							{{?}}
-						</div>
-					</li>
+					<a href="{{=it.link[prop]}}" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="{{=it.nonce[prop]}}">
+						<li>
+							<strong>{{=it.answers[prop]}}</strong><span class="poll-average">: {{=it.averages[prop]}}% ({{=it.answer_votes[prop]}} votes)</span>
+							<div class="poll-result">
+								{{? it.user_vote == prop }}
+								<div class="poll-bar selected" style="width:{{=it.averages[prop]}}%"></div>
+								{{??}}
+								<div class="poll-bar" style="width:{{=it.averages[prop]}}%"></div>
+								{{?}}
+							</div>
+						</li>
+					</a>
 					{{ } }}
 				<?php else: ?>
 					<?php foreach ( $data->answers as $key => $answer ): //loop through answers and calculate percentage vote
-						$selected = ( $data->user_vote == $key ? '-selected' : null );
+						$selected = ( $data->user_vote == $key ? 'selected' : null );
 						$average = $data->averages[$key];
 						$answer_votes = $data->answer_votes[$key];
 						?>
-						<li>
-							<strong><?php echo $answer; ?>:</strong> <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)
-							<div class="poll-result">
-								<div class="poll-bar<?php echo $selected; ?>" style="width: <?php echo $average; ?>%"></div>
-							</div>
-						</li>
+						<a href="<?php echo $data->link[$key]; ?>" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="<?php echo $data->nonce[$key]; ?>">
+							<li>
+								<strong><?php echo $answer; ?></strong><span class="poll-average">: <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)</span>
+								<div class="poll-result">
+									<div class="poll-bar <?php echo $selected; ?>" style="width: <?php echo $average; ?>%"></div>
+								</div>
+							</li>
+						</a>
 					<?php endforeach; ?>
 				<?php endif; ?>
 			</ul>
+			<!--
 			<?php if ( ! $data->require_login || is_user_logged_in() ): ?>
 				<div class="poll-actions">
 					<a href="?evaluate=poll&metric_id=<?php echo $data->metric_id; ?>&content_id=<?php echo $data->content_id; ?>&display=vote" onclick="<?php echo $data->onclick; ?>" title="Back to vote">Back to vote</a>
 				</div>
 			<?php endif; ?>
+			-->
 		</div>
 		<?php
 	}

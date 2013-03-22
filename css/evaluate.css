@@ -88,7 +88,7 @@
     display: none;
 }
 
-/* one and two-way displays */
+/* One and Two-way displays */
 .rate {
     background: url(../img/sprite.gif);
     background-repeat: no-repeat;
@@ -163,6 +163,11 @@
     font-weight: bold;
 }
 
+.poll-list.hide-results .poll-result,
+.poll-list.hide-results .poll-average {
+    display: none;
+}
+
 .poll-list li {
     list-style-type: none;
     margin: 0;
@@ -184,12 +189,27 @@
     background-color: #b9b9b9;
 }
 
-.poll-bar {
-    background-color: #767676;
+.poll-result > div {
     height: 10px;
 }
 
-.poll-bar-selected { 
+.poll-list > a {
+    color: #555555;
+}
+
+.poll-list > a:hover {
+    color: #333333;
+}
+
+.poll-list > a:hover .poll-bar {
+    width: 100% !important;
+}
+
+.poll-bar {
+    background-color: #767676;
+}
+
+.poll-list > a:hover .poll-bar,
+.poll-bar.selected { 
     background-color: #333333;
-    height: 10px;
 }
