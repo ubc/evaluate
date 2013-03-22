@@ -164,6 +164,15 @@
     font-weight: bold;
 }
 
+.rate-poll.hide-results ul .poll-answer {
+    color: #767676;
+    list-style: circle inside;
+}
+
+.rate-poll.hide-results ul .poll-answer:hover {
+    color: #333333;
+}
+
 .rate-poll.hide-results .poll-result,
 .rate-poll.hide-results .poll-average {
     display: none;
