@@ -1,9 +1,7 @@
 <?php
 class Evaluate_Admin {
-	
 	static $options = array();
 	
-	/* first code block that runs */
 	public static function init() {
 		// Check if CTLT_Stream plugin exists to use with node
 		if ( ! function_exists( 'is_plugin_active' ) ):
@@ -11,25 +9,30 @@ class Evaluate_Admin {
 			include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 		endif;
 	  
-		//ajax use option
+		// Ajax use option
 		self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
 		self::$options['EVAL_STREAM'] = is_plugin_active('stream/stream.php');
 	  
-		//register plugin settings
+		// Register plugin settings
 		self::register_settings();
 	  
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_scripts' ) );
+		
+		// Hooks to display meta box in post editor
+		add_action( 'load-post.php',     array( __CLASS__, 'meta_box_setup' ) );
+		add_action( 'load-post-new.php', array( __CLASS__, 'meta_box_setup' ) );
+		add_action( 'save_post',         array( __CLASS__, 'save_post_meta' ), 10, 2 );
 	}
 	
-	/* displays the admin menu link in wp-admin */
+	/* Displays the admin menu link in wp-admin */
 	public static function admin_menu() {
-		//params: page title, menu title, capability, ?page=, function name
+		// Params: page title, menu title, capability, ?page=, function name
 		add_options_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( __CLASS__, 'page' ) );
 	}
 	
-	/* queue the css styles and js scripts */
+	/* Queue the css styles and js scripts */
 	public static function enqueue_scripts() {
-		//needs site-wide unique identifiers for first param
+		// Needs site-wide unique identifiers for first param
 		wp_register_style( 'evaluate', EVAL_DIR_URL.'/css/evaluate.css');
 		wp_register_style( 'evaluate-admin', EVAL_DIR_URL.'/css/evaluate-admin.css');
 		
@@ -42,7 +45,7 @@ class Evaluate_Admin {
 		wp_enqueue_style( 'evaluate-admin' );
 	}
 	
-	/* register and initialize settings for the plugin */
+	/* Register and initialize settings for the plugin */
 	public static function register_settings() {
 		register_setting( 'evaluate_options', 'EVAL_AJAX' );
 		
@@ -69,7 +72,7 @@ class Evaluate_Admin {
 	
 	public static function setting_stream_plugin() {
 		?>
-		<input id="ctlt_stream_status" name="ctlt_stream_status" type="checkbox" style="display: none" disabled="disabled" <?php checked( self::$options['EVAL_STREAM'] ); ?>/>
+		<input id="ctlt_stream_status" name="ctlt_stream_status" type="checkbox" disabled="disabled" style="display: none" <?php checked( self::$options['EVAL_STREAM'] ); ?>/>
 		
 		<?php if ( self::$options['EVAL_STREAM'] == true ): ?>
 			<div style="color: green">Enabled</div>
@@ -91,7 +94,7 @@ class Evaluate_Admin {
 		<?php endif;
 	}
 	
-	/* this is the 'controller' to display the correct page in the admin view */
+	/** This is the 'controller' to display the correct page in the admin view */
 	public static function page() {
 		$view = (isset($_REQUEST['view']) ? $_REQUEST['view'] : false);
 		$action = (isset($_REQUEST['action']) ? $_REQUEST['action'] : false);
@@ -108,10 +111,10 @@ class Evaluate_Admin {
 		?>
 	  
 		<div class="wrap">
-		  <div id="icon-options-general" class="icon32"></div>
-		  <h2>
-			Evaluate <?php echo $link; ?>
-		  </h2>
+			<div id="icon-options-general" class="icon32"></div>
+			<h2>
+				Evaluate <?php echo $link; ?>
+			</h2>
 		</div>
 	  
 		<?php
@@ -145,7 +148,7 @@ class Evaluate_Admin {
 			break;
 		endswitch;
 	  
-		switch ($view):
+		switch ( $view ):
 		case 'form':
 			self::metric_form();
 			break;
@@ -157,7 +160,6 @@ class Evaluate_Admin {
 			}
 			break;
 		case 'main':
-			
 		default:
 			self::metrics_table();
 			self::plugin_options();
@@ -179,13 +181,13 @@ class Evaluate_Admin {
 		<?php
 	}
 	
-	/* outputs main metrics list table */
+	/** Outputs main metrics list table */
 	public static function metrics_table() {
 		$metrics_table = new Evaluate_Metrics_List_Table();
 		$metrics_table->render();
 	}
 	
-	/* outputs the metric details table depending on selection */
+	/** Outputs the metric details table depending on selection */
 	public static function details_table() {
 		global $wpdb;
 		$metric_id = ( isset( $_GET['metric_id'] ) ? $_GET['metric_id'] : false );
@@ -231,8 +233,8 @@ class Evaluate_Admin {
 		$details_table->render();
 	}
 	
-	/*
-	 * returns a div containing the message and styled according to the $type
+	/**
+	 * Returns a div containing the message and styled according to the $type
 	 * used for displaying feedback to the user
 	 * $type can be 'error' or 'updated' or any other css class
 	 */
@@ -242,14 +244,14 @@ class Evaluate_Admin {
 		<?php
 	}
 	
-	/* enable db error reporting for $wpdb */
+	/** Enable db error reporting for $wpdb */
 	public static function enable_db_errors() {
 		global $wpdb;
 		define( 'DIEONDBERROR', true );
 		$wpdb->show_errors();
 	}
 	
-	/* deletes metric if found & valid */
+	/** Deletes metric if found & valid */
 	public static function delete_metric($metric_id) {
 		global $wpdb;
 		
@@ -263,7 +265,7 @@ class Evaluate_Admin {
 			throw new Exception('Nonce check failed. Did you mean to visit this page?');
 		endif;
 		
-		//delete the metric itself
+		// Delete the metric itself
 		$result = $wpdb->query( $wpdb->prepare( 'DELETE FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
 	  
 		if ( $result === FALSE ): //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
@@ -272,7 +274,7 @@ class Evaluate_Admin {
 			throw new Exception('Database unchanged after delete operation (metric already deleted?).');
 		endif;
 	  
-		//delete its votes
+		// Delete its votes
 		$result = $wpdb->query( $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) );
 	  
 		if ( $result === FALSE ): //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
@@ -282,30 +284,30 @@ class Evaluate_Admin {
 		return true;
 	}
 	
-	/* add or update metric after form entry */
+	/** Add or update metric after form entry */
 	public static function add_metric() {
 		global $wpdb;
 		
-		//try to get form data from the request
+		// Try to get form data from the request
 		$formdata = ( isset( $_REQUEST['evalu_form'] ) ? $_REQUEST['evalu_form'] : false );
 		if ( ! $formdata ):
 			throw new Exception('No form data found!');
 		endif;
 		
-		//verify nonce
+		// Verify nonce
 		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'evaluate-' . $_REQUEST['action'] ) ):
 			throw new Exception('Nonce check failed!');
 		endif;
 	  
 		$is_update = isset($_REQUEST['metric_id']);
-		//get current record if this is an update
+		// Get current record if this is an update
 		if ( $is_update ):
 			$metric_id = $_REQUEST['metric_id'];
 			$current_data = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
 		endif;
 	  
 		$metric = array(); //to hold the data
-		//name
+		// Name
 		if ( ! $formdata['name'] ):
 			throw new Exception('You must enter a name.');
 		endif;
@@ -314,7 +316,7 @@ class Evaluate_Admin {
 		$wpdb->escape($metric['nicename']);
 		$metric['slug'] = sanitize_title($metric['nicename']);
 		
-		//check if name is unique
+		// Check if name is unique
 		if ( $is_update ):
 			$check_name_query = $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_METRICS.' WHERE slug=%s AND id<>%s', $metric['slug'], $current_data->id );
 		else:
@@ -328,14 +330,14 @@ class Evaluate_Admin {
 	  
 		$metric['display_name'] = isset( $formdata['display_name'] );
 		
-		//type
+		// Type
 		if ( ! isset( $formdata['type'] ) ):
 		  throw new Exception('You must choose a type!');
 		endif;
 		$metric['type'] = $formdata['type'];
 		$wpdb->escape($metric['type']);
 		
-		//style
+		// Style
 		if ( $metric['type'] == 'range' ):
 			$metric['style'] = 'star';
 		elseif ( $metric['type'] == 'poll' ):
@@ -349,15 +351,15 @@ class Evaluate_Admin {
 		endif;
 		$wpdb->escape($metric['style']);
 		
-		//require_login & admin_only booleans
+		// Require_login & admin_only booleans
 		$metric['require_login'] = isset( $formdata['require_login'] ) && $formdata['require_login'];
 		$metric['admin_only'] = isset( $formdata['admin_only'] ) && $formdata['admin_only'];
 		
-		//params
+		// Params
 		$metric['params'] = array();
 		
-		//poll params
-		//firstly get rid of any answer fields that are empty
+		// Poll params
+		// Firstly get rid of any answer fields that are empty
 		$poll_answers = array_filter($formdata['poll']['answer']);
 		if ( $metric['type'] == 'poll' ):
 			if ( ! $formdata['poll']['question'] ):
@@ -372,7 +374,7 @@ class Evaluate_Admin {
 			$metric['params']['poll']['answer'] = $poll_answers; //filtered answers
 		endif;
 		
-		//content types
+		// Content types
 		$content_types = get_post_types( array( 'public' => true ) );
 		foreach ( $content_types as $content_type ):
 			if ( isset( $formdata['content_type'][$content_type] ) ):
@@ -380,16 +382,16 @@ class Evaluate_Admin {
 			endif;
 		endforeach;
 		
-		//serialize params
+		// Serialize params
 		$metric['params'] = serialize($metric['params']);
 		
-		//created and modified timestamps
+		// Created and modified timestamps
 		if ( ! $is_update ):
 			$metric['created'] = date('Y/m/d H:i:s');
 		endif;
 		$metric['modified'] = date('Y/m/d H:i:s');
 		
-		//attempt to save
+		// Attempt to save
 		if ( $is_update ):
 			$num_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $current_data->id ) );
 			if ( $num_votes > 0 && $formdata['type'] != $current_data->type ):
@@ -410,7 +412,7 @@ class Evaluate_Admin {
 		endif;
 	}
 	
-	/* form for adding new metrics or editing existing ones */
+	/** Form for adding new metrics or editing existing ones */
 	public static function metric_form() {
 		$metric_id = ( isset( $_REQUEST['metric_id'] ) ? $_REQUEST['metric_id'] : null );
 		$content_types = get_post_types( array( 'public' => true ) );
@@ -487,8 +489,6 @@ class Evaluate_Admin {
 		else:
 			$no_type_change = FALSE;
 		endif;
-		
-		$hidden = ( $no_type_change ? 'hidden="hidden"' : '' );
 		?>
 		<h3><?php echo $html_title; ?></h3>
 		<form method="post" action="?page=evaluate&view=form" id="metric_form">
@@ -513,11 +513,10 @@ class Evaluate_Admin {
 							<?php
 								$selected = $formdata['type'] == 'one-way';
 							?>
-							
 							<?php if ( ! $no_type_change || $selected ): ?>
 								<li> <!-- one-way options -->
 									<label class="type_label">
-										<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $selected ); ?> <?php echo $hidden; ?> />
+										<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 										One-way Voting
 									</label>
 									<ul class="indent"> <!-- one way style -->
@@ -555,7 +554,7 @@ class Evaluate_Admin {
 							<?php if ( ! $no_type_change || $selected ): ?>
 								<li> <!-- two-way options -->
 									<label class="type_label">
-										<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $selected ); ?> <?php echo $hidden; ?> />
+										<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 										Two-way Voting
 									</label>
 									<ul class="indent"> <!-- two-way style selection -->
@@ -583,12 +582,12 @@ class Evaluate_Admin {
 							<?php if ( ! $no_type_change || $selected ): ?>
 							<li> <!-- range options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php echo $hidden; ?> />
+									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php hidden( $no_type_change ); ?> />
 									Stars
 								</label>
 								<div class="rate-range">
 									<div class="stars">
-										<div class="rating" style="width:50%"></div>
+										<div class="rating" style="width: 50%"></div>
 										<div class="starr"><a title="1<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
 											<div class="starr"><a title="2<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
 												<div class="starr"><a title="3<?php echo Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
@@ -609,7 +608,7 @@ class Evaluate_Admin {
 							<?php if ( ! $no_type_change || $selected ): ?>
 							<li> <!-- poll options -->
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $selected ); ?> <?php echo $hidden; ?> />
+									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									Poll
 								</label>
 								<div class="indent">
@@ -786,21 +785,21 @@ class Evaluate_Admin {
 		<?php
 	}
 	
-	/* Callback function for setting up the meta box for metric selection in admin area */
+	/** Callback function for setting up the meta box for metric selection in admin area */
 	public static function meta_box_setup() {
 		add_action( 'add_meta_boxes', array( __CLASS__, 'meta_box_add' ) );
 	}
 	
-	/* Callback to construct the meta box in post edit pages */
+	/** Callback to construct the meta box in post edit pages */
 	public static function meta_box_add() {
-		//we need one for every type of post we want the metabox to appear in
+		// We need one for every type of post we want the metabox to appear in
 		$post_types = get_post_types( array( 'public' => true ) );
 		foreach ( $post_types as $post_type ):
 			add_meta_box( 'evaluate-post-meta', __( 'Evaluate', 'Metrics' ), array( __CLASS__, 'evaluate_meta_box' ), $post_type, 'side', 'default' );
 		endforeach;
 	}
 	
-	/* callback to construct contents of the meta box */
+	/** Callback to construct contents of the meta box */
 	public static function evaluate_meta_box( $object, $box ) {
 		?>
 		<p>Check any available metric to <strong>not</strong> display it with this post.</p>
@@ -814,17 +813,18 @@ class Evaluate_Admin {
 		$post_meta = get_post_meta( $object->ID, 'metric' );
 		foreach ($metrics as $metric): //sift through metrics and try to find ones that match the current $post_type
 			$params = unserialize($metric->params);
-			if (isset($params['content_types'])):
-				foreach ($params['content_types'] as $content_type):
-					if ($content_type == $post_type):
+			if ( isset( $params['content_types'] ) ):
+				foreach ( $params['content_types'] as $content_type ):
+					if ( $content_type == $post_type ):
 						?>
-						<p>
+						<div>
 							<input type="hidden" name="evaluate_cb[<?php echo $metric->id; ?>]" value="0" />
 							<label>
-								<input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php checked( in_array($metric->id, $post_meta) ); ?> />
-								<?php echo $metric->nicename . ' - ' . $metric->type . ' - ' . $metric->style; ?>
+								<input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php checked( in_array( $metric->id, $post_meta ) ); ?> />
+								<?php echo $metric->nicename.' ('.$metric->type.', '.$metric->style.')'; ?>
+								<?php //echo Evaluate::display_metric($metric); ?>
 							</label>
-						</p>
+						</div>
 						<?php
 					endif;
 				endforeach;
@@ -832,21 +832,21 @@ class Evaluate_Admin {
 		endforeach;
 	}
 	
-	/* Handle saving the post meta after any add/edit action to posts */
+	/** Handle saving the post meta after any add/edit action to posts */
 	public static function save_post_meta( $post_id, $post_object ) {
 		global $meta_box, $wpdb;
 		
-		//check autosave
+		// Check autosave
 		if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ):
 			return;
 		endif;
 	  
-		//validate nonce - also check for pulse
+		// Validate nonce - also check for pulse
 		if ( ! isset( $_POST['evaluate_nonce'] ) || ( ! wp_verify_nonce( $_POST['evaluate_nonce'], 'evaluate_post-meta' ) && ! wp_verify_nonce( $_POST['evaluate_nonce'], 'evaluate_pulse-meta' ) ) ):
 			return $post_id;
 		endif;
 	  
-		//check user permissions
+		// Check user permissions
 		if ( isset( $_REQUEST['post_type'] ) && $_REQUEST['post_type'] == 'page' ):
 			if ( ! current_user_can( 'edit_page', $post_id ) ):
 				return $post_id;
@@ -855,18 +855,18 @@ class Evaluate_Admin {
 			return $post_id;
 		endif;
 		
-		//we're only interested in the parent post
+		// We're only interested in the parent post
 		if ( $post_object->post_type == 'revision' ):
 			return;
 		endif;
 	  
 		$post_meta = get_post_meta($post_id, 'metric');
 	  
-		//pulses are handled differently because of the custom form
+		// Pulses are handled differently because of the custom form
 		$pulse_metrics = array();
 	  
 		if ( wp_verify_nonce( $_POST['evaluate_nonce'], 'evaluate_pulse-meta' ) ):
-			$metrics = $wpdb->get_results('SELECT * FROM ' . EVAL_DB_METRICS);
+			$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS );
 			foreach ( $metrics as $metric ): // Shift through metrics and try to find ones that match the current $post_type
 				$params = unserialize( $metric->params );
 				if ( isset( $params['content_types'] ) ):
@@ -882,17 +882,17 @@ class Evaluate_Admin {
 		$metric_list = ( isset( $_POST['evaluate_cb'] ) ? $_POST['evaluate_cb'] : $pulse_metrics );
 		foreach ( $metric_list as $key => $cb ):
 			if ( ! $cb ):
-				//we want to keep track of total votes and score for the metrics NOT in the list
+				// We want to keep track of total votes and score for the metrics NOT in the list
 				$total_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s', $key, $post_id ) );
 			  
 				$score = Evaluate::get_score($key, $post_id);
-				delete_post_meta( $post_id, 'metric', $key); //remove metric from blacklist
-				update_post_meta( $post_id, 'metric-' . $key . '-votes', $total_votes);
-				update_post_meta( $post_id, 'metric-' . $key . '-score', $score);
+				delete_post_meta( $post_id, 'metric', $key); // Remove metric from blacklist
+				update_post_meta( $post_id, 'metric-'.$key.'-votes', $total_votes);
+				update_post_meta( $post_id, 'metric-'.$key.'-score', $score);
 			elseif ( $cb == 'on' && ! in_array( $key, $post_meta ) ):
-				add_post_meta( $post_id, 'metric', $key ); //add metric to blacklist
+				add_post_meta( $post_id, 'metric', $key ); // Add metric to blacklist
 				
-				//remove unneeded metadata
+				// Remove unneeded metadata
 				delete_post_meta( $post_id, 'metric-'.$key.'-votes' );
 				delete_post_meta( $post_id, 'metric-'.$key.'-score' );
 			endif;
@@ -901,4 +901,6 @@ class Evaluate_Admin {
 		return true;
 	}
 }
-?>
+
+add_action( 'admin_init', array( 'Evaluate_Admin', 'init' ) );
+add_action( 'admin_menu', array( 'Evaluate_Admin', 'admin_menu' ) ); // Add action hooks for the plugin

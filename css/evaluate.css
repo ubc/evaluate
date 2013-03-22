@@ -2,7 +2,7 @@
     margin-bottom: 10px;
 }
 
-/* clear after floated elements */
+/* Clear after floated elements */
 .clear {
     clear: both;
 }
@@ -11,11 +11,12 @@
     font-weight: bold;
 }
 
-.rate-div a, .rate-div a:hover {
+.rate-div a,
+.rate-div a:hover {
     text-decoration: none;
 }
 
-/* range (star) rating */
+/* Range (star) rating */
 .rate-range {
     display: block;
     margin-top: 1px;
@@ -91,7 +92,7 @@
 .rate {
     background: url(../img/sprite.gif);
     background-repeat: no-repeat;
-    padding-left: 14px; /* space between icon and link text */
+    padding-left: 17px; /* space between icon and link text */
     display: inline-block; /* make sure it sticks to rate-count on the same line */
     height: 16px; /* height of the icon */
     text-decoration: none;
@@ -99,7 +100,7 @@
     top: 1px;
 }
 
-/* background positions for rating sprite */
+/* Background positions for rating sprite */
 .heart {
     background-position: 0px 0px;
 }
@@ -152,10 +153,10 @@
     background-position: 0px -192px;
 }
 
-/* poll */
-.poll-div ul {
-    margin: 0px !important;
-    padding: 0px !important;
+/* Poll */
+.rate-poll ul {
+    margin: 0;
+    padding: 0;
 }
 
 .poll-question {
@@ -166,6 +167,15 @@
     list-style-type: none;
     margin: 0;
     padding: 0;
+}
+
+.poll-list li.poll-answer {
+    margin: 2px 4px;
+}
+
+.poll-actions {
+    margin-top: 8px;
+    margin-bottom: 5px;
 }
 
 .poll-result {

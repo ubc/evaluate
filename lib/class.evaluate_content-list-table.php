@@ -1,5 +1,4 @@
 <?php
-
 class Evaluate_Content_List_Table extends WP_List_Table {
 	
 	public $columns = array();
@@ -245,4 +244,3 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		endif;
 	}
 }
-?>

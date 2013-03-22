@@ -154,4 +154,3 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		endif;
 	}
 }
-?>
