@@ -12,8 +12,7 @@
 }
 
 .metric-details-inner {
-    padding-left: 15px;
-    padding-bottom: 15px;
+    margin: 15px;
 }
 
 .metric-details h3 {
@@ -31,7 +30,7 @@
     display: block;
 }
 
-/** Disable link clicks in the preview. */
+/** Disable link clicks in the preview. *
 .metric-preview {
     pointer-events: none;
-}
+}*/

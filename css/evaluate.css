@@ -166,7 +166,7 @@
 
 .rate-poll.hide-results ul .poll-answer {
     color: #767676;
-    list-style: circle inside;
+    /*list-style: circle inside;*/
 }
 
 .rate-poll.hide-results ul .poll-answer:hover {
@@ -178,8 +178,12 @@
     display: none;
 }
 
-.rate-poll.hide-results li.poll-answer {
+.rate-poll.hide-results .poll-answer {
     margin: 3px 6px;
+}
+
+.rate-poll:not(.hide-results) .poll-answer input {
+    display: none;
 }
 
 .poll-list li {

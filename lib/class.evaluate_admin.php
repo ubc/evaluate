@@ -200,12 +200,23 @@ class Evaluate_Admin {
 		?>
 		<div class="postbox metric-details">
 			<h3>Metric Details</h3>
+			<table class="metric-details-inner">
+				<tbody>
+					<tr>
+						<td><strong>Total Votes:</strong> </td>
+						<td><?php echo $metric_data->total_votes; ?></td>
+					</tr>
+					<?php self::print_metric_details( $metric_data ); ?>
+				</tbody>
+			</table>
+			<!--
 			<div class="metric-details-inner">
 				<p>Votes across all content types: <?php echo $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) ); ?></p>
-				<div> 
-					<?php echo Evaluate::display_metric( $metric_data ); ?>
+				<div class="metric-preview"> 
+					<?php echo Evaluate::display_metric( $metric_data, true ); ?>
 				</div>
 			</div>
+			-->
 		</div>
 		<?php
 		
@@ -233,12 +244,53 @@ class Evaluate_Admin {
 		$details_table->render();
 	}
 	
+	public static function print_metric_details( $metric_data ) {
+		switch ( $metric_data->type ):
+		case 'one-way':
+			break;
+		case 'two-way':
+			?>
+			<tr>
+				<td><strong>Positive Votes:</strong> </td>
+				<td><?php echo $metric_data->counter_up; ?></td>
+			</tr>
+			<tr>
+				<td><strong>Negative Votes:</strong> </td>
+				<td><?php echo $metric_data->counter_down; ?></td>
+			</tr>
+			<?php
+			break;
+		case 'range':
+			?>
+			<tr>
+				<td><strong>Average:</strong> </td>
+				<td><?php echo $metric_data->average; ?></td>
+			</tr>
+			<?php
+			break;
+		case 'poll':
+			?>
+			<tr>
+				<td><strong>Vote Spread:</strong> </td>
+			</tr>
+			<?php foreach( $metric_data->answers as $index => $answer ): ?>
+			<tr>
+				<td><?php echo $answer; ?>: </td>
+				<td><?php echo $metric_data->answer_votes[$index]; ?> (<?php echo $metric_data->averages[$index]; ?>%)</td>
+			</tr>
+			<?php endforeach;
+			break;
+		default:
+			break;
+		endswitch;
+	}
+	
 	/**
 	 * Returns a div containing the message and styled according to the $type
 	 * used for displaying feedback to the user
 	 * $type can be 'error' or 'updated' or any other css class
 	 */
-	public static function alert($message, $type) {
+	public static function alert( $message, $type ) {
 		?>
 		<div class="<?php echo $type; ?>"><?php echo $message; ?></div>
 		<?php
@@ -435,7 +487,7 @@ class Evaluate_Admin {
 			$formdata['action']        = 'edit';
 			$formdata['view']          = 'main';
 			
-			$params = unserialize($metric->params);
+			$params = unserialize( $metric->params );
 			
 			if ( isset( $params['content_types'] ) ):
 				foreach ($params['content_types'] as $content_type):
@@ -675,9 +727,8 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'heart';
 								$data->title = Evaluate::$titles['heart']['up'];
-								$data->link = 'javascript:void(0);';
 								
-								echo Evaluate::display_one_way($data);
+								echo Evaluate::display_one_way( $data );
 							?>
 						</div>
 						<div id="prev_one-way_thumb" class="metric_preview">
@@ -686,9 +737,8 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'thumb';
 								$data->title = Evaluate::$titles['thumb']['up'];
-								$data->link = 'javascript:void(0);';
 								
-								echo Evaluate::display_one_way($data);
+								echo Evaluate::display_one_way( $data );
 							?>
 						</div>
 						<div id="prev_one-way_arrow" class="metric_preview">
@@ -697,9 +747,8 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'arrow';
 								$data->title = Evaluate::$titles['arrow']['up'];
-								$data->link = 'javascript:void(0);';
 								
-								echo Evaluate::display_one_way($data);
+								echo Evaluate::display_one_way( $data );
 							?>
 						</div>
 						<div id="prev_one-way_star" class="metric_preview">
@@ -708,9 +757,8 @@ class Evaluate_Admin {
 								$data->preview = TRUE;
 								$data->style = 'star';
 								$data->title = Evaluate::$titles['star']['up'];
-								$data->link = 'javascript:void(0);';
 								
-								echo Evaluate::display_one_way($data);
+								echo Evaluate::display_one_way( $data );
 							?>
 						</div>
 						<div id="prev_two-way_thumb" class="metric_preview">
@@ -720,10 +768,8 @@ class Evaluate_Admin {
 								$data->style = 'thumb';
 								$data->counter_up = rand( 0, 10 );
 								$data->counter_down = rand( 0, 10 );
-								$data->link_up = 'javascript:void(0);';
-								$data->link_down = 'javascript:void(0);';
 								
-								echo Evaluate::display_two_way($data);
+								echo Evaluate::display_two_way( $data );
 							?>
 						</div>
 						<div id="prev_two-way_arrow" class="metric_preview">
@@ -733,21 +779,18 @@ class Evaluate_Admin {
 								$data->style = 'arrow';
 								$data->counter_up = rand( 0, 10 );
 								$data->counter_down = rand( 0, 10 );
-								$data->link_up = 'javascript:void(0);';
-								$data->link_down = 'javascript:void(0);';
 								
-								echo Evaluate::display_two_way($data);
+								echo Evaluate::display_two_way( $data );
 							?>
 						</div>
 						<div id="prev_range_" class="metric_preview">
 							<?php
 								$data = new stdClass();
 								$data->preview = TRUE;
-								$data->link = array( 'javascript:void(0);', 'javascript:void(0);', 'javascript:void(0);', 'javascript:void(0);', 'javascript:void(0);' );
 								$data->average = rand( 0, 50 ) / 10;
 								$data->width = $data->average / 5 * 100;
 								
-								echo Evaluate::display_range($data);
+								echo Evaluate::display_range( $data );
 							?>
 						</div>
 						<div id="prev_poll_" class="metric_preview">
@@ -755,7 +798,7 @@ class Evaluate_Admin {
 								$data = new stdClass();
 								$data->preview = TRUE;
 								
-								echo Evaluate::display_poll($data);
+								echo Evaluate::display_poll( $data );
 							?>
 						</div>
 					</td>

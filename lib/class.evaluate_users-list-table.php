@@ -1,10 +1,10 @@
 <?php
-
 class Evaluate_Users_List_Table extends WP_List_Table {
 	
 	public $columns = array();
 	public $sortable_columns = array();
 	public $metric_id;
+	public $metric_data;
   
 	function __construct() {
 		parent::__construct(array(
@@ -14,6 +14,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		));
 		
 		$this->metric_id = $_GET['metric_id'];
+		$this->metric_data = Evaluate::get_data_by_id( $this->metric_id, 0 );
 	}
   
 	function get_columns() {
@@ -60,11 +61,15 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		$items = array();
 		foreach ( $results as $result ):
 			$item = new stdClass();
-			$item->title = get_the_title($result->content_id);
-			$item->permalink = get_permalink($result->content_id);
-			$author = get_user_by('id', $result->user_id);
-			$item->voter = ( $author ? $author->data->user_nicename : $result->user_id );
-			$item->vote = $result->vote;
+			$item->title = get_the_title( $result->content_id );
+			$item->permalink = get_permalink( $result->content_id );
+			$author = get_user_by( 'id', $result->user_id );
+			$item->voter = ( $author ? $author->data->user_nicename : 'Anonymous' );
+			if ( $this->metric_data->type == 'poll' ):
+				$item->vote = $this->metric_data->answers[$result->vote];
+			else:
+				$item->vote = $result->vote;
+			endif;
 			$item->date = $result->date;
 			
 			$items[] = $item;

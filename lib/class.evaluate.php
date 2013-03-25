@@ -283,7 +283,6 @@ class Evaluate {
 				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
 			endif;
 		else: // Add new vote
-			error_log("creating new vote");
 			$result = $wpdb->insert( EVAL_DB_VOTES, $data, array( '%d', '%d', '%s', '%d', '%s' ) );
 		endif;
 		
@@ -375,16 +374,6 @@ class Evaluate {
 			return null;
 		endswitch;
 		
-		/*
-		if ( ! $metric->require_login || is_user_logged_in() ):
-			if ( $metric->type == 'poll' ):
-				$data->onclick = "Evaluate.onPollLinkClick(this);";
-				$data->onsubmit = "Evaluate.onPollSubmit(this);";
-			else:
-				$data->onclick = "return Evaluate.onLinkClick(this);";
-			endif;
-		endif;
-		*/
 		$data->onclick = "return Evaluate.onLinkClick(this);";
 		
 		return $data;
@@ -439,7 +428,15 @@ class Evaluate {
 		global $wpdb, $post;
 		
 		// Tally the votes
-		$data->counter = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s', $metric->id, $post->ID ) );
+		if ( isset( $post->ID ) && $post->ID != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		else:
+			$where_content = '';
+		endif;
+		$query = $wpdb->prepare( 'SELECT COUNT(*) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		$data->counter = $wpdb->get_results( $query );
+		$data->counter = $data->counter[0]->count;
+		$data->total_votes = print_r($data->counter, TRUE);
 		
 		// Get the current user's vote, if it exists
 		if ( $data->counter > 0 ):
@@ -450,9 +447,12 @@ class Evaluate {
 		
 		// Miscelleneous Data
 		$data->state = ( $data->user_vote && $data->user_vote == 1 ? '-selected' : '' ); // Set state of the link
-		$data->nonce = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
-		$data->link = self::get_vote_url( $metric, $post->ID, 1, $data->nonce ); //upvote link
 		$data->title = self::$titles[$metric->style]['up'];
+		
+		if ( $data->preview == false ):
+			$data->nonce = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
+			$data->link = self::get_vote_url( $metric, $post->ID, 1, $data->nonce ); //upvote link
+		endif;
 		
 		return $data;
 	}
@@ -461,13 +461,20 @@ class Evaluate {
 		global $wpdb, $post;
 		
 		// Tally the votes
-		$data->counter = $wpdb->get_results( $wpdb->prepare('SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s GROUP BY vote', $metric->id, $post->ID ), OBJECT_K ); //key gets the value of vote column for easy access below
+		if ( isset( $post->ID ) && $post->ID != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		else:
+			$where_content = '';
+		endif;
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		$data->counter = $wpdb->get_results( $query );
 		$data->counter_up = ( isset( $data->counter[1] ) ? $data->counter[1]->count : 0 );
-		$data->counter_down = ( isset( $data->counter[-1] ) ? $data->counter[-1]->count : 0 );
+		$data->counter_down = ( isset( $data->counter[0] ) ? $data->counter[0]->count : 0 );
 		$data->counter_total = $data->counter_up - $data->counter_down;
+		$data->total_votes = $data->counter_up + $data->counter_down;
 		
 		// Get the current user's vote, if it exists
-		if ( $data->counter_up + $data->counter_down > 0 ):
+		if ( $data->total_votes > 0 ):
 			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post->ID, self::get_user() ) );
 		else:
 			$data->user_vote = false;
@@ -476,12 +483,15 @@ class Evaluate {
 		// Miscelleneous Data
 		$data->state_up = ( $data->user_vote && $data->user_vote == 1 ? '-selected' : '' );
 		$data->state_down = ( $data->user_vote && $data->user_vote == -1 ? '-selected' : '' );
-		$data->nonce_up = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
-		$data->nonce_down = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'--1-'.self::get_user() );
-		$data->link_up = self::get_vote_url( $metric, $post->ID, 1, $data->nonce_up );
-		$data->link_down = self::get_vote_url( $metric, $post->ID, -1, $data->nonce_down );
 		$data->title_up = self::$titles[$metric->style]['up'];
 		$data->title_down = self::$titles[$metric->style]['down'];
+		
+		if ( $data->preview == false ):
+			$data->nonce_up = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
+			$data->nonce_down = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'--1-'.self::get_user() );
+			$data->link_up = self::get_vote_url( $metric, $post->ID, 1, $data->nonce_up );
+			$data->link_down = self::get_vote_url( $metric, $post->ID, -1, $data->nonce_down );
+		endif;
 		
 		return $data;
 	}
@@ -490,7 +500,13 @@ class Evaluate {
 		global $wpdb, $post;
 		
 		// Tally the votes
-		$data->votes = $wpdb->get_results( $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s GROUP BY vote', $metric->id, $post->ID ), OBJECT_K );
+		if ( isset( $post->ID ) && $post->ID != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		else:
+			$where_content = '';
+		endif;
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		$data->votes = $wpdb->get_results( $query, OBJECT_K ); //returned array will have vote value for keys
 		
 		$data->average = 0;
 		$total_votes = 0;
@@ -519,12 +535,14 @@ class Evaluate {
 		$data->state = ( $data->user_vote ? '-selected' : '' );
 		$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / 5.0 * 100;
 		
-		$data->nonce = array();
-		$data->link = array();
-		for ( $i = 1; $i <= 5; $i++ ):
-			$data->nonce[$i] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$i.'-'.self::get_user() );
-			$data->link[$i] = self::get_vote_url( $metric, $post->ID, $i, $data->nonce[$i] );
-		endfor;
+		if ( $data->preview == false ):
+			$data->nonce = array();
+			$data->link = array();
+			for ( $i = 1; $i <= 5; $i++ ):
+				$data->nonce[$i] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$i.'-'.self::get_user() );
+				$data->link[$i] = self::get_vote_url( $metric, $post->ID, $i, $data->nonce[$i] );
+			endfor;
+		endif;
 		
 		return $data;
 	}
@@ -538,7 +556,13 @@ class Evaluate {
 		$data->answers = $params['poll']['answer'];
 		
 		// Tally the votes
-		$data->votes = $wpdb->get_results( $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s GROUP BY vote', $metric->id, $post->ID ), OBJECT_K ); //returned array will have vote value for keys
+		if ( isset( $post->ID ) && $post->ID != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		else:
+			$where_content = '';
+		endif;
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		$data->votes = $wpdb->get_results( $query, OBJECT_K ); //returned array will have vote value for keys
 		$data->total_votes = 0;
 		foreach ( $data->votes as $vote ):
 			$data->total_votes += $vote->count;
@@ -561,16 +585,18 @@ class Evaluate {
 		
 		// Miscelleneous Data
 		//$data->nonce = wp_create_nonce( 'evaluate-vote-poll-'.$metric->id.'-'.$post->ID.'-'.self::get_user() );
-		$data->nonce = array();
-		$data->link = array();
-		foreach ( $data->answers as $key => $answer ):
-			$data->nonce[$key] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user() );
-			error_log( "Created nonce ".$data->nonce[$key]." as ".'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user());
-			$data->link[$key] = self::get_vote_url( $metric, $post->ID, $key, $data->nonce[$key] );
-		endforeach;
-		
-		if ( $data->user_vote == false ):
-			$data->shell_class = 'hide-results';
+		if ( $data->preview == false ):
+			$data->nonce = array();
+			$data->link = array();
+			foreach ( $data->answers as $key => $answer ):
+				$data->nonce[$key] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user() );
+				error_log( "Created nonce ".$data->nonce[$key]." as ".'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user());
+				$data->link[$key] = self::get_vote_url( $metric, $post->ID, $key, $data->nonce[$key] );
+			endforeach;
+			
+			if ( $data->user_vote == false ):
+				$data->shell_class = 'hide-results';
+			endif;
 		endif;
 		
 		return $data;
@@ -594,16 +620,16 @@ class Evaluate {
 				<?php
 				switch ( $data->type ):
 				case 'one-way':
-					self::display_one_way($data);
+					self::display_one_way( $data );
 					break;
 				case 'two-way':
-					self::display_two_way($data);
+					self::display_two_way( $data );
 					break;
 				case 'range':
-					self::display_range($data);
+					self::display_range( $data );
 					break;
 				case 'poll':
-					self::display_poll($data);
+					self::display_poll( $data );
 					break;
 				endswitch;
 				?>
@@ -673,6 +699,7 @@ class Evaluate {
 				{{ for(prop in it.answers) { }}
 				<a href="{{=it.link[prop]}}" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="{{=it.nonce[prop]}}">
 					<li class="poll-answer">
+						<input type="radio" />
 						<strong>{{=it.answers[prop]}}</strong><span class="poll-average">: {{=it.averages[prop]}}% ({{=it.answer_votes[prop]}} votes)</span>
 						<div class="poll-result">
 							{{? it.user_vote == prop }}
@@ -692,6 +719,7 @@ class Evaluate {
 					?>
 					<a href="<?php echo $data->link[$key]; ?>" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="<?php echo $data->nonce[$key]; ?>">
 						<li class="poll-answer">
+							<input type="radio" />
 							<strong><?php echo $answer; ?></strong><span class="poll-average">: <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)</span>
 							<div class="poll-result">
 								<div class="poll-bar <?php echo $selected; ?>" style="width: <?php echo $average; ?>%"></div>

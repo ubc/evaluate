@@ -4,6 +4,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 	public $columns = array();
 	public $sortable_columns = array();
 	public $metric_id;
+	public $metric_data;
   
 	function __construct() {
 		parent::__construct( array(
@@ -12,15 +13,28 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			'ajax'     => false,
 		) );
 		$this->metric_id = $_GET['metric_id'];
+		$this->metric_data = Evaluate::get_data_by_id( $this->metric_id, 0 );
 	}
   
 	function get_columns() {
+		switch ( $this->metric_data->type ):
+		case 'poll':
+			$score = __('Top Choice');
+			break;
+		case 'range':
+			$score = __('Average Score');
+			break;
+		default:
+			$score = __('Total Score');
+			break;
+		endswitch;
+		
 		return $columns = array(
 			'title'      => __('Title'),
 			'author'     => __('Author'),
 			'type'       => __('Content Type'),
 			'categories' => __('Categories'),
-			'score'      => __('Total Score'),
+			'score'      => $score,
 			'date'       => __('Date'),
 		);
 	}
@@ -35,7 +49,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		);
 	}
   
-	function column_default($item, $column) {
+	function column_default( $item, $column ) {
 		switch ($column):
 		case 'title':
 			return sprintf( '<a href="%s"><strong>%s</strong></a>', $item->permalink, $item->title );
@@ -72,7 +86,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		
 		//preprocess proper info for item objects
 		$items = array();
-		foreach ($posts as $post):
+		foreach ( $posts as $post ):
 			$item = new stdClass();
 			$item->title = $post->post_title;
 			
@@ -81,7 +95,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			
 			$item->type = $post->post_type;
 			
-			$categories = wp_get_post_categories($post->ID);
+			$categories = wp_get_post_categories( $post->ID );
 			$cats = array();
 			foreach ( $categories as $category ):
 				$cat = get_category($category);
@@ -89,13 +103,32 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			endforeach;
 			$item->categories = $cats;
 			
-			$score = $wpdb->get_var( $wpdb->prepare( 'SELECT SUM(vote) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $this->metric_id, $post->ID ) );
+			//$score = $wpdb->get_var( $wpdb->prepare( 'SELECT SUM(vote) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $this->metric_id, $post->ID ) );
+			$data = Evaluate::get_data_by_id( $this->metric_id, $post->ID );
 			
-			if ( isset( $score ) ):
-				$item->score = $score;
-			else:
+			switch( $data->type ):
+			case 'one-way':
+				$item->score = $data->counter;
+				break;
+			case 'two-way':
+				$item->score = $data->counter_total;
+				break;
+			case 'range':
+				$item->score = $data->average;
+				break;
+			case 'poll':
+				foreach ( $data->votes as $vote ):
+					if ( ! isset($top_vote) || $vote->count > $top_vote->count ):
+						$top_vote = $vote;
+					endif;
+				endforeach;
+				print_r($top_vote);
+				$item->score = $data->answers[$top_vote->vote];
+				break;
+			default:
 				$item->score = 0;
-			endif;
+				break;
+			endswitch;
 			
 			$item->date = $post->post_date;
 			$item->permalink = get_permalink( $post->ID );
@@ -115,14 +148,14 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		//apply filters to results
 		if ( isset( $_GET['filter_content_type'] ) && $_GET['filter_content_type'] ):
 			$content_filter = $wpdb->escape($_GET['filter_content_type']);
-			$items = array_filter($items, function( $item ) {
+			$items = array_filter( $items, function( $item ) {
 				return $item->type == $content_filter;
 			} );
 		endif;
 		
 		if ( isset( $_GET['cat'] ) && $_GET['cat'] ):
 			$category_filter = $wpdb->escape($_GET['cat']);
-			$items = array_filter($items, function( $item ) {
+			$items = array_filter( $items, function( $item ) {
 				return array_key_exists($category_filter, $item->categories);
 			} );
 		endif;
