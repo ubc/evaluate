@@ -12,8 +12,12 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			'plural'   => 'metrics',
 			'ajax'     => false,
 		) );
+		
+		global $wpdb;
+		
 		$this->metric_id = $_GET['metric_id'];
-		$this->metric_data = Evaluate::get_data_by_id( $this->metric_id, 0 );
+		$this->metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $this->metric_id ) );
+		$this->metric_data = Evaluate::get_metric_data( $this->metric );
 	}
   
 	function get_columns() {
@@ -103,9 +107,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			endforeach;
 			$item->categories = $cats;
 			
-			//$score = $wpdb->get_var( $wpdb->prepare( 'SELECT SUM(vote) FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s', $this->metric_id, $post->ID ) );
 			$data = Evaluate::get_data_by_id( $this->metric_id, $post->ID );
-			
 			switch( $data->type ):
 			case 'one-way':
 				$item->score = $data->counter;
@@ -122,7 +124,6 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 						$top_vote = $vote;
 					endif;
 				endforeach;
-				print_r($top_vote);
 				$item->score = $data->answers[$top_vote->vote];
 				break;
 			default:
@@ -146,38 +147,38 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		} );
 		
 		//apply filters to results
-		if ( isset( $_GET['filter_content_type'] ) && $_GET['filter_content_type'] ):
-			$content_filter = $wpdb->escape($_GET['filter_content_type']);
-			$items = array_filter( $items, function( $item ) {
-				return $item->type == $content_filter;
+		if ( ! empty( $_GET['filter_content_type'] ) ):
+			$filter = $wpdb->escape($_GET['filter_content_type']);
+			$items = array_filter( $items, function( $item ) use( $filter ) {
+				return $item->type == $filter;
 			} );
 		endif;
 		
 		if ( isset( $_GET['cat'] ) && $_GET['cat'] ):
-			$category_filter = $wpdb->escape($_GET['cat']);
-			$items = array_filter( $items, function( $item ) {
-				return array_key_exists($category_filter, $item->categories);
+			$filter = $wpdb->escape($_GET['cat']);
+			$items = array_filter( $items, function( $item ) use( $filter ) {
+				return array_key_exists($filter, $item->categories);
 			} );
 		endif;
 		
 		if ( isset( $_GET['filter_users'] ) && $_GET['filter_users'] ):
-			$user_filter = $wpdb->escape($_GET['filter_users']);
-			$items = array_filter($items, function( $item ) {
-				return $item->author == $user_filter;
+			$filter = $wpdb->escape($_GET['filter_users']);
+			$items = array_filter($items, function( $item ) use( $filter ) {
+				return $item->author == $filter;
 			});
 		endif;
 		
 		if ( isset( $_GET['m'] ) && $_GET['m'] ):
-			$month_filter = $wpdb->escape($_GET['m']);
-			$items = array_filter( $items, function( $item ) {
-				$item_date = new DateTime($item->date);
-				$month_filter .= '01';
-				$month = new DateTime($month_filter);
+			$filter = $wpdb->escape($_GET['m']);
+			$items = array_filter( $items, function( $item ) use( $filter ) {
+				$item_date = new DateTime( $item->date );
+				$filter .= '01';
+				$month = new DateTime( $filter );
 				if ( ! $item_date->diff($month)->invert ):
 					return false;
 				endif;
 				
-				$month->add(new DateInterval('P1M')); //get start of next month
+				$month->add( new DateInterval('P1M') ); //get start of next month
 				if ( $item_date->diff($month)->invert ):
 					return false;
 				endif;
@@ -196,7 +197,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			'per_page'    => $per_page,
 		));
 		
-		$start = ($current_page - 1) * $per_page; //slice start index
+		$start = ( $current_page - 1 ) * $per_page; //slice start index
 		
 		$this->items = array_slice( $items, $start, $per_page );
 	}
@@ -265,7 +266,8 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 					<?php endforeach; ?>
 				</select>
 				<?php
-				echo $this->months_dropdown( array( 'page', 'post' ) );
+				$params = unserialize( $this->metric->params );
+				echo $this->months_dropdown( $params['content_types'] );
 				?>
 				<input id="filter_submit" class="button-secondary" type="submit" value="Filter" name="filter">
 			</div>
@@ -275,5 +277,53 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		if ($which == 'bottom'):
 			//echo 'after table';
 		endif;
+	}
+
+	/**
+	 * Display a monthly dropdown for filtering items
+	 *
+	 * @since 3.1.0
+	 * @access protected
+	 */
+	function months_dropdown( $post_types ) {
+		global $wpdb, $wp_locale;
+		
+		$sql = "
+			SELECT DISTINCT YEAR( post_date ) AS year, MONTH( post_date ) AS month
+			FROM $wpdb->posts
+			WHERE post_type IN (".implode( ', ', array_fill( 0, count( $post_types ), '%s' ) ).")
+			ORDER BY post_date DESC
+		";
+		
+		$statement = call_user_func_array( array( $wpdb, 'prepare' ), array_merge( array( $sql ), $post_types ) );
+		$months = $wpdb->get_results( $statement );
+		
+		$month_count = count( $months );
+		
+		if ( ! $month_count || ( 1 == $month_count && 0 == $months[0]->month ) )
+			return;
+		
+		$m = isset( $_GET['m'] ) ? (int) $_GET['m'] : 0;
+		?>
+		<select name='m'>
+			<option<?php selected( $m, 0 ); ?> value='0'><?php _e( 'Show all dates' ); ?></option>
+		<?php
+		foreach ( $months as $arc_row ) {
+			if ( 0 == $arc_row->year )
+				continue;
+			
+			$month = zeroise( $arc_row->month, 2 );
+			$year = $arc_row->year;
+			
+			printf( "<option %s value='%s'>%s</option>\n",
+				selected( $m, $year . $month, false ),
+				esc_attr( $arc_row->year . $month ),
+				/* translators: 1: month name, 2: 4-digit year */
+				sprintf( __( '%1$s %2$d' ), $wp_locale->get_month( $month ), $year )
+			);
+		}
+		?>
+		</select>
+		<?php
 	}
 }
