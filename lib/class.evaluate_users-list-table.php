@@ -1,6 +1,5 @@
 <?php
 class Evaluate_Users_List_Table extends WP_List_Table {
-	
 	public $columns = array();
 	public $sortable_columns = array();
 	public $metric_id;
@@ -84,16 +83,16 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		} );
 		
 		if ( isset( $_GET['title_filter'] ) && $_GET['title_filter'] ):
-			$title_filter = $wpdb->escape( $_GET['title_filter'] );
-			$items = array_filter( $items, function( $item ) {
-				return strpos( $item->title, $title_filter ) !== false;
+			$filter = $wpdb->escape( $_GET['title_filter'] );
+			$items = array_filter( $items, function( $item ) use( $filter ) {
+				return strpos( $item->title, $filter ) !== false;
 			});
 		endif;
 		
-		if (isset($_GET['filter_users']) && $_GET['filter_users']):
-			$user_filter = $wpdb->escape($_GET['filter_users']);
-			$items = array_filter( $items, function( $item ) {
-				return $item->voter == $user_filter;
+		if ( isset( $_GET['filter_users'] ) && $_GET['filter_users'] ):
+			$filter = $wpdb->escape( $_GET['filter_users'] );
+			$items = array_filter( $items, function( $item ) use( $filter ) {
+				return $item->voter == $filter;
 			} );
 		endif;
 		
@@ -102,13 +101,13 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		$current_page = $this->get_pagenum();
 		$total_items = count( $items );
 		
-		$this->set_pagination_args(array(
+		$this->set_pagination_args( array(
 			'total_items' => $total_items,
 			'per_page'    => $per_page,
-		));
+		) );
 			
-		$start = ($current_page - 1) * $per_page; //slice start index
-		$this->items = array_slice($items, $start, $per_page);
+		$start = ( $current_page - 1 ) * $per_page; //slice start index
+		$this->items = array_slice( $items, $start, $per_page );
 	}
 	
 	public function render() {
