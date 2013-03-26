@@ -187,7 +187,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			} );
 		endif;
 		
-		//pagination arguments
+		// Pagination arguments
 		$per_page = 10;
 		$current_page = $this->get_pagenum();
 		$total_items = count( $items );
@@ -203,7 +203,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 	}
   
 	public function render() {
-		//need to wrap a form around the table for bulk actions
+		// Need to wrap a form around the table for bulk actions
 		?>
 		<form id="content-list-table" method="get" action="">
 			<?php
@@ -300,8 +300,9 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		
 		$month_count = count( $months );
 		
-		if ( ! $month_count || ( 1 == $month_count && 0 == $months[0]->month ) )
+		if ( ! $month_count || ( 1 == $month_count && 0 == $months[0]->month ) ):
 			return;
+		endif;
 		
 		$m = isset( $_GET['m'] ) ? (int) $_GET['m'] : 0;
 		?>
@@ -309,8 +310,9 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			<option<?php selected( $m, 0 ); ?> value='0'><?php _e( 'Show all dates' ); ?></option>
 		<?php
 		foreach ( $months as $arc_row ) {
-			if ( 0 == $arc_row->year )
+			if ( 0 == $arc_row->year ):
 				continue;
+			endif;
 			
 			$month = zeroise( $arc_row->month, 2 );
 			$year = $arc_row->year;

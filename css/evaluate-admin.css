@@ -29,8 +29,3 @@
 .options-poll > div > label {
     display: block;
 }
-
-/** Disable link clicks in the preview. *
-.metric-preview {
-    pointer-events: none;
-}*/

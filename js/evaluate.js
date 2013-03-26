@@ -1,6 +1,8 @@
 var Evaluate = {
     init: function() {
-        // Nothing
+        if ( ! evaluate_ajax.stream_active ) {
+            setInterval(Evaluate.reloadMetrics, (5 * 1000));
+        }
     },
     
     parseUrl: function( string ) {
@@ -13,13 +15,7 @@ var Evaluate = {
     },
     
     onLinkClick: function( element ) {
-        if ( ! evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
-            return true; // use url directly
-        }
-        
         element = jQuery(element);
-        
-        console.debug(element);
         
         var args = Evaluate.parseUrl( element.attr('href') );
         args['_wpnonce'] = element.data('nonce');
@@ -30,12 +26,34 @@ var Evaluate = {
         }
         
         jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
-            if ( evaluate_ajax.use_ajax && ! evaluate_ajax.stream_active ) {
+            if ( ! evaluate_ajax.stream_active ) {
                 element.closest('.evaluate-shell').replaceWith(response);
             } //else client will receive the update from socketio
         } );
         
         return false;
+    },
+    
+    reloadMetrics: function() {
+        jQuery('.evaluate-shell').each( function() {
+            element = jQuery(this);
+            
+            var data = {
+                action: 'evaluate-vote',
+                data: {
+                    metric_id: element.data('metric-id'),
+                    content_id: element.data('content-id'),
+                    modified: element.data('modified'),
+                    view: true,
+                },
+            }
+            
+            jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
+                if ( response != "false" ) {
+                    this.replaceWith( response );
+                }
+            }.bind( element ) );
+        } );
     },
 };
   
@@ -46,7 +64,7 @@ var template = {
     'poll'   : doT.template(jQuery('#evaluate-poll').text()),
 };
 
-/* page load */
+/* On page load */
 jQuery(window).load(function() {
     Evaluate.init();
     

@@ -32,7 +32,7 @@ class Evaluate {
 		}
 	}
   
-	/* First thing that runs before any code */
+	/** First thing that runs before any code */
 	public static function init() {
 		self::$options['EVAL_DB_METRICS_VER'] = get_option('EVAL_DB_METRICS_VER');
 		self::$options['EVAL_DB_VOTES_VER'] = get_option('EVAL_DB_VOTES_VER');
@@ -48,8 +48,7 @@ class Evaluate {
 			include_once( ABSPATH.'wp-admin/includes/plugin.php' );
 		endif;
 		
-		self::$options['EVAL_STREAM'] = is_plugin_active('stream/stream.php');
-		self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
+		self::$options['EVAL_STREAM'] = is_plugin_active( 'stream/stream.php' );
 		
 		// js and css script hook
 		add_action( 'wp_enqueue_scripts',           array( __CLASS__, 'enqueue_scripts' ) );
@@ -65,7 +64,7 @@ class Evaluate {
 		endif;
 	}
   
-	/*
+	/**
 	 * Create tables required for functioning upon activation this should run only once.
 	 */
 	public static function activate() {
@@ -131,10 +130,9 @@ class Evaluate {
 		wp_enqueue_script( 'doT' );
 		wp_enqueue_script( 'evaluate-js' );
 		
-		// Wp localize trick to pass params into js without direct printing
+		// WP localize trick to pass params into js without direct printing
 		wp_localize_script( 'evaluate-js', 'evaluate_ajax', array(
 			'ajaxurl'       => admin_url('admin-ajax.php'),
-			'use_ajax'      => self::$options['EVAL_AJAX'],
 			'stream_active' => self::$options['EVAL_STREAM'] && CTLT_Stream::is_node_active(),
 			'user'          => self::get_user(),
 		) );
@@ -169,11 +167,6 @@ class Evaluate {
 	
 	/** Clear evaluate arguments from the url, mainly after voting. */
 	public static function clear_url() {
-		// Check if ajax voting is off
-		if ( self::$options['EVAL_AJAX'] ):
-			return;
-		endif;
-		
 		$redirect = remove_query_arg( array( 'evaluate', 'metric_id', 'content_id', 'vote', '_wpnonce' ) );
 		wp_redirect( $redirect );
 		exit();
@@ -198,14 +191,20 @@ class Evaluate {
 		$data = ( isset( $_POST['data'] ) ? $_POST['data'] : false );
 		if ( $data ):
 			// Handle poll view requests first
-			if ( isset( $data['evaluate'] ) && $data['evaluate'] == 'poll' ):
-				$metric_data = self::get_data_by_id( $data['metric_id'], $data['content_id'] );
-				echo self::display_poll( $metric_data );
+			if ( isset( $data['view'] ) ):
+				$modified = get_post_meta( $data['content_id'], 'metric-'.$data['metric_id'].'-modified', true );
+				if ( $modified != $data['modified'] ):
+					echo self::display_metric( self::get_data_by_id( $data['metric_id'], $data['content_id'] ) );
+				else:
+					echo "false";
+				endif;
 				die();
 			endif;
 			
 			// Now handle vote requests
-			self::vote( $data['metric_id'], $data['content_id'], $data['vote'], $data['_wpnonce'] );
+			if ( isset( $data['vote'] ) ):
+				self::vote( $data['metric_id'], $data['content_id'], $data['vote'], $data['_wpnonce'] );
+			endif;
 			die();
 		endif;
 	}
@@ -250,9 +249,7 @@ class Evaluate {
 		global $wpdb;
 		
 		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() ) ):
-			error_log("Failed to verify ".$nonce." as ".'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() );
 			if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
-				error_log("Failed to verify ".$nonce." as ".'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() );
 				throw new Exception('Nonce check failed. Did you mean to do this action?');
 			endif;
 		endif;
@@ -268,7 +265,6 @@ class Evaluate {
 		$query = $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $data['user_id'] );
 		$prev_vote = $wpdb->get_row($query);
 		if ( $prev_vote ):
-			error_log("updating previous vote");
 			if ( $vote == $prev_vote->vote ): // Same vote twice constitutes a 'toggle', remove vote
 				$query = $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE id=%d', $prev_vote->id );
 				$result = $wpdb->query($query);
@@ -278,7 +274,9 @@ class Evaluate {
 					'content_id' => $content_id,
 					'user_id'    => $data['user_id'],
 				);
-				$data = array( 'vote' => $vote );
+				$data = array(
+					'vote' => $vote,
+				);
 				
 				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
 			endif;
@@ -291,10 +289,6 @@ class Evaluate {
 			$metric_data->user = self::get_user();
 			if ( self::$options['EVAL_STREAM'] && CTLT_Stream::is_node_active() ):
 				CTLT_Stream::send( 'evaluate', $metric_data, 'vote' );
-			/*
-			elseif ( self::$options['EVAL_AJAX'] ):
-				echo self::display_metric( $metric_data );
-			*/
 			endif;
 			
 			echo self::display_metric( $metric_data );
@@ -304,6 +298,7 @@ class Evaluate {
 		
 		$score = Evaluate::get_score( $metric_id, $content_id );
 		
+		update_post_meta( $content_id, 'metric-'.$metric_id.'-modified', time() );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-votes', $total_votes );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-score', $score );
 	}
@@ -345,7 +340,7 @@ class Evaluate {
   
 	/** Convenience function to handle any metric */
 	public static function get_metric_data( $metric ) {
-		global $post;
+		global $wpdb, $post;
 		
 		$data = new stdClass();
 		$data->template = false;
@@ -356,6 +351,7 @@ class Evaluate {
 		$data->admin_only = $metric->admin_only;
 		$data->require_login = $metric->require_login;
 		$data->style = $metric->style;
+		$data->modified = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
 		
 		switch ( $metric->type ):
 		case 'one-way':
@@ -390,6 +386,7 @@ class Evaluate {
 		$data->type = '{{=it.type}}';
 		$data->require_login = '{{=it.require_login}}';
 		$data->style = '{{=it.style}}';
+		$data->modified = '{{=it.modified}}';
 		
 		$data->counter = '{{=it.counter}}';
 		$data->counter_up = '{{=it.counter_up}}';
@@ -584,13 +581,11 @@ class Evaluate {
 		endforeach;
 		
 		// Miscelleneous Data
-		//$data->nonce = wp_create_nonce( 'evaluate-vote-poll-'.$metric->id.'-'.$post->ID.'-'.self::get_user() );
 		if ( $data->preview == false ):
 			$data->nonce = array();
 			$data->link = array();
 			foreach ( $data->answers as $key => $answer ):
 				$data->nonce[$key] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user() );
-				error_log( "Created nonce ".$data->nonce[$key]." as ".'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user());
 				$data->link[$key] = self::get_vote_url( $metric, $post->ID, $key, $data->nonce[$key] );
 			endforeach;
 			
@@ -608,13 +603,13 @@ class Evaluate {
   
 	/** Convenience function to handle any metric display */
 	public static function display_metric( $data ) {
-		if ( $data->admin_only && ! current_user_can('administrator') ):
+		if ( $data->admin_only && ! current_user_can( 'administrator' ) ):
 			return;
 		endif;
 		
 		ob_start();
 		?>
-		<div class="evaluate-shell" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>">
+		<div class="evaluate-shell" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
 			<span class="rate-name"><?php echo $data->display_name; ?></span>
 			<div class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
 				<?php

@@ -10,7 +10,6 @@ class Evaluate_Admin {
 		endif;
 	  
 		// Ajax use option
-		self::$options['EVAL_AJAX'] = get_option('EVAL_AJAX');
 		self::$options['EVAL_STREAM'] = is_plugin_active('stream/stream.php');
 	  
 		// Register plugin settings
@@ -47,10 +46,7 @@ class Evaluate_Admin {
 	
 	/* Register and initialize settings for the plugin */
 	public static function register_settings() {
-		register_setting( 'evaluate_options', 'EVAL_AJAX' );
-		
 		add_settings_section( 'evaluate_settings', 'Evaluate Settings', array( __CLASS__, 'setting_section' ), 'evaluate' );
-		add_settings_field( 'use_ajax_voting',   'Use AJAX voting',          array( __CLASS__, 'setting_ajax_vote' ), 'evaluate', 'evaluate_settings' );
 		add_settings_field( 'ctlt_stream_found', 'CTLT_Stream plugin found', array( __CLASS__, 'setting_stream_plugin' ), 'evaluate', 'evaluate_settings' );
 	  
 		if (self::$options['EVAL_STREAM']):
@@ -61,12 +57,6 @@ class Evaluate_Admin {
 	public static function setting_section() {
 		?>
 		Settings and CTLT Stream/NodeJS Status
-		<?php
-	}
-	
-	public static function setting_ajax_vote() {
-		?>
-		<input id="EVAL_AJAX" name="EVAL_AJAX" value="1" type="checkbox" <?php checked( 1, get_option('EVAL_AJAX'), false ); ?> />
 		<?php
 	}
 	
@@ -96,13 +86,17 @@ class Evaluate_Admin {
 	
 	/** This is the 'controller' to display the correct page in the admin view */
 	public static function page() {
-		$view = (isset($_REQUEST['view']) ? $_REQUEST['view'] : false);
-		$action = (isset($_REQUEST['action']) ? $_REQUEST['action'] : false);
+		$view = ( isset( $_REQUEST['view'] ) ? $_REQUEST['view'] : false );
+		$action = ( isset( $_REQUEST['action'] ) ? $_REQUEST['action'] : false );
 		
 		switch ($view):
 		case 'form':
+			$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
+			$secondary_link = '<a href="options-general.php?page=evaluate&view=metric&metric_id='.$_REQUEST['metric_id'].'" class="add-new-h2" title="View Metric Details">View Details</a>';
+			break;
 		case 'metric':
 			$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
+			$secondary_link = '<a href="options-general.php?page=evaluate&view=form&metric_id='.$_REQUEST['metric_id'].'" class="add-new-h2" title="Edit Metric">Edit</a>';
 			break;
 		case 'main':
 		default:
@@ -113,7 +107,7 @@ class Evaluate_Admin {
 		<div class="wrap">
 			<div id="icon-options-general" class="icon32"></div>
 			<h2>
-				Evaluate <?php echo $link; ?>
+				Evaluate <?php echo $link.$secondary_link; ?>
 			</h2>
 		</div>
 	  
@@ -209,14 +203,6 @@ class Evaluate_Admin {
 					<?php self::print_metric_details( $metric_data ); ?>
 				</tbody>
 			</table>
-			<!--
-			<div class="metric-details-inner">
-				<p>Votes across all content types: <?php echo $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) ); ?></p>
-				<div class="metric-preview"> 
-					<?php echo Evaluate::display_metric( $metric_data, true ); ?>
-				</div>
-			</div>
-			-->
 		</div>
 		<?php
 		
