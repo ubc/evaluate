@@ -60,12 +60,13 @@
     text-decoration: none;
 }
 
-.stars:hover .starr { 
+.rate-poll.can-vote .stars:hover .starr { 
     background-image: url(../img/sprite.gif);  
     background-position: 0px -96px;
 }
 
-.stars:hover .starr:hover, .stars-selected {
+.rate-poll.can-vote .stars:hover .starr:hover,
+.stars-selected {
     background-image: url(../img/sprite.gif); 
     background-position: 0px -128px !important;
 }
@@ -84,7 +85,7 @@
     background-position: 0px -128px;
 }
 
-.stars:hover .rating { 
+.rate-poll.can-vote .stars:hover .rating { 
     display: none;
 }
 
@@ -105,7 +106,8 @@
     background-position: 0px 0px;
 }
 
-.heart:hover, .heart-selected {
+.rate-poll.can-vote .heart:hover,
+.heart-selected {
     background-position: 0px -16px;
 }
 
@@ -113,7 +115,8 @@
     background-position: 0px -32px;
 }
 
-.thumb:hover, .thumb-selected {
+.rate-poll.can-vote .thumb:hover,
+.thumb-selected {
     background-position: 0px -48px;
 }
 
@@ -121,7 +124,8 @@
     background-position: 0px -64px;
 }
 
-.thumb-down:hover, .thumb-down-selected {
+.rate-poll.can-vote .thumb-down:hover,
+.thumb-down-selected {
     background-position: 0px -80px;
 }
 
@@ -133,7 +137,7 @@
     background-position: 0px -112px;
 }
 
-.star:hover {
+.rate-poll.can-vote .star:hover {
     background-position: 0px -128px;
 }
 
@@ -141,7 +145,8 @@
     background-position: 0px -144px;
 }
 
-.arrow:hover, .arrow-selected {
+.rate-poll.can-vote .arrow:hover,
+.arrow-selected {
     background-position: 0px -160px;
 }
 
@@ -149,7 +154,8 @@
     background-position: 0px -176px;
 }
 
-.arrow-down:hover, .arrow-down-selected {
+.rate-poll.can-vote .arrow-down:hover,
+.arrow-down-selected {
     background-position: 0px -192px;
 }
 
@@ -166,7 +172,6 @@
 
 .rate-poll.hide-results ul .poll-answer {
     color: #767676;
-    /*list-style: circle inside;*/
 }
 
 .rate-poll.hide-results ul .poll-answer:hover {
@@ -210,11 +215,11 @@
     color: #555555;
 }
 
-.poll-list > a:hover {
+.rate-poll.can-vote .poll-list > a:hover {
     color: #333333;
 }
 
-.poll-list > a:hover .poll-bar {
+.rate-poll.can-vote .poll-list > a:hover .poll-bar {
     width: 100% !important;
 }
 
@@ -222,7 +227,7 @@
     background-color: #767676;
 }
 
-.poll-list > a:hover .poll-bar,
+.rate-poll.can-vote .poll-list > a:hover .poll-bar,
 .poll-bar.selected { 
     background-color: #333333;
 }

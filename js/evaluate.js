@@ -1,7 +1,7 @@
 var Evaluate = {
     init: function() {
         if ( ! evaluate_ajax.stream_active ) {
-            setInterval(Evaluate.reloadMetrics, (5 * 1000));
+            setInterval(Evaluate.reloadMetrics, (evaluate_ajax.frequency * 1000));
         }
     },
     
@@ -37,6 +37,7 @@ var Evaluate = {
     reloadMetrics: function() {
         jQuery('.evaluate-shell').each( function() {
             element = jQuery(this);
+            element.css('outline', '1px solid green');
             
             var data = {
                 action: 'evaluate-vote',
@@ -51,6 +52,8 @@ var Evaluate = {
             jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
                 if ( response != "false" ) {
                     this.replaceWith( response );
+                } else {
+                    this.css('outline', '1px solid red');
                 }
             }.bind( element ) );
         } );

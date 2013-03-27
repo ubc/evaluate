@@ -94,7 +94,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			$item = new stdClass();
 			$item->title = $post->post_title;
 			
-			$author = get_user_by('id', $post->post_author);
+			$author = get_user_by( 'id', $post->post_author );
 			$item->author = $author->data->user_nicename;
 			
 			$item->type = $post->post_type;
@@ -102,7 +102,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			$categories = wp_get_post_categories( $post->ID );
 			$cats = array();
 			foreach ( $categories as $category ):
-				$cat = get_category($category);
+				$cat = get_category( $category );
 				$cats[$cat->cat_ID] = $cat->name;
 			endforeach;
 			$item->categories = $cats;
@@ -116,7 +116,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 				$item->score = $data->counter_total;
 				break;
 			case 'range':
-				$item->score = $data->average;
+				$item->score = round( $data->average / $data->length * 100, 1 )."%";
 				break;
 			case 'poll':
 				foreach ( $data->votes as $vote ):

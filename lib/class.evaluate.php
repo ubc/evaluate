@@ -19,7 +19,7 @@ class Evaluate {
 		'star'  => array(
 			'up' => 'Star!',
 		),
-		'range' => '/5 Stars'
+		'range' => ' Stars'
 	);
   
 	//******************************************************//
@@ -135,6 +135,7 @@ class Evaluate {
 			'ajaxurl'       => admin_url('admin-ajax.php'),
 			'stream_active' => self::$options['EVAL_STREAM'] && CTLT_Stream::is_node_active(),
 			'user'          => self::get_user(),
+			'frequency'     => get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY ),
 		) );
 	}
   
@@ -352,6 +353,7 @@ class Evaluate {
 		$data->require_login = $metric->require_login;
 		$data->style = $metric->style;
 		$data->modified = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
+		$data->preview = ( $data->require_login && ! is_user_logged_in() );
 		
 		switch ( $metric->type ):
 		case 'one-way':
@@ -370,7 +372,9 @@ class Evaluate {
 			return null;
 		endswitch;
 		
-		$data->onclick = "return Evaluate.onLinkClick(this);";
+		if ( $data->preview == false ):
+			$data->onclick = "return Evaluate.onLinkClick(this);";
+		endif;
 		
 		return $data;
 	}
@@ -387,6 +391,7 @@ class Evaluate {
 		$data->require_login = '{{=it.require_login}}';
 		$data->style = '{{=it.style}}';
 		$data->modified = '{{=it.modified}}';
+		$data->preview = '{{=it.preview}}';
 		
 		$data->counter = '{{=it.counter}}';
 		$data->counter_up = '{{=it.counter_up}}';
@@ -414,6 +419,7 @@ class Evaluate {
 		$data->question = '{{=it.question}}';
 		$data->answers = '{{=it.answers}}';
 		$data->answer_votes = '{{=it.answer_votes}}';
+		$data->hide_results = '{{=it.hide_results}}';
 		
 		$data->onclick = '{{=it.onclick}}';
 		$data->onsubmit = '{{=it.onsubmit}}';
@@ -423,6 +429,10 @@ class Evaluate {
   
 	public static function one_way_data( $metric, $data ) {
 		global $wpdb, $post;
+		
+		// Get the type parameters
+		$params = unserialize( $metric->params );
+		$data->title = ( empty( $params['one-way']['title'] ) ? self::$titles[$metric->style]['up'] : $params['one-way']['title'] );
 		
 		// Tally the votes
 		if ( isset( $post->ID ) && $post->ID != 0 ):
@@ -444,7 +454,6 @@ class Evaluate {
 		
 		// Miscelleneous Data
 		$data->state = ( $data->user_vote && $data->user_vote == 1 ? '-selected' : '' ); // Set state of the link
-		$data->title = self::$titles[$metric->style]['up'];
 		
 		if ( $data->preview == false ):
 			$data->nonce = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
@@ -456,6 +465,11 @@ class Evaluate {
   
 	public static function two_way_data( $metric, $data ) {
 		global $wpdb, $post;
+		
+		// Get the type parameters
+		$params = unserialize( $metric->params );
+		$data->title_up = ( empty( $params['two-way']['title_up'] ) ? self::$titles[$metric->style]['up'] : $params['two-way']['title_up'] );
+		$data->title_down = ( empty( $params['two-way']['title_down'] ) ? self::$titles[$metric->style]['down'] : $params['two-way']['title_down'] );
 		
 		// Tally the votes
 		if ( isset( $post->ID ) && $post->ID != 0 ):
@@ -480,8 +494,6 @@ class Evaluate {
 		// Miscelleneous Data
 		$data->state_up = ( $data->user_vote && $data->user_vote == 1 ? '-selected' : '' );
 		$data->state_down = ( $data->user_vote && $data->user_vote == -1 ? '-selected' : '' );
-		$data->title_up = self::$titles[$metric->style]['up'];
-		$data->title_down = self::$titles[$metric->style]['down'];
 		
 		if ( $data->preview == false ):
 			$data->nonce_up = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
@@ -495,6 +507,11 @@ class Evaluate {
   
 	public static function range_data( $metric, $data ) {
 		global $wpdb, $post;
+		
+		// Get the type parameters
+		$params = unserialize( $metric->params );
+		$data->length = $params['range']['length'];
+		$data->percent_average = $params['range']['percentage'] == "on";
 		
 		// Tally the votes
 		if ( isset( $post->ID ) && $post->ID != 0 ):
@@ -530,12 +547,12 @@ class Evaluate {
 		
 		// Miscelleneous Data
 		$data->state = ( $data->user_vote ? '-selected' : '' );
-		$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / 5.0 * 100;
+		$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / $data->length * 100;
 		
 		if ( $data->preview == false ):
 			$data->nonce = array();
 			$data->link = array();
-			for ( $i = 1; $i <= 5; $i++ ):
+			for ( $i = 1; $i <= $data->length; $i++ ):
 				$data->nonce[$i] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$i.'-'.self::get_user() );
 				$data->link[$i] = self::get_vote_url( $metric, $post->ID, $i, $data->nonce[$i] );
 			endfor;
@@ -547,10 +564,11 @@ class Evaluate {
 	public static function poll_data( $metric, $data ) {
 		global $wpdb, $post;
 		
-		// Get poll question and answers
+		// Get the type parameters
 		$params = unserialize( $metric->params );
 		$data->question = $params['poll']['question'];
 		$data->answers = $params['poll']['answer'];
+		$data->hide_results = $params['poll']['hide_results'];
 		
 		// Tally the votes
 		if ( isset( $post->ID ) && $post->ID != 0 ):
@@ -589,7 +607,7 @@ class Evaluate {
 				$data->link[$key] = self::get_vote_url( $metric, $post->ID, $key, $data->nonce[$key] );
 			endforeach;
 			
-			if ( $data->user_vote == false ):
+			if ( $data->hide_results == 'on' && $data->user_vote == false ):
 				$data->shell_class = 'hide-results';
 			endif;
 		endif;
@@ -607,11 +625,13 @@ class Evaluate {
 			return;
 		endif;
 		
+		$can_vote = ( $data->preview ? '' : "can-vote" );
+		
 		ob_start();
 		?>
 		<div class="evaluate-shell" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
 			<span class="rate-name"><?php echo $data->display_name; ?></span>
-			<div class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
+			<div class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?> <?php echo $can_vote; ?>">
 				<?php
 				switch ( $data->type ):
 				case 'one-way':
@@ -654,30 +674,31 @@ class Evaluate {
 	}
   
 	public static function display_range( $data ) {
+		$average = ( $data->percent_average ? round( $data->average / $data->length * 100, 1 )."%" : $data->average."/".$data->length." Stars" );
 		?>
 		<?php if ( isset( $data->average ) ): ?>
-			<div class="rating-text">Average Vote: <?php echo $data->average; ?>/5 Stars</div>
+			<div class="rating-text">Average: <?php echo $average; ?></div>
 		<?php endif; ?>
 		<div class="stars">
 			<div class="rating<?php echo $data->state; ?>" style="width: <?php echo $data->width; ?>%"></div>
 			<?php if ( $data->template ): ?>
 				{{ for (var prop in it.link) { }}
 					<div class="starr">
-						<a href="{{=it.link[prop]}}" onclick="{{=it.onclick}}" title="" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
+						<a href="{{=it.link[prop]}}" onclick="{{=it.onclick}}" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
 				{{ } }}
 				{{ for(var prop in it.link) { }}
 					</div>
 				{{ } }}
 			<?php else: ?>
-				<?php for ( $i = 1; $i <= 5; $i++ ): // Nested divs for star links 
+				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Nested divs for star links 
 					$link = $data->link[$i];
 					$nonce = $data->nonce[$i];
-					$title = $i.self::$titles['range'];
+					$title = $i."/".$data->length.self::$titles['range'];
 					?>
 					<div class="starr">
 						<a href="<?php echo $link; ?>" onclick="<?php echo $data->onclick; ?>" title="<?php echo $title; ?>" class="eval-link link-<?php echo $i; ?>" data-nonce="<?php echo $nonce; ?>">&nbsp;</a>
 				<?php endfor; ?>
-				<?php for ( $i = 1; $i <= 5; $i++ ): // Close nested divs ?>
+				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Close nested divs ?>
 					</div>
 				<?php endfor; ?>
 			<?php endif; ?>
