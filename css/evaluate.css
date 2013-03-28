@@ -60,12 +60,12 @@
     text-decoration: none;
 }
 
-.rate-poll.can-vote .stars:hover .starr { 
+.evaluate-shell.can-vote .stars:hover .starr { 
     background-image: url(../img/sprite.gif);  
     background-position: 0px -96px;
 }
 
-.rate-poll.can-vote .stars:hover .starr:hover,
+.evaluate-shell.can-vote .stars:hover .starr:hover,
 .stars-selected {
     background-image: url(../img/sprite.gif); 
     background-position: 0px -128px !important;
@@ -85,7 +85,7 @@
     background-position: 0px -128px;
 }
 
-.rate-poll.can-vote .stars:hover .rating { 
+.evaluate-shell.can-vote .stars:hover .rating { 
     display: none;
 }
 
@@ -106,7 +106,7 @@
     background-position: 0px 0px;
 }
 
-.rate-poll.can-vote .heart:hover,
+.evaluate-shell.can-vote .heart:hover,
 .heart-selected {
     background-position: 0px -16px;
 }
@@ -115,7 +115,7 @@
     background-position: 0px -32px;
 }
 
-.rate-poll.can-vote .thumb:hover,
+.evaluate-shell.can-vote .thumb:hover,
 .thumb-selected {
     background-position: 0px -48px;
 }
@@ -124,7 +124,7 @@
     background-position: 0px -64px;
 }
 
-.rate-poll.can-vote .thumb-down:hover,
+.evaluate-shell.can-vote .thumb-down:hover,
 .thumb-down-selected {
     background-position: 0px -80px;
 }
@@ -137,7 +137,7 @@
     background-position: 0px -112px;
 }
 
-.rate-poll.can-vote .star:hover {
+.evaluate-shell.can-vote .star:hover {
     background-position: 0px -128px;
 }
 
@@ -145,7 +145,7 @@
     background-position: 0px -144px;
 }
 
-.rate-poll.can-vote .arrow:hover,
+.evaluate-shell.can-vote .arrow:hover,
 .arrow-selected {
     background-position: 0px -160px;
 }
@@ -154,7 +154,7 @@
     background-position: 0px -176px;
 }
 
-.rate-poll.can-vote .arrow-down:hover,
+.evaluate-shell.can-vote .arrow-down:hover,
 .arrow-down-selected {
     background-position: 0px -192px;
 }
@@ -215,11 +215,11 @@
     color: #555555;
 }
 
-.rate-poll.can-vote .poll-list > a:hover {
+.evaluate-shell.can-vote .poll-list > a:hover {
     color: #333333;
 }
 
-.rate-poll.can-vote .poll-list > a:hover .poll-bar {
+.evaluate-shell.can-vote .poll-list > a:hover .poll-bar {
     width: 100% !important;
 }
 
@@ -227,7 +227,7 @@
     background-color: #767676;
 }
 
-.rate-poll.can-vote .poll-list > a:hover .poll-bar,
+.evaluate-shell.can-vote .poll-list > a:hover .poll-bar,
 .poll-bar.selected { 
     background-color: #333333;
 }

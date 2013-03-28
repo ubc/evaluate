@@ -372,6 +372,23 @@ class Evaluate {
 			return null;
 		endswitch;
 		
+		if ( ! empty( $data->link ) ):
+			if ( is_array( $data->link ) ):
+				$data->href_link = array_map( function( $link ) {
+					return 'href="'.$link.'"';
+				}, $data->link );
+			else:
+				$data->href_link = 'href="'.$data->link.'"';
+			endif;
+		endif;
+		
+		if ( ! empty( $data->link_up ) ):
+			$data->href_link_up = 'href="'.$data->link_up.'"';
+		endif;
+		if ( ! empty( $data->link_down ) ):
+			$data->href_link_down = 'href="'.$data->link_down.'"';
+		endif;
+		
 		if ( $data->preview == false ):
 			$data->onclick = "return Evaluate.onLinkClick(this);";
 		endif;
@@ -406,6 +423,9 @@ class Evaluate {
 		$data->link = '{{=it.link}}';
 		$data->link_up = '{{=it.link_up}}';
 		$data->link_down = '{{=it.link_down}}';
+		$data->href_link = '{{=it.href_link}}';
+		$data->href_link_up = '{{=it.href_link_up}}';
+		$data->href_link_down = '{{=it.href_link_down}}';
 		$data->title = '{{=it.title}}';
 		$data->title_up = '{{=it.title_up}}';
 		$data->title_down = '{{=it.title_down}}';
@@ -629,9 +649,9 @@ class Evaluate {
 		
 		ob_start();
 		?>
-		<div class="evaluate-shell" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
+		<div class="evaluate-shell <?php echo $can_vote; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
 			<span class="rate-name"><?php echo $data->display_name; ?></span>
-			<div class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?> <?php echo $can_vote; ?>">
+			<div class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
 				<?php
 				switch ( $data->type ):
 				case 'one-way':
@@ -658,7 +678,7 @@ class Evaluate {
 	public static function display_one_way( $data ) {
 		?>
 		<span class="up-counter"><?php echo $data->counter; ?></span>
-		<a href="<?php echo $data->link; ?>" onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state; ?> eval-link" title="<?php echo $data->title ?>" data-nonce="<?php echo $data->nonce; ?>">
+		<a <?php echo $data->href_link; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state; ?> eval-link" title="<?php echo $data->title ?>" data-nonce="<?php echo $data->nonce; ?>">
 			<?php echo $data->title ?>
 		</a>
 		<?php
@@ -667,9 +687,9 @@ class Evaluate {
 	public static function display_two_way( $data ) {
 		?>
 		<span class="up-counter"><?php echo $data->counter_up; ?></span>
-		<a href="<?php echo $data->link_up; ?>" onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>" data-nonce="<?php echo $data->nonce_up; ?>">&nbsp;</a>
+		<a <?php echo $data->href_link_up; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>" data-nonce="<?php echo $data->nonce_up; ?>">&nbsp;</a>
 		<span class="down-counter"><?php echo $data->counter_down; ?></span>
-		<a href="<?php echo $data->link_down; ?>" onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.'-down'.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>" data-nonce="<?php echo $data->nonce_down; ?>">&nbsp;</a>
+		<a <?php echo $data->href_link_down; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.'-down'.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>" data-nonce="<?php echo $data->nonce_down; ?>">&nbsp;</a>
 		<?php
 	}
   
@@ -682,21 +702,21 @@ class Evaluate {
 		<div class="stars">
 			<div class="rating<?php echo $data->state; ?>" style="width: <?php echo $data->width; ?>%"></div>
 			<?php if ( $data->template ): ?>
-				{{ for (var prop in it.link) { }}
+				{{ for (var prop in it.href_link) { }}
 					<div class="starr">
-						<a href="{{=it.link[prop]}}" onclick="{{=it.onclick}}" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
+						<a {{=it.href_link[prop]}} onclick="{{=it.onclick}}" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
 				{{ } }}
-				{{ for(var prop in it.link) { }}
+				{{ for(var prop in it.href_link) { }}
 					</div>
 				{{ } }}
 			<?php else: ?>
 				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Nested divs for star links 
-					$link = $data->link[$i];
+					$link = $data->href_link[$i];
 					$nonce = $data->nonce[$i];
 					$title = $i."/".$data->length.self::$titles['range'];
 					?>
 					<div class="starr">
-						<a href="<?php echo $link; ?>" onclick="<?php echo $data->onclick; ?>" title="<?php echo $title; ?>" class="eval-link link-<?php echo $i; ?>" data-nonce="<?php echo $nonce; ?>">&nbsp;</a>
+						<a <?php echo $link; ?> onclick="<?php echo $data->onclick; ?>" title="<?php echo $title; ?>" class="eval-link link-<?php echo $i; ?>" data-nonce="<?php echo $nonce; ?>">&nbsp;</a>
 				<?php endfor; ?>
 				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Close nested divs ?>
 					</div>
@@ -713,7 +733,7 @@ class Evaluate {
 			<li class="poll-question"><?php echo $data->question; ?></li>
 			<?php if ( $data->template ): ?>
 				{{ for(prop in it.answers) { }}
-				<a href="{{=it.link[prop]}}" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="{{=it.nonce[prop]}}">
+				<a {{=it.href_link[prop]}} class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="{{=it.nonce[prop]}}">
 					<li class="poll-answer">
 						<input type="radio" />
 						<strong>{{=it.answers[prop]}}</strong><span class="poll-average">: {{=it.averages[prop]}}% ({{=it.answer_votes[prop]}} votes)</span>
@@ -733,7 +753,7 @@ class Evaluate {
 					$average = $data->averages[$key];
 					$answer_votes = $data->answer_votes[$key];
 					?>
-					<a href="<?php echo $data->link[$key]; ?>" class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="<?php echo $data->nonce[$key]; ?>">
+					<a <?php echo $data->href_link[$key]; ?> class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="<?php echo $data->nonce[$key]; ?>">
 						<li class="poll-answer">
 							<input type="radio" />
 							<strong><?php echo $answer; ?></strong><span class="poll-average">: <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)</span>
