@@ -679,7 +679,7 @@ class Evaluate {
   
 	public static function display_one_way( $data ) {
 		?>
-		<span class="up-counter"><?php echo $data->counter; ?></span>
+		<span class="up-counter"><?php echo $data->counter; ?> </span>
 		<a <?php echo $data->href_link; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state; ?> eval-link" title="<?php echo $data->title ?>" data-nonce="<?php echo $data->nonce; ?>">
 			<?php echo $data->title ?>
 		</a>
@@ -688,9 +688,9 @@ class Evaluate {
   
 	public static function display_two_way( $data ) {
 		?>
-		<span class="up-counter"><?php echo $data->counter_up; ?></span>
+		<span class="up-counter"><?php echo $data->counter_up; ?> </span>
 		<a <?php echo $data->href_link_up; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>" data-nonce="<?php echo $data->nonce_up; ?>">&nbsp;</a>
-		<span class="down-counter"><?php echo $data->counter_down; ?></span>
+		<span class="down-counter"> <?php echo $data->counter_down; ?> </span>
 		<a <?php echo $data->href_link_down; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.'-down'.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>" data-nonce="<?php echo $data->nonce_down; ?>">&nbsp;</a>
 		<?php
 	}

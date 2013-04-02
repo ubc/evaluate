@@ -53,11 +53,11 @@ class Evaluate_Admin {
 		register_setting( 'evaluate_options', 'ajax_frequency', array( __CLASS__, 'sanitize_ajax_frequency' ) );
 		
 		add_settings_section( 'evaluate_settings', 'Evaluate Settings', array( __CLASS__, 'setting_section' ), 'evaluate' );
-		add_settings_field( 'ajax_frequency', 'AJAX Update Frequency', array( __CLASS__, 'setting_ajax_frequency' ), 'evaluate', 'evaluate_settings' );
-		add_settings_field( 'ctlt_stream_found', 'CTLT_Stream plugin found', array( __CLASS__, 'setting_stream_plugin' ), 'evaluate', 'evaluate_settings' );
+		add_settings_field( 'ajax_frequency', 'Ajax Update Frequency', array( __CLASS__, 'setting_ajax_frequency' ), 'evaluate', 'evaluate_settings' );
+		add_settings_field( 'ctlt_stream_found', 'CTLT_Stream plugin', array( __CLASS__, 'setting_stream_plugin' ), 'evaluate', 'evaluate_settings' );
 	  
 		if (self::$options['EVAL_STREAM']):
-			add_settings_field( 'nodejs_server_status', 'NodeJS Server status', array( __CLASS__, 'setting_nodejs_server' ), 'evaluate', 'evaluate_settings' );
+			add_settings_field( 'nodejs_server_status', 'NodeJS Server', array( __CLASS__, 'setting_nodejs_server' ), 'evaluate', 'evaluate_settings' );
 		endif;
 	}
 	

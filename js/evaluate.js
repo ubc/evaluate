@@ -90,7 +90,7 @@ jQuery(window).load(function() {
                             data.data.state = '';
                         }
                     }
-                    
+                        
                     element.replaceWith(template['one-way'](data.data));
                     break;
                 case 'two-way':
