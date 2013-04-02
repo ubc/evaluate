@@ -37,7 +37,6 @@ var Evaluate = {
     reloadMetrics: function() {
         jQuery('.evaluate-shell').each( function() {
             element = jQuery(this);
-            element.css('outline', '1px solid green');
             
             var data = {
                 action: 'evaluate-vote',
@@ -52,8 +51,6 @@ var Evaluate = {
             jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
                 if ( response != "false" ) {
                     this.replaceWith( response );
-                } else {
-                    this.css('outline', '1px solid red');
                 }
             }.bind( element ) );
         } );

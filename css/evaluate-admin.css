@@ -29,3 +29,13 @@
 .options-poll > div > label {
     display: block;
 }
+
+.type_options input[type="radio"] {
+    margin: 0;
+    margin-right: 2px;
+}
+
+.options-range .rate {
+    margin-bottom: -2px;
+    margin-left: -3px;
+}

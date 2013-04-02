@@ -353,7 +353,7 @@ class Evaluate {
 		$data->require_login = $metric->require_login;
 		$data->style = $metric->style;
 		$data->modified = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
-		$data->preview = ( $data->require_login && ! is_user_logged_in() );
+		$data->preview = $metric->preview || ( $data->require_login && ! is_user_logged_in() );
 		
 		switch ( $metric->type ):
 		case 'one-way':
@@ -597,7 +597,7 @@ class Evaluate {
 			$where_content = '';
 		endif;
 		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
-		$data->votes = $wpdb->get_results( $query, OBJECT_K ); //returned array will have vote value for keys
+		$data->votes = $wpdb->get_results( $query, OBJECT_K ); // Returned array will have vote value for keys
 		$data->total_votes = 0;
 		foreach ( $data->votes as $vote ):
 			$data->total_votes += $vote->count;

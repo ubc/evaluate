@@ -504,15 +504,14 @@ class Evaluate_Admin {
 		$metric->type = $_REQUEST['evalu_form']['type'];
 		$metric->style = ( $metric->type == 'poll' ? 'poll' : $_REQUEST['evalu_form']['style'] );
 		$metric->params = serialize( array( $metric->type => $_REQUEST['evalu_form'][$metric->type] ) );
-		
-		$data = Evaluate::get_metric_data( $metric );
-		$data->preview = TRUE;
+		$metric->preview = TRUE;
 		
 		echo '<pre>';
 		//print_r( $data );
 		echo '</pre>';
 		
-		echo Evaluate::display_metric( $data );
+		echo Evaluate::display_metric( Evaluate::get_metric_data( $metric ) );
+		
 		die();
 	}
 	
@@ -623,33 +622,18 @@ class Evaluate_Admin {
 									<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									One-way Voting
 								</label>
-								<ul class="indent"> <!-- one way style -->
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $selected && $formdata['style'] == 'thumb' ); ?> />
-											0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>"><?php echo Evaluate::$titles['thumb']['up']; ?></a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $selected && $formdata['style'] == 'arrow' ); ?> />
-											0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>"><?php echo Evaluate::$titles['arrow']['up']; ?></a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="heart" <?php checked( $selected && $formdata['style'] == 'heart' ); ?> />
-											0 <a class="rate heart" title="<?php echo Evaluate::$titles['heart']['up']; ?>"><?php echo Evaluate::$titles['heart']['up']; ?></a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="star" <?php checked( $selected && $formdata['style'] == 'star' ); ?> />
-											0 <a class="rate star" title="<?php echo Evaluate::$titles['star']['up']; ?>"><?php echo Evaluate::$titles['star']['up']; ?></a>
-										</label>
-									</li>
-								</ul>
-								<div class="indent">
+								<div class="context-options indent">
+									<ul> <!-- one way style -->
+										<?php $styles = array( "thumb", "arrow", "heart", "star" ); ?>
+										<?php foreach ( $styles as $style ): ?>
+											<li>
+												<label>
+													<input type="radio" name="evalu_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?> />
+													0 <a class="rate <?php echo $style; ?>" title="<?php echo Evaluate::$titles[$style]['up']; ?>"><?php echo Evaluate::$titles[$style]['up']; ?></a>
+												</label>
+											</li>
+										<?php endforeach; ?>
+									</ul>
 									<label>
 										Title
 										<br />
@@ -670,23 +654,19 @@ class Evaluate_Admin {
 									<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									Two-way Voting
 								</label>
-								<ul class="indent"> <!-- two-way style selection -->
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="thumb" <?php checked( $selected && $formdata['style'] == 'thumb' ); ?>/>
-											0 <a class="rate thumb" title="<?php echo Evaluate::$titles['thumb']['up']; ?>">&nbsp;</a>
-											0 <a class="rate thumb-down" title="<?php echo Evaluate::$titles['thumb']['down']; ?>">&nbsp;</a>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="arrow" <?php checked( $selected && $formdata['style'] == 'arrow' ); ?>/>
-											0 <a class="rate arrow" title="<?php echo Evaluate::$titles['arrow']['up']; ?>">&nbsp;</a>
-											0 <a class="rate arrow-down" title="<?php echo Evaluate::$titles['arrow']['down']; ?>">&nbsp;</a>
-										</label>
-									</li>
-								</ul> 
-								<div class="indent">
+								<div class="context-options indent">
+									<ul> <!-- two way style -->
+										<?php $styles = array( "thumb", "arrow" ); ?>
+										<?php foreach ( $styles as $style ): ?>
+											<li>
+												<label>
+													<input type="radio" name="evalu_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?>/>
+													0 <a class="rate <?php echo $style; ?>" title="<?php echo Evaluate::$titles[$style]['up']; ?>">&nbsp;</a>
+													0 <a class="rate <?php echo $style; ?>-down" title="<?php echo Evaluate::$titles[$style]['down']; ?>">&nbsp;</a>
+												</label>
+											</li>
+										<?php endforeach; ?>
+									</ul>
 									<label>
 										Title Up/Down
 										<br />
@@ -708,42 +688,25 @@ class Evaluate_Admin {
 									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php hidden( $no_type_change ); ?> />
 									Range
 								</label>
-								<ul class="indent"> <!-- range style selection -->
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="stars" <?php checked( $selected && $formdata['style'] == 'thumb' ); ?>/>
-											<div class="rate-range">
-												<div class="hearts">
-													<div class="rating" style="width: 70%"></div>
+								<div class="context-options indent">
+									<ul> <!-- range style selection -->
+										<?php for ( $i = 1; $i <= 5; $i++ ): ?>
+											<a class="rate star"></a>
+										<?php endfor; ?>
+										<!-- This code would add options for other styles of ranges. However those styles are not currently implemented.
+										<?php $styles = array( "star", "thumb", "heart" ); ?>
+										<?php foreach ( $styles as $style ): ?>
+											<li>
+												<label>
+													<input type="radio" name="evalu_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?>/>
 													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
-														<div class="starr"><a title="<?php echo $i." ".Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+														<a class="rate <?php echo $style; ?>"></a>
 													<?php endfor; ?>
-													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
-														</div>
-													<?php endfor; ?>
-												</div>
-											</div>
-										</label>
-									</li>
-									<li>
-										<label>
-											<input type="radio" name="evalu_form[style]" value="star" <?php checked( $selected && $formdata['style'] == 'star' ); ?>/>
-											<div class="rate-range">
-												<div class="stars">
-													<div class="rating" style="width: 70%"></div>
-													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
-														<div class="starr"><a title="<?php echo $i." ".Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-													<?php endfor; ?>
-													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
-														</div>
-													<?php endfor; ?>
-												</div>
-											</div>
-										</label>
-									</li>
-								</ul>
-								<br />
-								<div class="indent">
+												</label>
+											</li>
+										<?php endforeach; ?>
+										-->
+									</ul>
 									<label>
 										Length
 										<br />
@@ -769,7 +732,7 @@ class Evaluate_Admin {
 									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									Poll
 								</label>
-								<div class="indent">
+								<div class="context-options indent">
 									<a href="javascript:Evaluate_Admin.addNewAnswer()" style="text-decoration: none" title="Add New Answer">[+] Add New Answer</a>
 									<a href="javascript:Evaluate_Admin.removeLastAnswer()" style="text-decoration: none" title="Remove Last Answer">[-] Remove Last Answer</a>
 									<label>Question: <input type="text" class="regular-text" name="evalu_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
@@ -787,9 +750,7 @@ class Evaluate_Admin {
 										endfor;
 									endif;
 									?>
-								</div>
-								<br />
-								<div class="indent">
+									
 									<label>
 										<input type="checkbox" name="evalu_form[poll][hide_results]" <?php checked( $formdata['poll']['hide_results'] == "on" ); ?> />
 										 Hide results before voting.
@@ -834,88 +795,6 @@ class Evaluate_Admin {
 					<th>Preview</th>
 					<td>
 						<div id="metric_preview"></div>
-						<div id="preview_name" class="metric_preview"></div>
-						<div id="prev_one-way_heart" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								$data->style = 'heart';
-								$data->title = Evaluate::$titles['heart']['up'];
-								
-								echo Evaluate::display_one_way( $data );
-							?>
-						</div>
-						<div id="prev_one-way_thumb" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								$data->style = 'thumb';
-								$data->title = Evaluate::$titles['thumb']['up'];
-								
-								echo Evaluate::display_one_way( $data );
-							?>
-						</div>
-						<div id="prev_one-way_arrow" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								$data->style = 'arrow';
-								$data->title = Evaluate::$titles['arrow']['up'];
-								
-								echo Evaluate::display_one_way( $data );
-							?>
-						</div>
-						<div id="prev_one-way_star" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								$data->style = 'star';
-								$data->title = Evaluate::$titles['star']['up'];
-								
-								echo Evaluate::display_one_way( $data );
-							?>
-						</div>
-						<div id="prev_two-way_thumb" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								$data->style = 'thumb';
-								$data->counter_up = rand( 0, 10 );
-								$data->counter_down = rand( 0, 10 );
-								
-								echo Evaluate::display_two_way( $data );
-							?>
-						</div>
-						<div id="prev_two-way_arrow" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								$data->style = 'arrow';
-								$data->counter_up = rand( 0, 10 );
-								$data->counter_down = rand( 0, 10 );
-								
-								echo Evaluate::display_two_way( $data );
-							?>
-						</div>
-						<div id="prev_range_" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								$data->average = rand( 0, 50 ) / 10;
-								$data->width = $data->average / 5 * 100;
-								$data->length = 5;
-								
-								echo Evaluate::display_range( $data );
-							?>
-						</div>
-						<div id="prev_poll_" class="metric_preview">
-							<?php
-								$data = new stdClass();
-								$data->preview = TRUE;
-								
-								echo Evaluate::display_poll( $data );
-							?>
-						</div>
 					</td>
 				</tr>
 			</table>
