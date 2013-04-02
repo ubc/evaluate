@@ -16,6 +16,14 @@
     text-decoration: none;
 }
 
+.rate-div a {
+    color: #888888;
+}
+
+.rate-div a:hover {
+    color: #333333;
+}
+
 /* Range (star) rating */
 .rate-range {
     display: block;
@@ -209,10 +217,6 @@
 
 .poll-result > div {
     height: 10px;
-}
-
-.poll-list > a {
-    color: #555555;
 }
 
 .evaluate-shell.can-vote .poll-list > a:hover {

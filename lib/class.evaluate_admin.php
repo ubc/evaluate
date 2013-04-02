@@ -1,6 +1,7 @@
 <?php
 class Evaluate_Admin {
 	static $options = array();
+	static $frequency_options = array( 5, 10, EVAL_AJAX_FREQUENCY, 30, 60 );
 	
 	public static function init() {
 		// Check if CTLT_Stream plugin exists to use with node
@@ -21,6 +22,9 @@ class Evaluate_Admin {
 		add_action( 'load-post.php',     array( __CLASS__, 'meta_box_setup' ) );
 		add_action( 'load-post-new.php', array( __CLASS__, 'meta_box_setup' ) );
 		add_action( 'save_post',         array( __CLASS__, 'save_post_meta' ), 10, 2 );
+		
+		add_action( 'wp_ajax_eval_metric_preview',        array( __CLASS__, 'ajax_metric_preview' ) );
+		add_action( 'wp_ajax_nopriv_eval_metric_preview', array( __CLASS__, 'ajax_metric_preview' ) );
 	}
 	
 	/* Displays the admin menu link in wp-admin */
@@ -64,8 +68,13 @@ class Evaluate_Admin {
 	}
 	
 	public static function setting_ajax_frequency() {
+		$value = get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY );
 		?>
-		<input id="ajax_frequency" name="ajax_frequency" type="number" min="3" value="<?php echo get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY ); ?>"/> seconds
+		<select name="ajax_frequency">
+			<?php foreach( self::$frequency_options as $i ): ?>
+				<option value="<?php echo $i; ?>" <?php selected( $value == $i ); ?>><?php echo $i; ?></option>
+			<?php endforeach; ?>
+		</select> seconds
 		<br />
 		<small>If the NodeJS server is not connected, this is the frequency with which the plugin will poll for metric updates. Higher numbers will reduce server load.</small>
 		<?php
@@ -74,8 +83,16 @@ class Evaluate_Admin {
 	public static function sanitize_ajax_frequency( $input ) {
 		if ( empty( $input ) ):
 			return EVAL_AJAX_FREQUENCY;
+		elseif ( in_array( $input, self::$frequency_options ) ):
+			return $input;
 		else:
-			return max( intval( $input ), 3 );
+			$closest = EVAL_AJAX_FREQUENCY;
+			foreach( self::$frequency_options as $i ):
+				if ( abs( $input - $i ) < abs( $input - $closest ) ):
+					$closest = $i;
+				endif;
+			endforeach;
+			return $closest;
 		endif;
 	}
 	
@@ -106,7 +123,7 @@ class Evaluate_Admin {
 	/** This is the 'controller' to display the correct page in the admin view */
 	public static function page() {
 		$view = ( isset( $_REQUEST['view'] ) ? $_REQUEST['view'] : false );
-		$action = ( isset( $_REQUEST['action'] ) ? $_REQUEST['action'] : false );
+		$action = ( isset( $_REQUEST['eval_action'] ) ? $_REQUEST['eval_action'] : false );
 		
 		switch ( $view ):
 		case 'form':
@@ -347,7 +364,9 @@ class Evaluate_Admin {
 		return true;
 	}
 	
-	/** Add or update metric after form entry */
+	/**
+	 * Add or update metric after form entry
+	 */
 	public static function add_metric() {
 		global $wpdb;
 		
@@ -362,7 +381,7 @@ class Evaluate_Admin {
 			throw new Exception( 'Nonce check failed!' );
 		endif;
 	  
-		$is_update = isset($_REQUEST['metric_id']);
+		$is_update = isset( $_REQUEST['metric_id'] );
 		// Get current record if this is an update
 		if ( $is_update ):
 			$metric_id = $_REQUEST['metric_id'];
@@ -372,7 +391,7 @@ class Evaluate_Admin {
 		$metric = array(); //to hold the data
 		// Name
 		if ( ! $formdata['name'] ):
-			throw new Exception('You must enter a name.' );
+			throw new Exception( "You must enter a name." );
 		endif;
 		
 		$metric['nicename'] = $formdata['name'];
@@ -461,21 +480,40 @@ class Evaluate_Admin {
 		if ( $is_update ):
 			$num_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $current_data->id ) );
 			if ( $num_votes > 0 && $formdata['type'] != $current_data->type ):
-				throw new Exception('You cannot change the type of this metric because there are votes registered.');
+				throw new Exception( "You cannot change the type of this metric because there are votes registered." );
 			endif;
 			
 			if ( $wpdb->update( EVAL_DB_METRICS, $metric, array( 'id' => $current_data->id ) ) ):
 				return true;
 			else:
-				throw new Exception($wpdb->print_error());
+				throw new Exception( $wpdb->print_error() );
 			endif;
 		else:
 			if ( $wpdb->insert( EVAL_DB_METRICS, $metric ) ): //attempt to insert into DB
 				return true;
 			else:
-				throw new Exception($wpdb->print_error());
+				throw new Exception( $wpdb->print_error() );
 			endif;
 		endif;
+	}
+	
+	public static function ajax_metric_preview() {
+		$metric = new stdClass();
+		$metric->nicename = $_REQUEST['evalu_form']['name'];
+		$metric->display_name = $_REQUEST['evalu_form']['display_name'];
+		$metric->type = $_REQUEST['evalu_form']['type'];
+		$metric->style = ( $metric->type == 'poll' ? 'poll' : $_REQUEST['evalu_form']['style'] );
+		$metric->params = serialize( array( $metric->type => $_REQUEST['evalu_form'][$metric->type] ) );
+		
+		$data = Evaluate::get_metric_data( $metric );
+		$data->preview = TRUE;
+		
+		echo '<pre>';
+		//print_r( $data );
+		echo '</pre>';
+		
+		echo Evaluate::display_metric( $data );
+		die();
 	}
 	
 	/** Form for adding new metrics or editing existing ones */
@@ -485,10 +523,10 @@ class Evaluate_Admin {
 		
 		if ( isset( $metric_id ) ):
 			global $wpdb;
-			$metric = $wpdb->get_row( $wpdb->prepare('SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
+			$metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
 			
 			if ( ! $metric ):
-				throw new Exception('The metric you are trying to edit does not exist!');
+				throw new Exception( "The metric you are trying to edit does not exist!" );
 			endif;
 			
 			$formdata['metric_id']     = $metric->id;
@@ -562,7 +600,7 @@ class Evaluate_Admin {
 				<tr>
 					<th><label for="evalu_form[name]">Name</label></th>
 					<td>
-						<input name="evalu_form[name]" type="text" class="regular-text" value="<?php echo $formdata['name']; ?>" /><br/>
+						<input name="evalu_form[name]" type="text" class="regular-text preview-trigger" value="<?php echo $formdata['name']; ?>" /><br/>
 						<label><input type="checkbox" name="evalu_form[display_name]" value="true" <?php checked( $formdata['display_name'] ); ?> /> Display metric name above evaluation</label>
 					</td>
 				</tr>
@@ -652,9 +690,7 @@ class Evaluate_Admin {
 									<label>
 										Title Up/Down
 										<br />
-										<!--<small>Up: </small>-->
 										<input type="text" name="evalu_form[two-way][title_up]" value="<?php echo $formdata['two-way']['title_up']; ?>" />
-										<!--<small>Down: </small>-->
 										<input type="text" name="evalu_form[two-way][title_down]" value="<?php echo $formdata['two-way']['title_down']; ?>" />
 										<br />
 										<small>The text to display when the user hover's over the voting buttons. Leave blank to use the defaults.</small>
@@ -670,19 +706,42 @@ class Evaluate_Admin {
 							<li class="options-range">
 								<label class="type_label">
 									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php hidden( $no_type_change ); ?> />
-									Stars
+									Range
 								</label>
-								<div class="rate-range">
-									<div class="stars">
-										<div class="rating" style="width: 50%"></div>
-										<?php for ( $i = 1; $i <= 5; $i++ ): ?>
-											<div class="starr"><a title="<?php echo $i." ".Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
-										<?php endfor; ?>
-										<?php for ( $i = 1; $i <= 5; $i++ ): ?>
+								<ul class="indent"> <!-- range style selection -->
+									<li>
+										<label>
+											<input type="radio" name="evalu_form[style]" value="stars" <?php checked( $selected && $formdata['style'] == 'thumb' ); ?>/>
+											<div class="rate-range">
+												<div class="hearts">
+													<div class="rating" style="width: 70%"></div>
+													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
+														<div class="starr"><a title="<?php echo $i." ".Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+													<?php endfor; ?>
+													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
+														</div>
+													<?php endfor; ?>
+												</div>
 											</div>
-										<?php endfor; ?>
-									</div>
-								</div>
+										</label>
+									</li>
+									<li>
+										<label>
+											<input type="radio" name="evalu_form[style]" value="star" <?php checked( $selected && $formdata['style'] == 'star' ); ?>/>
+											<div class="rate-range">
+												<div class="stars">
+													<div class="rating" style="width: 70%"></div>
+													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
+														<div class="starr"><a title="<?php echo $i." ".Evaluate::$titles['range']; ?>" class="eval-link">&nbsp;</a>
+													<?php endfor; ?>
+													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
+														</div>
+													<?php endfor; ?>
+												</div>
+											</div>
+										</label>
+									</li>
+								</ul>
 								<br />
 								<div class="indent">
 									<label>
@@ -774,6 +833,7 @@ class Evaluate_Admin {
 				<tr class="metric-preview">
 					<th>Preview</th>
 					<td>
+						<div id="metric_preview"></div>
 						<div id="preview_name" class="metric_preview"></div>
 						<div id="prev_one-way_heart" class="metric_preview">
 							<?php
@@ -860,7 +920,8 @@ class Evaluate_Admin {
 				</tr>
 			</table>
 			<input type="hidden" name="view" value="<?php echo $formdata['view']; ?>" />
-			<input type="hidden" name="action" value="<?php echo $formdata['action']; ?>" />
+			<input type="hidden" name="eval_action" value="<?php echo $formdata['action']; ?>" />
+			<input type="hidden" name="action" value="eval_metric_preview" /> <!-- For Ajax -->
 			<?php
 			if ( isset( $formdata['metric_id'] ) ):
 				?>
@@ -901,7 +962,7 @@ class Evaluate_Admin {
 		wp_nonce_field( 'evaluate_post-meta', 'evaluate_nonce' );
 	  
 		$post_meta = get_post_meta( $object->ID, 'metric' );
-		foreach ($metrics as $metric): //sift through metrics and try to find ones that match the current $post_type
+		foreach ( $metrics as $metric ): // Shift through metrics and try to find ones that match the current $post_type
 			$params = unserialize($metric->params);
 			if ( isset( $params['content_types'] ) ):
 				foreach ( $params['content_types'] as $content_type ):
@@ -912,7 +973,6 @@ class Evaluate_Admin {
 							<label>
 								<input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php checked( in_array( $metric->id, $post_meta ) ); ?> />
 								<?php echo $metric->nicename.' ('.$metric->type.', '.$metric->style.')'; ?>
-								<?php //echo Evaluate::display_metric($metric); ?>
 							</label>
 						</div>
 						<?php
