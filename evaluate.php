@@ -39,6 +39,7 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 
 require( 'lib/class.evaluate.php' );
 require( 'lib/class.evaluate_admin.php' );
+require( 'lib/class.evaluate_settings.php' );
 require( 'lib/class.evaluate_metrics-list-table.php' );
 require( 'lib/class.evaluate_content-list-table.php' );
 require( 'lib/class.evaluate_users-list-table.php' );

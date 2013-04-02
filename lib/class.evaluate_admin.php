@@ -30,7 +30,10 @@ class Evaluate_Admin {
 	/* Displays the admin menu link in wp-admin */
 	public static function admin_menu() {
 		// Params: page title, menu title, capability, ?page=, function name
-		add_options_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( __CLASS__, 'page' ) );
+		//add_options_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( __CLASS__, 'page' ) );
+		add_menu_page( "Metrics", "Metrics", 'manage_options', "evaluate", array( __CLASS__, 'page' ), '', '58.9' );
+		add_submenu_page( 'evaluate', 'All Metrics', 'All Metrics', 'manage_options', 'evaluate', array( __CLASS__, 'page' ) );
+		add_submenu_page( 'evaluate', 'Add New', 'Add New', 'manage_options', 'evaluate&view=form', array( __CLASS__, 'page' ) );
 	}
 	
 	/* Queue the css styles and js scripts */
