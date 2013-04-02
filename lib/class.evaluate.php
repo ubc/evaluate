@@ -354,6 +354,7 @@ class Evaluate {
 		$data->style = $metric->style;
 		$data->modified = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
 		$data->preview = $metric->preview || ( $data->require_login && ! is_user_logged_in() );
+		$data->shell_class = '';
 		
 		switch ( $metric->type ):
 		case 'one-way':
@@ -436,6 +437,7 @@ class Evaluate {
 		$data->total_votes = '{{=it.total_votes}}';
 		$data->average = '{{=it.average}}';
 		$data->width = '{{=it.width}}';
+		$data->length = '{{=it.length}}';
 		$data->question = '{{=it.question}}';
 		$data->answers = '{{=it.answers}}';
 		$data->answer_votes = '{{=it.answer_votes}}';

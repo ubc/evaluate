@@ -78,6 +78,7 @@ jQuery(window).load(function() {
                 switch ( data.data.type ) {
                 case 'one-way':
                     data.data.nonce = element.find('.eval-link').data('nonce'); //re-fill nonce field
+                    
                     if ( data.data.user == evaluate_ajax.user ) {
                         element.data( 'user-vote', data.data.user_vote );
                     } else {
@@ -90,7 +91,7 @@ jQuery(window).load(function() {
                         }
                     }
                     
-                    element.html(template['one-way'](data.data));
+                    element.replaceWith(template['one-way'](data.data));
                     break;
                 case 'two-way':
                     data.data.nonce_up = element.find('.link-up').data('nonce');
@@ -112,10 +113,10 @@ jQuery(window).load(function() {
                         }
                     }
                     
-                    element.html(template['two-way'](data.data));
+                    element.replaceWith(template['two-way'](data.data));
                     break;
                 case 'range':
-                    for ( var i = 1; i <= 5; i++ ) {
+                    for ( var i = 1; i <= data.data.length; i++ ) {
                         data.data.nonce[i] = element.find('.link-'+i).data('nonce');
                     }
                     
@@ -125,14 +126,14 @@ jQuery(window).load(function() {
                         data.data.user_vote = element.data('user-vote');
                         if ( data.data.user_vote ) {
                             data.data.state = '-selected';
-                            data.data.width = data.data.user_vote / 5.0 * 100;
+                            data.data.width = data.data.user_vote / data.data.length * 100;
                         } else {
                             data.data.state = '';
-                            data.data.width = data.data.average / 5.0 * 100;
+                            data.data.width = data.data.average / data.data.length * 100;
                         }
                     }
                     
-                    element.html(template['range'](data.data));
+                    element.replaceWith(template['range'](data.data));
                     break;
                 case 'poll':
                     if ( data.data.user == evaluate_ajax.user ) {
@@ -141,7 +142,8 @@ jQuery(window).load(function() {
                         data.data._wpnonce = element.find('input[name="_wpnonce"]').val();
                         data.data.user_vote = element.data('user-vote');
                     }
-                    element.html(template['poll'](data.data));
+                    
+                    element.replaceWith(template['poll'](data.data));
                     break;
                 }
             }

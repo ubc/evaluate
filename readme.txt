@@ -81,7 +81,3 @@ You can add the arguments `?evaluate=sort&metric_id=<my_id>` to any page that di
 
 = 1.0 =
 * Initial release
-
-== Upgrade Notice ==
-
-Just baked!

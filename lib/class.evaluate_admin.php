@@ -377,7 +377,7 @@ class Evaluate_Admin {
 		endif;
 		
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'evaluate-' . $_REQUEST['action'] ) ):
+		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'evaluate-'.$_REQUEST['eval_action'] ) ):
 			throw new Exception( 'Nonce check failed!' );
 		endif;
 	  

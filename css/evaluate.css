@@ -141,10 +141,11 @@
     background-position: 0px -96px;
 }
 
-.star-selected {
+.star-faded {
     background-position: 0px -112px;
 }
 
+.star-selected,
 .evaluate-shell.can-vote .star:hover {
     background-position: 0px -128px;
 }
