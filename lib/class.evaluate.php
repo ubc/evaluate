@@ -298,6 +298,7 @@ class Evaluate {
 		$total_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s', $metric_id, $content_id ) );
 		
 		$score = Evaluate::get_score( $metric_id, $content_id );
+		$score = ( empty( $score ) ? 0 : $score );
 		
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-modified', time() );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-votes', $total_votes );
@@ -465,6 +466,7 @@ class Evaluate {
 		$query = $wpdb->prepare( 'SELECT COUNT(*) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
 		$data->counter = $wpdb->get_results( $query );
 		$data->counter = $data->counter[0]->count;
+		$data->counter = ( $data->counter ? $data->counter : 0 );
 		$data->total_votes = print_r($data->counter, TRUE);
 		
 		// Get the current user's vote, if it exists
@@ -591,6 +593,7 @@ class Evaluate {
 		$data->question = $params['poll']['question'];
 		$data->answers = $params['poll']['answer'];
 		$data->hide_results = $params['poll']['hide_results'];
+		$data->display_warning = $params['poll']['display_warning'];
 		
 		// Tally the votes
 		if ( isset( $post->ID ) && $post->ID != 0 ):
@@ -767,10 +770,15 @@ class Evaluate {
 				<?php endforeach; ?>
 			<?php endif; ?>
 		</ul>
+		<?php if ( ! $data->template && $data->can_vote && $data->display_warning && $data->user_vote == null ): ?>
+			<span class="poll-warning">You have not voted.</span>
+		<?php endif; ?>
 		<?php
 	}
   
-	/** Prints out metric templates for ajax viewing */
+	/**
+	 * Prints out metric templates for ajax viewing
+	 */
 	public static function print_templates() {
 		$data = self::get_metric_data_js();
 		
@@ -794,16 +802,9 @@ class Evaluate {
 		if ( $query->is_home() && $query->is_main_query() ):
 			global $wpdb;
 			
-			/*
-			 * score asc/desc : score
-			 * total votes asc/desc : popularity (most/least)
-			 * has user votes
-			 */
-			if ( ! isset( $_REQUEST['sort'] ) ):
-				return;
-			endif;
-		  
-			switch ( $_REQUEST['sort'] ):
+			$sort = ( $_REQUEST['sort'] ? $_REQUEST['sort'] : 'score' );
+			
+			switch ( $sort ):
 			case 'score':
 				$metric_id = ( isset( $_REQUEST['metric_id'] ) ? $_REQUEST['metric_id'] : false );
 				$order = ( isset( $_REQUEST['order'] ) ? $_REQUEST['order'] : 'desc' );
@@ -820,7 +821,7 @@ class Evaluate {
 				break;
 			case 'user_votes':
 				$posts = $wpdb->get_col( $wpdb->prepare( 'SELECT content_id FROM '.EVAL_DB_VOTES.' WHERE user_id=%s', self::get_user() ) );
-				$query->set('post__in', $posts);
+				$query->set( 'post__in', $posts );
 				break;
 			endswitch;
 		endif;

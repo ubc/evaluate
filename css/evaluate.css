@@ -28,7 +28,6 @@
 .rate-range {
     display: block;
     margin-top: 1px;
-    height: 16px;
     overflow: hidden;
 }
 
@@ -48,6 +47,7 @@
     background: url('../img/sprite.gif') repeat-x left top; 
     background-position: 0px -96px;
     cursor: default; 
+    height: 16px;
 }
 
 .stars .starr { 
@@ -169,10 +169,14 @@
 }
 
 /* Poll */
-.rate-poll ul {
+.poll-list {
     margin: 0;
     padding: 0;
-    list-style: none;
+}
+
+.poll-question,
+.poll-answer {
+    list-style-type: none !important;
 }
 
 .poll-question {

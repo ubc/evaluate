@@ -72,7 +72,7 @@ class Evaluate_Admin {
 			
 			foreach ( $metrics_for_deletion as $metric_for_deletion ):
 				try {
-					self::delete_metric($metric_for_deletion);
+					self::delete_metric( $metric_for_deletion );
 					self::alert( "Metric deleted.", 'updated' );
 				} catch ( Exception $e ) {
 					self::alert( $e->getMessage(), 'error' );
@@ -493,7 +493,7 @@ class Evaluate_Admin {
 		$editing = $metric_id != null;
 		$html_title = ( $editing ? "Edit Metric" : "Add New Metric" );
 		
-		if ($editing):
+		if ( $editing ):
 			$num_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) );
 			$no_type_change = $num_votes > 0;
 		else:
@@ -672,6 +672,10 @@ class Evaluate_Admin {
 										<input type="checkbox" name="evalu_form[poll][hide_results]" <?php checked( $formdata['poll']['hide_results'] == "on" ); ?> />
 										 Hide results before voting.
 									</label>
+									<label>
+										<input type="checkbox" name="evalu_form[poll][display_warning]" <?php checked( ! $editing || $formdata['poll']['display_warning'] == "on" ); ?> />
+										 Display a warning if the user hasn't voted. This option has no effect if results are hidden before voting.
+									</label>
 								</div>
 							</li>
 							<?php endif; ?>
@@ -759,7 +763,7 @@ class Evaluate_Admin {
 	  
 		$post_meta = get_post_meta( $object->ID, 'metric' );
 		foreach ( $metrics as $metric ): // Shift through metrics and try to find ones that match the current $post_type
-			$params = unserialize($metric->params);
+			$params = unserialize( $metric->params );
 			if ( isset( $params['content_types'] ) ):
 				foreach ( $params['content_types'] as $content_type ):
 					if ( $content_type == $post_type ):
