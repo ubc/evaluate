@@ -1,21 +1,11 @@
 <?php
 class Evaluate_Admin {
-	static $options = array();
-	static $frequency_options = array( 5, 10, EVAL_AJAX_FREQUENCY, 30, 60 );
-	
 	public static function init() {
-		// Check if CTLT_Stream plugin exists to use with node
-		if ( ! function_exists( 'is_plugin_active' ) ):
-			// Include plugins.php to check for other plugins from the frontend
-			include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-		endif;
-	  
-		// Ajax use option
-		self::$options['EVAL_STREAM'] = is_plugin_active('stream/stream.php');
-	  
-		// Register plugin settings
-		self::register_settings();
-	  
+		add_action( 'admin_init', array( __CLASS__, 'load' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
+	}
+	
+	public static function load() {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_scripts' ) );
 		
 		// Hooks to display meta box in post editor
@@ -27,16 +17,18 @@ class Evaluate_Admin {
 		add_action( 'wp_ajax_nopriv_eval_metric_preview', array( __CLASS__, 'ajax_metric_preview' ) );
 	}
 	
-	/* Displays the admin menu link in wp-admin */
+	/**
+	 * Displays the admin menu link in wp-admin.
+	 */
 	public static function admin_menu() {
-		// Params: page title, menu title, capability, ?page=, function name
-		//add_options_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( __CLASS__, 'page' ) );
 		add_menu_page( "Metrics", "Metrics", 'manage_options', "evaluate", array( __CLASS__, 'page' ), '', '58.9' );
 		add_submenu_page( 'evaluate', 'All Metrics', 'All Metrics', 'manage_options', 'evaluate', array( __CLASS__, 'page' ) );
-		add_submenu_page( 'evaluate', 'Add New', 'Add New', 'manage_options', 'evaluate&view=form', array( __CLASS__, 'page' ) );
+		add_submenu_page( 'evaluate', 'Add New', 'Add New', 'manage_options', 'evaluate-new', array( __CLASS__, 'metric_form' ) );
 	}
 	
-	/* Queue the css styles and js scripts */
+	/**
+	 * Queue the css styles and js scripts.
+	 */
 	public static function enqueue_scripts() {
 		// Needs site-wide unique identifiers for first param
 		wp_register_style( 'evaluate', EVAL_DIR_URL.'/css/evaluate.css');
@@ -51,136 +43,38 @@ class Evaluate_Admin {
 		wp_enqueue_style( 'evaluate-admin' );
 	}
 	
-	/* Register and initialize settings for the plugin */
-	public static function register_settings() {
-		register_setting( 'evaluate_options', 'ajax_frequency', array( __CLASS__, 'sanitize_ajax_frequency' ) );
-		
-		add_settings_section( 'evaluate_settings', 'Evaluate Settings', array( __CLASS__, 'setting_section' ), 'evaluate' );
-		add_settings_field( 'ajax_frequency', 'Ajax Update Frequency', array( __CLASS__, 'setting_ajax_frequency' ), 'evaluate', 'evaluate_settings' );
-		add_settings_field( 'ctlt_stream_found', 'CTLT_Stream plugin', array( __CLASS__, 'setting_stream_plugin' ), 'evaluate', 'evaluate_settings' );
-	  
-		if (self::$options['EVAL_STREAM']):
-			add_settings_field( 'nodejs_server_status', 'NodeJS Server', array( __CLASS__, 'setting_nodejs_server' ), 'evaluate', 'evaluate_settings' );
-		endif;
-	}
-	
-	public static function setting_section() {
-		?>
-		Settings and CTLT Stream/NodeJS Status
-		<?php
-	}
-	
-	public static function setting_ajax_frequency() {
-		$value = get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY );
-		?>
-		<select name="ajax_frequency">
-			<?php foreach( self::$frequency_options as $i ): ?>
-				<option value="<?php echo $i; ?>" <?php selected( $value == $i ); ?>><?php echo $i; ?></option>
-			<?php endforeach; ?>
-		</select> seconds
-		<br />
-		<small>If the NodeJS server is not connected, this is the frequency with which the plugin will poll for metric updates. Higher numbers will reduce server load.</small>
-		<?php
-	}
-	
-	public static function sanitize_ajax_frequency( $input ) {
-		if ( empty( $input ) ):
-			return EVAL_AJAX_FREQUENCY;
-		elseif ( in_array( $input, self::$frequency_options ) ):
-			return $input;
-		else:
-			$closest = EVAL_AJAX_FREQUENCY;
-			foreach( self::$frequency_options as $i ):
-				if ( abs( $input - $i ) < abs( $input - $closest ) ):
-					$closest = $i;
-				endif;
-			endforeach;
-			return $closest;
-		endif;
-	}
-	
-	public static function setting_stream_plugin() {
-		?>
-		<input id="ctlt_stream_status" name="ctlt_stream_status" type="checkbox" disabled="disabled" style="display: none" <?php checked( self::$options['EVAL_STREAM'] ); ?>/>
-		
-		<?php if ( self::$options['EVAL_STREAM'] == true ): ?>
-			<div style="color: green">Enabled</div>
-		<?php else: ?>
-			<div style="color: red">Not Found</div>
-		<?php endif;
-	}
-	
-	public static function setting_nodejs_server() {
-		?>
-		<input id="nodejs_server_status" name="nodejs_server_status" type="checkbox" disabled="disabled" style="display: none" <?php checked( CTLT_Stream::is_node_active() ); ?> />
-		
-		<?php if ( self::$options['EVAL_STREAM'] != true ): ?>
-			<div style="color: red">Stream Plugin Not Found</div>
-		<?php elseif ( CTLT_Stream::is_node_active() ): ?>
-			<div style="color: green">Connected</div>
-		<?php else: ?>
-			<div style="color: red">Server Not Found</div>
-		<?php endif;
-	}
-	
-	/** This is the 'controller' to display the correct page in the admin view */
+	/**
+	 * This is the 'controller' to display the correct page in the admin view.
+	 */
 	public static function page() {
 		$view = ( isset( $_REQUEST['view'] ) ? $_REQUEST['view'] : false );
 		$action = ( isset( $_REQUEST['eval_action'] ) ? $_REQUEST['eval_action'] : false );
 		
-		switch ( $view ):
-		case 'form':
-			$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
-			
-			if ( isset( $_REQUEST['metric_id'] ) ):
-				$secondary_link = '<a href="options-general.php?page=evaluate&view=metric&metric_id='.$_REQUEST['metric_id'].'" class="add-new-h2" title="View Metric Details">View Details</a>';
-			endif;
-			break;
-		case 'metric':
-			$link = '<a href="options-general.php?page=evaluate&view=main" class="add-new-h2" title="Back to Main Page">Main Page</a>';
-			
-			if ( isset( $_REQUEST['metric_id'] ) ):
-				$secondary_link = '<a href="options-general.php?page=evaluate&view=form&metric_id='.$_REQUEST['metric_id'].'" class="add-new-h2" title="Edit Metric">Edit</a>';
-			endif;
-			break;
-		case 'main':
-		default:
-			$link = '<a href="options-general.php?page=evaluate&view=form" class="add-new-h2" title="Add New Metric">Add New</a>';
-		endswitch;
-		?>
-	  
-		<div class="wrap">
-			<div id="icon-options-general" class="icon32"></div>
-			<h2>
-				Evaluate <?php echo $link.$secondary_link; ?>
-			</h2>
-		</div>
-	  
-		<?php
 		switch ( $action ):
 		case 'new':
 		case 'edit':
 			try {
 				self::add_metric();
 				self::alert( 'Metric saved!', 'updated' );
-			} catch (Exception $e) {
+			} catch ( Exception $e ) {
 				self::alert( $e->getMessage(), 'error' );
 				self::metric_form();
+				return;
 			}
 			break;
 		case 'delete':
 			$metrics_for_deletion = array();
-			if (isset($_REQUEST['metric_id'])):
+			if ( isset( $_REQUEST['metric_id'] ) ):
 				$metrics_for_deletion[] = $_REQUEST['metric_id'];
-			elseif (isset($_REQUEST['metric'])):
+			elseif ( isset( $_REQUEST['metric'] ) ):
 				$metrics_for_deletion = $_REQUEST['metric'];
 			endif;
 			
-			foreach ($metrics_for_deletion as $metric_for_deletion):
+			foreach ( $metrics_for_deletion as $metric_for_deletion ):
 				try {
 					self::delete_metric($metric_for_deletion);
-					self::alert( 'Metric deleted.', 'updated' );
-				} catch (Exception $e) {
+					self::alert( "Metric deleted.", 'updated' );
+				} catch ( Exception $e ) {
 					self::alert( $e->getMessage(), 'error' );
 				}
 			endforeach;
@@ -194,39 +88,36 @@ class Evaluate_Admin {
 		case 'metric':
 			try {
 				self::details_table();
-			} catch (Exception $e) {
+			} catch ( Exception $e ) {
 				self::alert( $e->getMessage(), 'error' );
 			}
 			break;
 		case 'main':
 		default:
 			self::metrics_table();
-			self::plugin_options();
 			break;
 		endswitch;
 	}
 	
-	/** Plugin options section for admin panel */
-	public static function plugin_options() {
-		?>
-		<form id="evaluate-options" method="post" action="options.php">
-			<?php
-			do_settings_sections('evaluate');
-			settings_fields('evaluate_options');
-			?>
-			<br />
-			<input type="submit" class="button-primary" value="Save Changes" />
-		</form>
-		<?php
-	}
-	
-	/** Outputs main metrics list table */
+	/**
+	 * Outputs main metrics list table
+	 */
 	public static function metrics_table() {
+		?>
+		<div class="wrap">
+			<div id="icon-generic" class="icon32"></div>
+			<h2>
+				Evaluate
+			</h2>
+		</div>
+		<?php
 		$metrics_table = new Evaluate_Metrics_List_Table();
 		$metrics_table->render();
 	}
 	
-	/** Outputs the metric details table depending on selection */
+	/**
+	 * Outputs the metric details table depending on selection.
+	 */
 	public static function details_table() {
 		global $wpdb;
 		$metric_id = ( isset( $_GET['metric_id'] ) ? $_GET['metric_id'] : false );
@@ -237,10 +128,19 @@ class Evaluate_Admin {
 		
 		$metric_data = Evaluate::get_data_by_id( $metric_id, 0 );
 		?>
+		<div class="wrap">
+			<div id="icon-generic" class="icon32"></div>
+			<h2>
+				Metric Details <a href="admin.php?page=evaluate&view=form&metric_id=<?php echo $metric_id; ?>" class="add-new-h2" title="Edit Metric">Edit</a>
+			</h2>
+		</div>
 		<div class="postbox metric-details">
-			<h3>Metric Details</h3>
 			<table class="metric-details-inner">
 				<tbody>
+					<tr>
+						<td><strong>Display Name:</strong> </td>
+						<td><?php echo $metric_data->display_name; ?></td>
+					</tr>
 					<tr>
 						<td><strong>Total Votes:</strong> </td>
 						<td><?php echo $metric_data->total_votes; ?></td>
@@ -259,7 +159,6 @@ class Evaluate_Admin {
 			$details_table = new Evaluate_Users_List_Table();
 			break;
 		case 'content':
-			
 		default:
 			$content_is_active = true;
 			$details_table = new Evaluate_Content_List_Table();
@@ -267,9 +166,18 @@ class Evaluate_Admin {
 		endswitch;
 		
 		?>
-		<h3 class = "nav-tab-wrapper">
-			<a class = "nav-tab <?php echo ($content_is_active ? 'nav-tab-active' : ''); ?>" href = "?page=evaluate&view=metric&metric_id=<?php echo $metric_id; ?>&section=content">Content</a>
-			<a class = "nav-tab <?php echo ($content_is_active ? '' : 'nav-tab-active'); ?>" href = "?page=evaluate&view=metric&metric_id=<?php echo $metric_id; ?>&section=user">Users</a>
+		<h3 class="nav-tab-wrapper">
+			<?php
+			$sections = array(
+				'content' => "Content",
+				'user' => "Users",
+			);
+			foreach ( $sections as $slug => $title ):
+				$active = ( $section == $slug ? 'nav-tab-active' : '' );
+				$url = "?page=evaluate&view=metric&metric_id=$metric_id&section=$slug";
+				?>
+				<a class="nav-tab <?php echo $active; ?>" href="<?php echo $url; ?>"><?php echo $title; ?></a>
+			<?php endforeach; ?>
 		</h3>
 		<?php
 		$details_table->render();
@@ -325,46 +233,6 @@ class Evaluate_Admin {
 		?>
 		<div class="<?php echo $type; ?>"><?php echo $message; ?></div>
 		<?php
-	}
-	
-	/** Enable db error reporting for $wpdb */
-	public static function enable_db_errors() {
-		global $wpdb;
-		define( 'DIEONDBERROR', true );
-		$wpdb->show_errors();
-	}
-	
-	/** Deletes metric if found & valid */
-	public static function delete_metric( $metric_id ) {
-		global $wpdb;
-		
-		if ( ! $metric_id):
-			throw new Exception( 'You have not specified a metric to delete.' );
-		endif;
-		
-		$nonce = ( isset( $_REQUEST['_wpnonce'] ) ? $_REQUEST['_wpnonce'] : false );
-		
-		if ( ! $nonce || ( ! wp_verify_nonce( $nonce, "evaluate-delete-$metric_id" ) && ! wp_verify_nonce( $nonce, 'bulk-metrics' ) ) ):
-			throw new Exception( 'Nonce check failed. Did you mean to visit this page?' );
-		endif;
-		
-		// Delete the metric itself
-		$result = $wpdb->query( $wpdb->prepare( 'DELETE FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
-	  
-		if ( $result === FALSE ): //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
-			throw new Exception( 'Database error during delete operation.');
-		elseif ( $result == 0 ):
-			throw new Exception( 'Database unchanged after delete operation (metric already deleted?).' );
-		endif;
-	  
-		// Delete its votes
-		$result = $wpdb->query( $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) );
-	  
-		if ( $result === FALSE ): //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
-			throw new Exception( 'Database error during delete operation.' );
-		endif;
-	  
-		return true;
 	}
 	
 	/**
@@ -500,6 +368,44 @@ class Evaluate_Admin {
 		endif;
 	}
 	
+	/**
+	 * Deletes metric if found & valid.
+	 */
+	public static function delete_metric( $metric_id ) {
+		global $wpdb;
+		
+		if ( ! $metric_id):
+			throw new Exception( 'You have not specified a metric to delete.' );
+		endif;
+		
+		$nonce = ( isset( $_REQUEST['_wpnonce'] ) ? $_REQUEST['_wpnonce'] : false );
+		
+		if ( ! $nonce || ( ! wp_verify_nonce( $nonce, "evaluate-delete-$metric_id" ) && ! wp_verify_nonce( $nonce, 'bulk-metrics' ) ) ):
+			throw new Exception( 'Nonce check failed. Did you mean to visit this page?' );
+		endif;
+		
+		// Delete the metric itself
+		$result = $wpdb->query( $wpdb->prepare( 'DELETE FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
+	  
+		if ( $result === FALSE ): //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
+			throw new Exception( 'Database error during delete operation.');
+		elseif ( $result == 0 ):
+			throw new Exception( 'Database unchanged after delete operation (metric already deleted?).' );
+		endif;
+	  
+		// Delete its votes
+		$result = $wpdb->query( $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s', $metric_id ) );
+	  
+		if ( $result === FALSE ): //identity check because $wpdb->query can also return 0 which casts to FALSE on == comparison
+			throw new Exception( 'Database error during delete operation.' );
+		endif;
+	  
+		return true;
+	}
+	
+	/**
+	 * Display a metric to be used on the new/edit metric page.
+	 */
 	public static function ajax_metric_preview() {
 		$metric = new stdClass();
 		$metric->nicename = $_REQUEST['evalu_form']['name'];
@@ -509,16 +415,13 @@ class Evaluate_Admin {
 		$metric->params = serialize( array( $metric->type => $_REQUEST['evalu_form'][$metric->type] ) );
 		$metric->preview = TRUE;
 		
-		echo '<pre>';
-		//print_r( $data );
-		echo '</pre>';
-		
 		echo Evaluate::display_metric( Evaluate::get_metric_data( $metric ) );
-		
 		die();
 	}
 	
-	/** Form for adding new metrics or editing existing ones */
+	/**
+	 * Form for adding new metrics or editing existing ones.
+	 */
 	public static function metric_form() {
 		$metric_id = ( isset( $_REQUEST['metric_id'] ) ? $_REQUEST['metric_id'] : null );
 		$content_types = get_post_types( array( 'public' => true ) );
@@ -553,18 +456,19 @@ class Evaluate_Admin {
 		else:
 			if ( isset( $_POST['evalu_form'] ) ):
 				$postdata = $_POST['evalu_form'];
-				$formdata['name']            = ( isset( $postdata['name'] )            ? $postdata['name']            : null );
-				$formdata['display_name']    = ( isset( $postdata['display_name'] )    ? $postdata['display_name']    : null );
-				$formdata['type']            = ( isset( $postdata['type'] )            ? $postdata['type']            : null );
-				$formdata['style']           = ( isset( $postdata['style'] )           ? $postdata['style']           : null );
-				$formdata[$formdata['type']] = ( isset( $postdata[$formdata['type']] ) ? $postdata[$formdata['type']] : null );
-				$formdata['admin_only']      = ( isset( $postdata['admin_only'] )      ? $postdata['admin_only']      : null );
-				$formdata['require_login']   = ( isset( $postdata['require_login'] )   ? $postdata['require_login']   : null );
-				$formdata['action']          = 'edit';
-				$formdata['view']            = 'main';
+				$type = $formdata['type'];
+				$formdata['name']          = ( isset( $postdata['name'] )          ? $postdata['name']          : null );
+				$formdata['display_name']  = ( isset( $postdata['display_name'] )  ? $postdata['display_name']  : null );
+				$formdata['type']          = ( isset( $postdata['type'] )          ? $postdata['type']          : null );
+				$formdata['style']         = ( isset( $postdata['style'] )         ? $postdata['style']         : null );
+				$formdata[$type]           = ( isset( $postdata[$type] )           ? $postdata[$type]           : null );
+				$formdata['admin_only']    = ( isset( $postdata['admin_only'] )    ? $postdata['admin_only']    : null );
+				$formdata['require_login'] = ( isset( $postdata['require_login'] ) ? $postdata['require_login'] : null );
+				$formdata['action']        = 'edit';
+				$formdata['view']          = 'main';
 				
 				if ( isset( $postdata['content_type'] ) ):
-					foreach ($postdata['content_type'] as $content_type => $bool):
+					foreach ( $postdata['content_type'] as $content_type => $bool ):
 						$formdata['content_type'][$content_type] = true;
 					endforeach;
 				endif;
@@ -579,8 +483,8 @@ class Evaluate_Admin {
 				$formdata['require_login'] = null;
 				$formdata['action'] = 'new';
 				$formdata['view'] = 'main';
-			  
-				foreach ($content_types as $content_type):
+				
+				foreach ( $content_types as $content_type ):
 					$formdata['content_type'][$content_type] = true;
 				endforeach;
 			endif;
@@ -596,7 +500,12 @@ class Evaluate_Admin {
 			$no_type_change = FALSE;
 		endif;
 		?>
-		<h3><?php echo $html_title; ?></h3>
+		<div class="wrap">
+			<div id="icon-generic" class="icon32"></div>
+			<h2>
+				<?php echo $html_title; ?>
+			</h2>
+		</div>
 		<form method="post" action="?page=evaluate&view=form" id="metric_form">
 			<table class="form-table">
 				<tr>
@@ -713,7 +622,12 @@ class Evaluate_Admin {
 									<label>
 										Length
 										<br />
-										<input type="number" name="evalu_form[range][length]" type="number" min="3" max="10" value="<?php echo ( empty( $formdata['range']['length'] ) ? 5 : $formdata['range']['length'] ); ?>"/>
+										<?php
+											if ( $no_type_change ):
+												$title = 'title="Cannot be changed because there are votes registered."';
+											endif;
+										?>
+										<input type="number" name="evalu_form[range][length]" type="number" min="3" max="10" value="<?php echo ( empty( $formdata['range']['length'] ) ? 5 : $formdata['range']['length'] ); ?>" <?php echo $title; ?> <?php readonly( $no_type_change ); ?>/>
 										<br />
 										<small>The number of stars in this range.</small>
 									</label>
@@ -938,5 +852,8 @@ function hidden( $hidden, $current = true, $echo = true ) {
 	return __checked_selected_helper( $hidden, $current, $echo, 'hidden' );
 }
 
-add_action( 'admin_init', array( 'Evaluate_Admin', 'init' ) );
-add_action( 'admin_menu', array( 'Evaluate_Admin', 'admin_menu' ) ); // Add action hooks for the plugin
+function readonly( $readonly, $current = true, $echo = true ) {
+	return __checked_selected_helper( $readonly, $current, $echo, 'readonly' );
+}
+
+add_action( 'init', array( 'Evaluate_Admin', 'init' ) );

@@ -135,7 +135,7 @@ class Evaluate {
 			'ajaxurl'       => admin_url('admin-ajax.php'),
 			'stream_active' => self::$options['EVAL_STREAM'] && CTLT_Stream::is_node_active(),
 			'user'          => self::get_user(),
-			'frequency'     => get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY ),
+			'frequency'     => Evaluate_Settings::$frequency_options[get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY )],
 		) );
 	}
   

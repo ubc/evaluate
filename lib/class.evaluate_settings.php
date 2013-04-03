@@ -4,7 +4,7 @@
  */
 class Evaluate_Settings {
 	static $options = array();
-	static $frequency_options = array( 5, 10, EVAL_AJAX_FREQUENCY, 30, 60 );
+	static $frequency_options = array( 10, 15, 20, 30, 60 );
 	
 	public static function init() {
 		if ( ! function_exists( 'is_plugin_active' ) ):
@@ -49,11 +49,11 @@ class Evaluate_Settings {
 	}
 	
 	public static function setting_ajax_frequency() {
-		$value = get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY );
+		$selected = get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY );
 		?>
 		<select name="ajax_frequency">
-			<?php foreach( self::$frequency_options as $i ): ?>
-				<option value="<?php echo $i; ?>" <?php selected( $value == $i ); ?>><?php echo $i; ?></option>
+			<?php foreach( self::$frequency_options as $i => $value ): ?>
+				<option value="<?php echo $i; ?>" <?php selected( $selected == $i ); ?>><?php echo $value; ?></option>
 			<?php endforeach; ?>
 		</select> seconds
 		<br />
@@ -62,18 +62,10 @@ class Evaluate_Settings {
 	}
 	
 	public static function sanitize_ajax_frequency( $input ) {
-		if ( empty( $input ) ):
-			return EVAL_AJAX_FREQUENCY;
-		elseif ( in_array( $input, self::$frequency_options ) ):
+		if ( ! empty( $input ) && 0 <= $input && $input < count( self::$frequency_options ) ):
 			return $input;
 		else:
-			$closest = EVAL_AJAX_FREQUENCY;
-			foreach( self::$frequency_options as $i ):
-				if ( abs( $input - $i ) < abs( $input - $closest ) ):
-					$closest = $i;
-				endif;
-			endforeach;
-			return $closest;
+			return EVAL_AJAX_FREQUENCY;
 		endif;
 	}
 	
