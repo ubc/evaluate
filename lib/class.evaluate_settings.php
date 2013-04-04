@@ -38,7 +38,13 @@ class Evaluate_Settings {
 		// Plugin integration
 		add_settings_section( 'evaluate_settings_plugins', 'Plugin Integration Status', array( __CLASS__, 'setting_section_plugins' ), 'evaluate_settings' );
 		add_settings_field( 'ctlt_stream_found',    'CTLT_Stream plugin', array( __CLASS__, 'setting_stream_plugin' ), 'evaluate_settings', 'evaluate_settings_plugins' );
-		add_settings_field( 'nodejs_server_status', 'NodeJS Server',      array( __CLASS__, 'setting_nodejs_server' ), 'evaluate_settings', 'evaluate_settings_plugins' );
+		
+		if ( self::$options['EVAL_STREAM'] == true && class_exists( 'CTLT_Stream' ) ):
+			$callback = array( 'CTLT_Stream', 'setting_server_status' );
+		else:
+			$callback = array( __CLASS__, 'setting_stream_plugin_not_found' );
+		endif;
+		add_settings_field( 'nodejs_server_status', 'NodeJS Server', $callback, 'evaluate_settings', 'evaluate_settings_plugins' );
 		
 		self::$frequency_options = get_site_option( 'ajax_frequency', self::$frequency_options );
 	}
@@ -108,15 +114,10 @@ class Evaluate_Settings {
 		<?php endif;
 	}
 	
-	public static function setting_nodejs_server() {
+	public static function setting_stream_plugin_not_found() {
 		?>
-		<?php if ( self::$options['EVAL_STREAM'] != true || ! class_exists( "CTLT_Stream" ) ): ?>
-			<div style="color: red">Stream Plugin Not Found</div>
-		<?php elseif ( CTLT_Stream::is_node_active() ): ?>
-			<div style="color: green">Connected</div>
-		<?php else: ?>
-			<div style="color: red">Server Not Found</div>
-		<?php endif;
+		<div style="color: red">Stream Plugin Not Found</div>
+		<?php
 	}
 	
 	public static function admin_page() {
