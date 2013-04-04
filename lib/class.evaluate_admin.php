@@ -536,7 +536,7 @@ class Evaluate_Admin {
 								</label>
 								<div class="context-options indent">
 									<ul> <!-- one way style -->
-										<?php $styles = array( "thumb", "arrow", "heart", "star" ); ?>
+										<?php $styles = array( "thumb", "arrow", "heart", "star", "banner" ); ?>
 										<?php foreach ( $styles as $style ): ?>
 											<li>
 												<label>

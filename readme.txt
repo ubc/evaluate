@@ -88,12 +88,13 @@ Adding `order=<asc|desc>` will determine the order.
 2. Customizable styles
 3. Metric list
 4. Metric details view
+5. Network Admin settings, only accessible if the plugin is network activated.
 
 == Changelog ==
 
 = 1.1 =
 * Broad reworking of the code. Improved stability, fixed numerous bugs.
-* Added new options to each metric type.
+* Added new customization options to each metric type.
 * Added live metric updating via NodeJS (integrates with the CTLT Stream plugin), or Ajax.
 * Moved the admin menus into their own section called "Metrics"
 

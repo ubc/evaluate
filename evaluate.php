@@ -30,8 +30,6 @@ define( 'EVAL_DB_VOTES',       $wpdb->prefix.'evaluate_votes'   );
 define( 'EVAL_DB_VOTES_VER',   1.0                              );
 define( 'EVAL_OPTION',         'evaluate'                       );
 
-define( 'EVAL_AJAX_FREQUENCY', 3                                );
-
 //needed for WP_List_Table displays
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH.'wp-admin/includes/class-wp-list-table.php' );

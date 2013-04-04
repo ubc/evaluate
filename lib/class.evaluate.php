@@ -19,6 +19,9 @@ class Evaluate {
 		'star'  => array(
 			'up' => 'Star!',
 		),
+		'banner'  => array(
+			'up' => 'Bookmark',
+		),
 		'range' => ' Stars'
 	);
   
@@ -135,7 +138,7 @@ class Evaluate {
 			'ajaxurl'       => admin_url('admin-ajax.php'),
 			'stream_active' => self::$options['EVAL_STREAM'] && CTLT_Stream::is_node_active(),
 			'user'          => self::get_user(),
-			'frequency'     => Evaluate_Settings::$frequency_options[get_option( 'ajax_frequency', EVAL_AJAX_FREQUENCY )],
+			'frequency'     => Evaluate_Settings::get_ajax_frequency(),
 		) );
 	}
   
@@ -467,7 +470,7 @@ class Evaluate {
 		$data->counter = $wpdb->get_results( $query );
 		$data->counter = $data->counter[0]->count;
 		$data->counter = ( $data->counter ? $data->counter : 0 );
-		$data->total_votes = print_r($data->counter, TRUE);
+		$data->total_votes = print_r( $data->counter, TRUE );
 		
 		// Get the current user's vote, if it exists
 		if ( $data->counter > 0 ):

@@ -106,7 +106,7 @@
     height: 16px; /* height of the icon */
     text-decoration: none;
     position: relative;
-    top: 1px;
+    top: 2px;
 }
 
 /* Background positions for rating sprite */
@@ -166,6 +166,15 @@
 .evaluate-shell.can-vote .arrow-down:hover,
 .arrow-down-selected {
     background-position: 0px -192px;
+}
+
+.banner {
+    background-position: 0px -208px;
+}
+
+.evaluate-shell.can-vote .banner:hover,
+.banner-selected {
+    background-position: 0px -224px;
 }
 
 /* Poll */
