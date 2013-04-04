@@ -75,7 +75,7 @@ Polls are not given a score, but their answers are of course expressed in percen
 
 You can add the arguments `?evaluate=sort&sort=<sort_type>&metric_id=<metric_id>` to the url of any page that displays content to sort it by one of it's metric scores. 
 
-<metric_id> should be replaced by the id of the metric you want to sort by.
+<metric_id> should be replaced by the id of the metric you want to sort by. You can see the metric ID on each metric's details page.
 <sort_type> can be one of 
  * score, the calculated score for each post. Undefined behaviour for poll metric types.
  * total_votes, the total number of votes that have been made on each post.

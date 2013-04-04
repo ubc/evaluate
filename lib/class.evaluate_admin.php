@@ -138,6 +138,10 @@ class Evaluate_Admin {
 			<table class="metric-details-inner">
 				<tbody>
 					<tr>
+						<td><strong>Metric ID:</strong> </td>
+						<td><?php echo $metric_data->metric_id; ?></td>
+					</tr>
+					<tr>
 						<td><strong>Display Name:</strong> </td>
 						<td><?php echo $metric_data->display_name; ?></td>
 					</tr>
