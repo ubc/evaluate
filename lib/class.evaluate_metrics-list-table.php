@@ -57,7 +57,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 				$row_actions = array(
 					'edit'   => sprintf( '<a href="?page=evaluate&view=form&metric_id=%s">Edit</a>', $item->id ),
 					'view'   => sprintf( '<a href="?page=evaluate&view=metric&metric_id=%s">View Details</a>', $item->id ),
-					'delete' => sprintf( '<span class="trash"><a href="?page=evaluate&view=main&action=delete&metric_id=%s&_wpnonce=%s">Delete</a></span>', $item->id, wp_create_nonce( 'evaluate-delete-' . $item->id ) ),
+					'delete' => sprintf( '<span class="trash"><a href="?page=evaluate&eval_action=delete&metric_id=%s&_wpnonce=%s">Delete</a></span>', $item->id, wp_create_nonce( 'evaluate-delete-' . $item->id ) ),
 				);
 				
 				return sprintf( '%s %s', $name_link, $this->row_actions( $row_actions ) );

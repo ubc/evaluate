@@ -506,8 +506,17 @@ class Evaluate {
 		endif;
 		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
 		$data->counter = $wpdb->get_results( $query );
-		$data->counter_up = ( isset( $data->counter[1] ) ? $data->counter[1]->count : 0 );
-		$data->counter_down = ( isset( $data->counter[0] ) ? $data->counter[0]->count : 0 );
+		error_log(print_r($data->counter, TRUE));
+		$data->counter_up = 0;
+		$data->counter_down = 0;
+		foreach ( $data->counter as $vote_group ):
+			if ( $vote_group->vote < 0 ):
+				$data->counter_down -= $vote_group->vote * $vote_group->count;
+			else:
+				$data->counter_up += $vote_group->vote * $vote_group->count;
+			endif;
+		endforeach;
+		
 		$data->counter_total = $data->counter_up - $data->counter_down;
 		$data->total_votes = $data->counter_up + $data->counter_down;
 		

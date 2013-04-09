@@ -106,7 +106,7 @@
     height: 16px; /* height of the icon */
     text-decoration: none;
     position: relative;
-    top: 2px;
+    top: 1px;
 }
 
 /* Background positions for rating sprite */

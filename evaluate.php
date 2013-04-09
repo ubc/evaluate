@@ -30,7 +30,7 @@ define( 'EVAL_DB_VOTES',       $wpdb->prefix.'evaluate_votes'   );
 define( 'EVAL_DB_VOTES_VER',   1.0                              );
 define( 'EVAL_OPTION',         'evaluate'                       );
 
-//needed for WP_List_Table displays
+// Needed for WP_List_Table displays
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH.'wp-admin/includes/class-wp-list-table.php' );
 }
@@ -42,8 +42,8 @@ require( 'lib/class.evaluate_metrics-list-table.php' );
 require( 'lib/class.evaluate_content-list-table.php' );
 require( 'lib/class.evaluate_users-list-table.php' );
 
-//register the three activation hooks for the plugin
-register_activation_hook(   'Evaluate', 'activate'   );
-register_deactivation_hook( 'Evaluate', 'deactivate' );
-register_uninstall_hook(    'Evaluate', 'uninstall'  );
+// Register the activation hooks for the plugin
+register_activation_hook(   __FILE__, array( 'Evaluate', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'Evaluate', 'deactivate' ) );
+register_uninstall_hook(    __FILE__, array( 'Evaluate', 'uninstall' ) );
 
