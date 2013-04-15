@@ -254,7 +254,7 @@ class Evaluate {
 		
 		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() ) ):
 			if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
-				throw new Exception('Nonce check failed. Did you mean to do this action?');
+				throw new Exception( "Nonce check failed. Did you mean to do this action?" );
 			endif;
 		endif;
 		
@@ -324,7 +324,25 @@ class Evaluate {
 	//********************************************************//
 	// Data functions to get all required data about a metric //
 	//********************************************************//
-  
+	
+	public static function get_data_by_slug( $metric_slug, $content_id ) {
+		global $wpdb, $post;
+		
+		$metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE slug=%s', $metric_slug ) );
+		if ( $metric ):
+			// Force specific post data
+			$post = get_post( $content_id );
+			if ( isset( $post ) ):
+				setup_postdata( $post );
+			else: // No post id set, avoid warnings
+				$post = new stdClass();
+				$post->ID = 0;
+			endif;
+			
+			return self::get_metric_data( $metric );
+		endif;
+	}
+	
 	public static function get_data_by_id( $metric_id, $content_id ) {
 		global $wpdb, $post;
 		
@@ -506,7 +524,6 @@ class Evaluate {
 		endif;
 		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
 		$data->counter = $wpdb->get_results( $query );
-		error_log(print_r($data->counter, TRUE));
 		$data->counter_up = 0;
 		$data->counter_down = 0;
 		foreach ( $data->counter as $vote_group ):
