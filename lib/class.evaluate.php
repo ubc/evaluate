@@ -813,7 +813,7 @@ class Evaluate {
 				<?php endforeach; ?>
 			<?php endif; ?>
 		</ul>
-		<?php if ( ! $data->template && $data->can_vote && $data->display_warning && $data->user_vote == null ): ?>
+		<?php if ( ! $data->template && ! $data->preview  && $data->display_warning && $data->user_vote == null ): ?>
 			<span class="poll-warning">You have not voted.</span>
 		<?php endif; ?>
 		<?php
