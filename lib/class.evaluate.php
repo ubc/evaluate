@@ -303,11 +303,9 @@ class Evaluate {
 		$score = Evaluate::get_score( $metric_id, $content_id );
 		$controversy = Evaluate::get_controversy_score( $metric_id, $content_id );
 		
-		error_log('Controversy '.$controversy.' for '.$metric_id);
-		
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-modified', time() );
-		update_post_meta( $content_id, 'metric-'.$metric_id.'-votes', $total_votes );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-score', $score );
+		update_post_meta( $content_id, 'metric-'.$metric_id.'-votes', $total_votes );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-controversy', $controversy );
 	}
   

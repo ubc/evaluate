@@ -157,7 +157,7 @@ class Evaluate_Admin {
 		
 		$section = ( isset( $_GET['section'] ) ? $_GET['section'] : 'content' );
 		$content_is_active = true;
-		switch ($section):
+		switch ( $section ):
 		case 'user':
 			$content_is_active = false;
 			$details_table = new Evaluate_Users_List_Table();

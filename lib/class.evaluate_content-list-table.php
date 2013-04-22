@@ -91,51 +91,54 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		//preprocess proper info for item objects
 		$items = array();
 		foreach ( $posts as $post ):
-			$item = new stdClass();
-			$item->title = $post->post_title;
-			
-			$author = get_user_by( 'id', $post->post_author );
-			$item->author = $author->data->user_nicename;
-			
-			$item->type = $post->post_type;
-			
-			$categories = wp_get_post_categories( $post->ID );
-			$cats = array();
-			foreach ( $categories as $category ):
-				$cat = get_category( $category );
-				$cats[$cat->cat_ID] = $cat->name;
-			endforeach;
-			$item->categories = $cats;
-			
-			$data = Evaluate::get_data_by_id( $this->metric_id, $post->ID );
-			switch( $data->type ):
-			case 'one-way':
-				$item->score = $data->counter;
-				break;
-			case 'two-way':
-				$item->score = $data->counter_total;
-				break;
-			case 'range':
-				$item->score = round( $data->average / $data->length * 100, 1 )."%";
-				break;
-			case 'poll':
-				foreach ( $data->votes as $vote ):
-					if ( ! isset($top_vote) || $vote->count > $top_vote->count ):
-						$top_vote = $vote;
-					endif;
+			if ( update_post_meta( $post->ID, 'metric-'.$this->metric_id.'-votes' ) != 0 ):
+				$item = new stdClass();
+				$item->title = $post->post_title;
+				
+				$author = get_user_by( 'id', $post->post_author );
+				$item->author = $author->data->user_nicename;
+				
+				$item->type = $post->post_type;
+				
+				$categories = wp_get_post_categories( $post->ID );
+				$cats = array();
+				foreach ( $categories as $category ):
+					$cat = get_category( $category );
+					$cats[$cat->cat_ID] = $cat->name;
 				endforeach;
-				$item->score = $data->answers[$top_vote->vote];
-				break;
-			default:
-				$item->score = 0;
-				break;
-			endswitch;
+				$item->categories = $cats;
+				
+				$data = Evaluate::get_data_by_id( $this->metric_id, $post->ID );
+				switch( $data->type ):
+				case 'one-way':
+					$item->score = $data->counter;
+					break;
+				case 'two-way':
+					$item->score = $data->counter_total;
+					break;
+				case 'range':
+					$item->score = round( $data->average / $data->length * 100, 1 )."%";
+					break;
+				case 'poll':
+					foreach ( $data->votes as $vote ):
+						if ( ! isset($top_vote) || $vote->count > $top_vote->count ):
+							$top_vote = $vote;
+						endif;
+					endforeach;
+					$item->score = $data->answers[$top_vote->vote];
+					break;
+				default:
+					$item->score = 0;
+					break;
+				endswitch;
+				
+				$item->date = $post->post_date;
+				$item->permalink = get_permalink( $post->ID );
+				
+				$items[] = $item;
+			endif;
 			
-			$item->date = $post->post_date;
-			$item->permalink = get_permalink( $post->ID );
-			
-			$items[] = $item;
-			unset($item);
+			unset( $item );
 		endforeach;
 		
 		//because we have to do a little preprocessing to the list
