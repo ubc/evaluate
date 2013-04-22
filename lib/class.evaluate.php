@@ -435,7 +435,6 @@ class Evaluate {
 		$data->require_login = '{{=it.require_login}}';
 		$data->style = '{{=it.style}}';
 		$data->modified = '{{=it.modified}}';
-		//$data->preview = '{{=it.preview}}';
 		
 		$data->counter = '{{=it.counter}}';
 		$data->counter_up = '{{=it.counter_up}}';
@@ -468,6 +467,7 @@ class Evaluate {
 		$data->answers = '{{=it.answers}}';
 		$data->answer_votes = '{{=it.answer_votes}}';
 		$data->hide_results = '{{=it.hide_results}}';
+		$data->average_display = '{{=it.average_display}}';
 		
 		$data->onclick = '{{=it.onclick}}';
 		$data->onsubmit = '{{=it.onsubmit}}';
@@ -568,7 +568,6 @@ class Evaluate {
 		// Get the type parameters
 		$params = unserialize( $metric->params );
 		$data->length = $params['range']['length'];
-		$data->percent_average = $params['range']['percentage'] == "on";
 		
 		// Tally the votes
 		if ( isset( $post->ID ) && $post->ID != 0 ):
@@ -594,6 +593,12 @@ class Evaluate {
 		
 		$data->total_votes = $total_votes;
 		$data->average = round( $data->average, 1 );
+		
+		if ( $params['range']['percentage'] ):
+			$data->average_display = round( $data->average / $data->length * 100, 1 )."%";
+		else:
+			$data->average_display = $data->average."/".$data->length." Stars";
+		endif;
 		
 		// Get the current user's vote, if it exists
 		if ( count( $data->votes ) > 0 ):
@@ -736,11 +741,10 @@ class Evaluate {
 	}
   
 	public static function display_range( $data ) {
-		$average = ( $data->percent_average ? round( $data->average / $data->length * 100, 1 )."%" : $data->average."/".$data->length." Stars" );
 		?>
-		<?php if ( isset( $data->average ) ): ?>
-			<div class="rating-text">Average: <?php echo $average; ?></div>
-		<?php endif; ?>
+		<div class="rating-text">
+			Average: <?php echo $data->average_display; ?>
+		</div>
 		<div class="stars">
 			<div class="rating<?php echo $data->state; ?>" style="width: <?php echo $data->width; ?>%"></div>
 			<?php if ( $data->template ): ?>
