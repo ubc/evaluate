@@ -1,6 +1,6 @@
 === Evaluate ===
 Contributors: ebemunk, devindra, enej, ctlt-dev, ubcdev
-Tags: rating, star rating, poll, vote, like
+Tags: rating, metric, star rating, poll, vote, like
 Requires at least: 3.3
 Tested up to: 3.5
 Stable tag: 1.1

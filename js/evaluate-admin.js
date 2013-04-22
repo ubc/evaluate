@@ -19,6 +19,11 @@ var Evaluate_Admin = {
 		
 		if ( jQuery('input[name="evalu_form[type]"]:checked').val() == undefined ) {
 			Evaluate_Admin.updateSelectedType();
+		} else {
+			var optionsList = jQuery('input[name="evalu_form[type]"]:not(:checked)'); // All metric type menus
+			jQuery(optionsList).each( function() {
+				jQuery(this).parent().siblings('.context-options').hide();
+			} );
 		}
 		
 		Evaluate_Admin.updatePreview();

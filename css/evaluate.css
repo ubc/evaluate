@@ -20,7 +20,8 @@
     color: #888888;
 }
 
-.rate-div a:hover {
+.evaluate-shell.can-vote .rate-div a.selected,
+.evaluate-shell.can-vote .rate-div a:hover {
     color: #333333;
 }
 
@@ -58,6 +59,12 @@
     position: relative;
 }
 
+/*
+.stars .starr { 
+    bottom: 1px;
+}
+*/
+
 .stars .starr a {
     display: inline-block;
     width: 16px;
@@ -74,7 +81,7 @@
 }
 
 .evaluate-shell.can-vote .stars:hover .starr:hover,
-.stars-selected {
+.stars.selected {
     background-image: url(../img/sprite.gif); 
     background-position: 0px -128px !important;
 }
@@ -86,7 +93,7 @@
     background-position: 0px -112px;
 }
 
-.stars .rating-selected { 
+.stars .rating.selected { 
     position: absolute; 
     height: 100%; 
     background: url(../img/sprite.gif) repeat-x left top;  
@@ -106,7 +113,12 @@
     height: 16px; /* height of the icon */
     text-decoration: none;
     position: relative;
-    top: 1px;
+    top: 2px;
+}
+
+.rate > span {
+    position: relative;
+    bottom: 2px;
 }
 
 /* Background positions for rating sprite */
@@ -115,7 +127,7 @@
 }
 
 .evaluate-shell.can-vote .heart:hover,
-.heart-selected {
+.heart.selected {
     background-position: 0px -16px;
 }
 
@@ -124,7 +136,7 @@
 }
 
 .evaluate-shell.can-vote .thumb:hover,
-.thumb-selected {
+.thumb.selected {
     background-position: 0px -48px;
 }
 
@@ -133,7 +145,7 @@
 }
 
 .evaluate-shell.can-vote .thumb-down:hover,
-.thumb-down-selected {
+.thumb-down.selected {
     background-position: 0px -80px;
 }
 
@@ -145,7 +157,7 @@
     background-position: 0px -112px;
 }
 
-.star-selected,
+.star.selected,
 .evaluate-shell.can-vote .star:hover {
     background-position: 0px -128px;
 }
@@ -155,7 +167,7 @@
 }
 
 .evaluate-shell.can-vote .arrow:hover,
-.arrow-selected {
+.arrow.selected {
     background-position: 0px -160px;
 }
 
@@ -164,7 +176,7 @@
 }
 
 .evaluate-shell.can-vote .arrow-down:hover,
-.arrow-down-selected {
+.arrow-down.selected {
     background-position: 0px -192px;
 }
 
@@ -173,7 +185,7 @@
 }
 
 .evaluate-shell.can-vote .banner:hover,
-.banner-selected {
+.banner.selected {
     background-position: 0px -224px;
 }
 

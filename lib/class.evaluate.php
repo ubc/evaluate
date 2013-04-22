@@ -301,11 +301,14 @@ class Evaluate {
 		$total_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s', $metric_id, $content_id ) );
 		
 		$score = Evaluate::get_score( $metric_id, $content_id );
-		$score = ( empty( $score ) ? 0 : $score );
+		$controversy = Evaluate::get_controversy_score( $metric_id, $content_id );
+		
+		error_log('Controversy '.$controversy.' for '.$metric_id);
 		
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-modified', time() );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-votes', $total_votes );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-score', $score );
+		update_post_meta( $content_id, 'metric-'.$metric_id.'-controversy', $controversy );
 	}
   
 	/* Create a url to vote */
@@ -325,7 +328,7 @@ class Evaluate {
 	// Data functions to get all required data about a metric //
 	//********************************************************//
 	
-	public static function get_data_by_slug( $metric_slug, $content_id ) {
+	public static function get_data_by_slug( $metric_slug, $content_id = 0 ) {
 		global $wpdb, $post;
 		
 		$metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE slug=%s', $metric_slug ) );
@@ -422,6 +425,7 @@ class Evaluate {
 	public static function get_metric_data_js() {
 		$data = new stdClass();
 		$data->template = true;
+		$data->preview = false;
 		$data->admin_only = false;
 		
 		$data->metric_id = '{{=it.metric_id}}';
@@ -431,7 +435,7 @@ class Evaluate {
 		$data->require_login = '{{=it.require_login}}';
 		$data->style = '{{=it.style}}';
 		$data->modified = '{{=it.modified}}';
-		$data->preview = '{{=it.preview}}';
+		//$data->preview = '{{=it.preview}}';
 		
 		$data->counter = '{{=it.counter}}';
 		$data->counter_up = '{{=it.counter_up}}';
@@ -498,7 +502,7 @@ class Evaluate {
 		endif;
 		
 		// Miscelleneous Data
-		$data->state = ( $data->user_vote && $data->user_vote == 1 ? '-selected' : '' ); // Set state of the link
+		$data->state = ( $data->user_vote && $data->user_vote == 1 ? ' selected' : '' ); // Set state of the link
 		
 		if ( $data->preview == false ):
 			$data->nonce = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
@@ -545,8 +549,8 @@ class Evaluate {
 		endif;
 		
 		// Miscelleneous Data
-		$data->state_up = ( $data->user_vote && $data->user_vote == 1 ? '-selected' : '' );
-		$data->state_down = ( $data->user_vote && $data->user_vote == -1 ? '-selected' : '' );
+		$data->state_up = ( $data->user_vote && $data->user_vote == 1 ? ' selected' : '' );
+		$data->state_down = ( $data->user_vote && $data->user_vote == -1 ? ' selected' : '' );
 		
 		if ( $data->preview == false ):
 			$data->nonce_up = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
@@ -599,7 +603,7 @@ class Evaluate {
 		endif;
 		
 		// Miscelleneous Data
-		$data->state = ( $data->user_vote ? '-selected' : '' );
+		$data->state = ( $data->user_vote ? ' selected' : '' );
 		$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / $data->length * 100;
 		
 		if ( $data->preview == false ):
@@ -639,18 +643,22 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( count( $data->votes ) > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post->ID, self::get_user() ) );
 		else:
 			$data->user_vote = false;
 		endif;
 		
 		// Calculate Average
+		$data->average = 0;
 		$data->averages = array();
 		$data->answer_votes = array();
 		foreach ( $data->answers as $key => $answer ):
-			$data->averages[$key] = ( $data->total_votes > 0 && isset( $data->votes[$key] ) ? round( $data->votes[$key]->count / $data->total_votes * 100, 1 ) : 0 );
+			$value = ( $data->total_votes > 0 && isset( $data->votes[$key] ) ? round( $data->votes[$key]->count / $data->total_votes * 100, 1 ) : 0 );
+			$data->averages[$key] = $value;
 			$data->answer_votes[$key] = ( isset( $data->votes[$key] ) ? $data->votes[$key]->count : 0 );
+			$data->average += $value;
 		endforeach;
+		$data->average /= count( $data->answers );
 		
 		// Miscelleneous Data
 		if ( $data->preview == false ):
@@ -713,7 +721,7 @@ class Evaluate {
 		?>
 		<span class="up-counter"><?php echo $data->counter; ?> </span>
 		<a <?php echo $data->href_link; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state; ?> eval-link" title="<?php echo $data->title ?>" data-nonce="<?php echo $data->nonce; ?>">
-			<?php echo $data->title ?>
+			<span><?php echo $data->title ?></span>
 		</a>
 		<?php
 	}
@@ -760,7 +768,9 @@ class Evaluate {
 		<?php
 	}
   
-	/** Chooses between form and results according to request */
+	/**
+	 * Chooses between form and results according to request.
+	 */
 	public static function display_poll( $data ) {
 		?>
 		<ul class="poll-list">
@@ -856,23 +866,57 @@ class Evaluate {
 		endif;
 	}
   
+	/* Get controversy score for any metric-post pair */
+	public static function get_controversy_score( $metric_id, $content_id ) {
+		$data = self::get_data_by_id( $metric_id, $content_id );
+		
+		switch ( $data->type ):
+		case 'two-way':
+			$score = $data->counter_up - $data->counter_down;
+			if ( $score < 0 ):
+				$score = abs( $score ) - 0.1;
+			endif;
+			break;
+		case 'range':
+			$score = abs( ( $data->length / 2.0 ) - self::calculate_bayesian_score( $data->average, $data->total_votes, $data->length ) );
+			break;
+		case 'poll':
+			$score = $data->average;
+			if ( $score == 0 ):
+				$score = 100;
+			endif;
+			break;
+		endswitch;
+		
+		return ( empty( $score ) ? 0 : $score );
+	}
+  
 	/* Get score for any metric-post pair */
 	public static function get_score( $metric_id, $content_id ) {
 		$data = self::get_data_by_id( $metric_id, $content_id );
 		
 		switch ( $data->type ):
 		case 'one-way':
-			return $data->counter;
+			$score = $data->counter;
+			break;
 		case 'two-way':
-			return self::calculate_wilson_score( $data->counter_up, $data->counter_total );
+			$score = self::calculate_wilson_score( $data->counter_up, $data->counter_total );
+			break;
 		case 'range':
-			return self::calculate_bayesian_score( $data->average, $data->total_votes );
+			$score = self::calculate_bayesian_score( $data->average, $data->total_votes, $data->length );
+			break;
 		endswitch;
+		
+		return ( empty( $score ) ? 0 : $score );
 	}
   
-	/* Assumes score inherently tends to 3 out of 5 i.e. bayesian prior is 3 */
-	public static function calculate_bayesian_score( $average, $total ) {
-		return (3 + $average * $total) / (1 + $total);
+	/**
+	 * Assumes score inherently tends towards 50%. ie. the bayesian prior is 50%
+	 */
+	public static function calculate_bayesian_score( $average, $total, $length ) {
+		$prior = ( ( $length - 1 ) / 2 ) + 1;
+		$constant = 1;
+		return ( ( $constant * $prior ) + ( $average * $total ) ) / ( $constant + $total );
 	}
   
 	/**
@@ -880,7 +924,7 @@ class Evaluate {
 	 * calculates the wilson score: a lower bound on the "true" value of
 	 * the ratio of positive votes and total votes, given a confidence level
 	 */
-	public static function calculate_wilson_score($positive, $total, $power = '0.05') {
+	public static function calculate_wilson_score( $positive, $total, $power = 0.05 ) {
 		if ( $total == 0 ) return 0;
 		
 		$z = self::pnormaldist( 1 - $power / 2 );
@@ -894,7 +938,7 @@ class Evaluate {
 	 * calculates z value for a given pct point $qn in the standard normal distribution
 	 * with sigma=1 and mean=0
 	 */
-	public static function pnormaldist($qn) {
+	public static function pnormaldist( $qn ) {
 		$b = array(
 			1.570796288, 0.03706987906, -0.8364353589e-3,
 			-0.2250947176e-3, 0.6841218299e-5, 0.5824238515e-5,

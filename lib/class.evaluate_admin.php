@@ -839,16 +839,19 @@ class Evaluate_Admin {
 				// We want to keep track of total votes and score for the metrics NOT in the list
 				$total_votes = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s', $key, $post_id ) );
 			  
-				$score = Evaluate::get_score($key, $post_id);
+				$score = Evaluate::get_score( $key, $post_id );
+				$controversy = Evaluate::get_controversy_score( $metric_id, $content_id );
 				delete_post_meta( $post_id, 'metric', $key); // Remove metric from blacklist
 				update_post_meta( $post_id, 'metric-'.$key.'-votes', $total_votes);
 				update_post_meta( $post_id, 'metric-'.$key.'-score', $score);
+				update_post_meta( $post_id, 'metric-'.$key.'-controversy', $controversy);
 			elseif ( $cb == 'on' && ! in_array( $key, $post_meta ) ):
 				add_post_meta( $post_id, 'metric', $key ); // Add metric to blacklist
 				
 				// Remove unneeded metadata
 				delete_post_meta( $post_id, 'metric-'.$key.'-votes' );
 				delete_post_meta( $post_id, 'metric-'.$key.'-score' );
+				delete_post_meta( $post_id, 'metric-'.$key.'-controversy' );
 			endif;
 		endforeach;
 		
