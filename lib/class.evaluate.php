@@ -99,6 +99,7 @@ class Evaluate {
 			content_id bigint(11) NOT NULL,
 			user_id varchar(20) NOT NULL,
 			vote int(11) NOT NULL,
+			comment tinytext NOT NULL,
 			date datetime NOT NULL,
 			PRIMARY KEY (id) );";
 		
@@ -180,7 +181,7 @@ class Evaluate {
 	public static function event_handler() {
 		switch ( $_REQUEST['evaluate'] ):
 		case 'vote':
-			self::vote( $_REQUEST['metric_id'], $_REQUEST['content_id'], $_REQUEST['vote'], $_REQUEST['_wpnonce'] );
+			self::vote( $_REQUEST['metric_id'], $_REQUEST['content_id'], $_REQUEST['vote'], $_REQUEST['_wpnonce'], $_REQUEST['comment'] );
 			self::clear_url();
 			break;
 		case 'sort':
@@ -207,7 +208,7 @@ class Evaluate {
 			
 			// Now handle vote requests
 			if ( isset( $data['vote'] ) ):
-				self::vote( $data['metric_id'], $data['content_id'], $data['vote'], $data['_wpnonce'] );
+				self::vote( $data['metric_id'], $data['content_id'], $data['vote'], $data['_wpnonce'], $data['comment'] );
 			endif;
 			die();
 		endif;
@@ -249,8 +250,9 @@ class Evaluate {
 	//**************************//
   
 	/** Process incoming votes for deletion, update or insert */
-	public static function vote( $metric_id, $content_id, $vote, $nonce ) {
+	public static function vote( $metric_id, $content_id, $vote, $nonce, $comment = null ) {
 		global $wpdb;
+		$user_id = self::get_user();
 		
 		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() ) ):
 			if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
@@ -258,15 +260,8 @@ class Evaluate {
 			endif;
 		endif;
 		
-		$data = array(); // To hold vote data for db
-		$data['metric_id'] = $metric_id;
-		$data['content_id'] = $content_id;
-		$data['user_id'] = self::get_user();
-		$data['vote'] = $vote;
-		$data['date'] = date('Y-m-d H:i:s');
-		
 		// Check if vote exists first
-		$query = $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $data['user_id'] );
+		$query = $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $user_id );
 		$prev_vote = $wpdb->get_row($query);
 		if ( $prev_vote ):
 			if ( $vote == $prev_vote->vote ): // Same vote twice constitutes a 'toggle', remove vote
@@ -278,14 +273,30 @@ class Evaluate {
 					'content_id' => $content_id,
 					'user_id'    => $data['user_id'],
 				);
-				$data = array(
-					'vote' => $vote,
-				);
+				
+				$data = array();
+				
+				if ( ! empty( $vote ) ):
+					$data['vote'] = $vote;
+				endif;
+				
+				if ( ! empty( $comment ) ):
+					$data['comment'] = $comment;
+				endif;
 				
 				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
 			endif;
 		else: // Add new vote
-			$result = $wpdb->insert( EVAL_DB_VOTES, $data, array( '%d', '%d', '%s', '%d', '%s' ) );
+			$data = array(
+				'metric_id'  => $metric_id,
+				'content_id' => $content_id,
+				'user_id'    => $user_id,
+				'vote'       => $vote,
+				'comment'    => ( empty( $comment ) ? "" : $comment ),
+				'date'       => date('Y-m-d H:i:s'),
+			);
+			
+			$result = $wpdb->insert( EVAL_DB_VOTES, $data, array( '%d', '%d', '%s', '%d', '%s', '%s' ) );
 		endif;
 		
 		if ( $result ):
@@ -306,7 +317,12 @@ class Evaluate {
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-modified', time() );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-score', $score );
 		update_post_meta( $content_id, 'metric-'.$metric_id.'-votes', $total_votes );
-		update_post_meta( $content_id, 'metric-'.$metric_id.'-controversy', $controversy );
+		
+		if ( $total_votes > 0 ):
+			update_post_meta( $content_id, 'metric-'.$metric_id.'-controversy', $controversy );
+		else:
+			delete_post_meta( $content_id, 'metric-'.$metric_id.'-controversy' );
+		endif;
 	}
   
 	/* Create a url to vote */
@@ -696,7 +712,7 @@ class Evaluate {
 		?>
 		<div class="evaluate-shell <?php echo $can_vote; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
 			<span class="rate-name"><?php echo $data->display_name; ?></span>
-			<div class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
+			<span class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
 				<?php
 				switch ( $data->type ):
 				case 'one-way':
@@ -713,7 +729,7 @@ class Evaluate {
 					break;
 				endswitch;
 				?>
-			</div>
+			</span>
 		</div>
 		<?php
 		

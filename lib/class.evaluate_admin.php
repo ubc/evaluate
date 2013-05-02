@@ -844,7 +844,10 @@ class Evaluate_Admin {
 				delete_post_meta( $post_id, 'metric', $key); // Remove metric from blacklist
 				update_post_meta( $post_id, 'metric-'.$key.'-votes', $total_votes);
 				update_post_meta( $post_id, 'metric-'.$key.'-score', $score);
-				update_post_meta( $post_id, 'metric-'.$key.'-controversy', $controversy);
+				
+				if ( $total_votes > 0 ):
+					update_post_meta( $post_id, 'metric-'.$key.'-controversy', $controversy);
+				endif;
 			elseif ( $cb == 'on' && ! in_array( $key, $post_meta ) ):
 				add_post_meta( $post_id, 'metric', $key ); // Add metric to blacklist
 				
