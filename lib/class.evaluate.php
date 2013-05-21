@@ -46,7 +46,7 @@ class Evaluate {
 		endif;
 		
 		// Check if CTLT_Stream plugin exists to use with node
-		if ( ! function_exists('is_plugin_active') ):
+		if ( ! function_exists( 'is_plugin_active' ) ):
 			// Include plugins.php to check for other plugins from the frontend
 			include_once( ABSPATH.'wp-admin/includes/plugin.php' );
 		endif;
@@ -99,6 +99,7 @@ class Evaluate {
 			content_id bigint(11) NOT NULL,
 			user_id varchar(20) NOT NULL,
 			vote int(11) NOT NULL,
+			disabled tinyint(1) NOT NULL DEFAULT '0',
 			comment tinytext NOT NULL,
 			date datetime NOT NULL,
 			PRIMARY KEY (id) );";
@@ -264,7 +265,7 @@ class Evaluate {
 		$query = $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $user_id );
 		$prev_vote = $wpdb->get_row($query);
 		if ( $prev_vote ):
-			if ( $vote == $prev_vote->vote ): // Same vote twice constitutes a 'toggle', remove vote
+			if ( $vote == $prev_vote->vote && $prev_vote->disabled == 0 ): // Same vote twice constitutes a 'toggle', remove vote
 				$query = $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE id=%d', $prev_vote->id );
 				$result = $wpdb->query($query);
 			else: // Update vote from previous value
@@ -274,7 +275,9 @@ class Evaluate {
 					'user_id'    => $data['user_id'],
 				);
 				
-				$data = array();
+				$data = array(
+					'disabled' => 0,
+				);
 				
 				if ( ! empty( $vote ) ):
 					$data['vote'] = $vote;
@@ -502,7 +505,7 @@ class Evaluate {
 		else:
 			$where_content = '';
 		endif;
-		$query = $wpdb->prepare( 'SELECT COUNT(*) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		$query = $wpdb->prepare( 'SELECT COUNT(*) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
 		$data->counter = $wpdb->get_results( $query );
 		$data->counter = $data->counter[0]->count;
 		$data->counter = ( $data->counter ? $data->counter : 0 );
@@ -510,7 +513,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( $data->counter > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -540,7 +543,7 @@ class Evaluate {
 		else:
 			$where_content = '';
 		endif;
-		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
 		$data->counter = $wpdb->get_results( $query );
 		$data->counter_up = 0;
 		$data->counter_down = 0;
@@ -557,7 +560,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( $data->total_votes > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -589,7 +592,8 @@ class Evaluate {
 		else:
 			$where_content = '';
 		endif;
-		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
 		$data->votes = $wpdb->get_results( $query, OBJECT_K ); //returned array will have vote value for keys
 		
 		$data->average = 0;
@@ -616,7 +620,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( count( $data->votes ) > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s and user_id=%s', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -653,7 +657,7 @@ class Evaluate {
 		else:
 			$where_content = '';
 		endif;
-		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' GROUP BY vote', $metric->id, $post->ID );
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
 		$data->votes = $wpdb->get_results( $query, OBJECT_K ); // Returned array will have vote value for keys
 		$data->total_votes = 0;
 		foreach ( $data->votes as $vote ):
@@ -662,7 +666,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( count( $data->votes ) > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -711,7 +715,7 @@ class Evaluate {
 		ob_start();
 		?>
 		<div class="evaluate-shell <?php echo $can_vote; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
-			<span class="rate-name"><?php echo $data->display_name; ?></span>
+			<div class="rate-name"><?php echo $data->display_name; ?></div>
 			<span class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
 				<?php
 				switch ( $data->type ):

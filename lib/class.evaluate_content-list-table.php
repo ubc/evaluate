@@ -13,6 +13,8 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			'ajax'     => false,
 		) );
 		
+		$this->process_bulk_action();
+		
 		global $wpdb;
 		
 		$this->metric_id = $_GET['metric_id'];
@@ -33,7 +35,8 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			break;
 		endswitch;
 		
-		return $columns = array(
+		return array(
+            'cb'    => '<input type="checkbox" />',
 			'title'      => __('Title'),
 			'author'     => __('Author'),
 			'type'       => __('Content Type'),
@@ -54,7 +57,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 	}
   
 	function column_default( $item, $column ) {
-		switch ($column):
+		switch ( $column ):
 		case 'title':
 			return sprintf( '<a href="%s"><strong>%s</strong></a>', $item->permalink, $item->title );
 		case 'author':
@@ -71,6 +74,14 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			return $item->{$column};
 		endswitch;
 	}
+	
+	function column_cb( $item ){
+        return sprintf(
+            '<input type="checkbox" name="%1$s[]" value="%2$s" />',
+            /*$1%s*/ $this->_args['singular'],  //Let's simply repurpose the table's singular label ("movie")
+            /*$2%s*/ $item->ID                //The value of the checkbox should be the record's id
+        );
+    }
   
 	function prepare_items() {
 		global $wpdb;
@@ -83,16 +94,20 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		
 		//fetch posts
 		$posts = get_posts( array(
-			'numberposts' => -1,
-			'meta_key'    => 'metric-'.$this->metric_id.'-votes',
-			'post_type'   => get_post_types( array( 'public' => true ) ) //we want to list ALL public post types
+			'numberposts'  => -1,
+			'meta_key'     => 'metric-'.$this->metric_id.'-votes',
+			'meta_compare' => '!=',
+			'meta_value'   => array( 0 => false ),
+			'post_type'    => get_post_types(),
 		) );
 		
 		//preprocess proper info for item objects
 		$items = array();
 		foreach ( $posts as $post ):
-			if ( update_post_meta( $post->ID, 'metric-'.$this->metric_id.'-votes' ) != 0 ):
+			$total_votes = get_post_meta( $post->ID, 'metric-'.$this->metric_id.'-votes' );
+			if ( ! empty( $total_votes[0] ) ):
 				$item = new stdClass();
+				$item->ID = $post->ID;
 				$item->title = $post->post_title;
 				
 				$author = get_user_by( 'id', $post->post_author );
@@ -220,6 +235,37 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		</form>
 		<?php
 	}
+	
+    function get_bulk_actions() {
+        return array(
+            'undelete' => 'Enable All Votes',
+            'delete'   => 'Disable All Votes',
+        );
+    }
+	
+    function process_bulk_action() {
+		global $wpdb;
+		$index = $this->_args['singular'];
+		
+        switch ( $this->current_action() ):
+		case 'undelete':
+			foreach ( $_GET[$index] as $content_id ):
+				$where = array( 'content_id' => $content_id );
+				$data = array( 'disabled' => 0 );
+				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
+			endforeach;
+			break;
+		case 'delete':
+			foreach ( $_GET[$index] as $content_id ):
+				$where = array( 'content_id' => $content_id );
+				$data = array( 'disabled' => 1 );
+				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
+			endforeach;
+			break;
+		default:
+			break;
+        endswitch;
+    }
   
 	function extra_tablenav( $which ) {
 		if ( $which == 'top' ):
@@ -277,7 +323,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 			<?php
 		endif;
 		
-		if ($which == 'bottom'):
+		if ( $which == 'bottom' ):
 			//echo 'after table';
 		endif;
 	}

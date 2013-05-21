@@ -126,35 +126,6 @@ class Evaluate_Admin {
 			throw new Exception( "You haven't supplied a metric!" );
 		endif;
 		
-		$metric_data = Evaluate::get_data_by_id( $metric_id, 0 );
-		?>
-		<div class="wrap">
-			<div id="icon-generic" class="icon32"></div>
-			<h2>
-				Metric Details <a href="admin.php?page=evaluate&view=form&metric_id=<?php echo $metric_id; ?>" class="add-new-h2" title="Edit Metric">Edit</a>
-			</h2>
-		</div>
-		<div class="postbox metric-details">
-			<table class="metric-details-inner">
-				<tbody>
-					<tr>
-						<td><strong>Metric ID:</strong> </td>
-						<td><?php echo $metric_data->metric_id; ?></td>
-					</tr>
-					<tr>
-						<td><strong>Display Name:</strong> </td>
-						<td><?php echo $metric_data->display_name; ?></td>
-					</tr>
-					<tr>
-						<td><strong>Total Votes:</strong> </td>
-						<td><?php echo $metric_data->total_votes; ?></td>
-					</tr>
-					<?php self::print_metric_details( $metric_data ); ?>
-				</tbody>
-			</table>
-		</div>
-		<?php
-		
 		$section = ( isset( $_GET['section'] ) ? $_GET['section'] : 'content' );
 		$content_is_active = true;
 		switch ( $section ):
@@ -169,22 +140,52 @@ class Evaluate_Admin {
 			break;
 		endswitch;
 		
+		$metric_data = Evaluate::get_data_by_id( $metric_id, 0 );
 		?>
-		<h3 class="nav-tab-wrapper">
-			<?php
-			$sections = array(
-				'content' => "Content",
-				'user' => "Users",
-			);
-			foreach ( $sections as $slug => $title ):
-				$active = ( $section == $slug ? 'nav-tab-active' : '' );
-				$url = "?page=evaluate&view=metric&metric_id=$metric_id&section=$slug";
+		<div id="metric-details-page">
+			<div class="wrap">
+				<div id="icon-generic" class="icon32"></div>
+				<h2>
+					Metric Details <a href="admin.php?page=evaluate&view=form&metric_id=<?php echo $metric_id; ?>" class="add-new-h2" title="Edit Metric">Edit</a>
+				</h2>
+			</div>
+			<div class="postbox metric-details">
+				<table class="metric-details-inner">
+					<tbody>
+						<tr>
+							<td><strong>Metric ID:</strong> </td>
+							<td><?php echo $metric_data->metric_id; ?></td>
+						</tr>
+						<tr>
+							<td><strong>Display Name:</strong> </td>
+							<td><?php echo $metric_data->display_name; ?></td>
+						</tr>
+						<tr>
+							<td><strong>Total Votes:</strong> </td>
+							<td><?php echo $metric_data->total_votes; ?></td>
+						</tr>
+						<?php self::print_metric_details( $metric_data ); ?>
+					</tbody>
+				</table>
+			</div>
+			<h3 class="nav-tab-wrapper">
+				<?php
+					$sections = array(
+						'content' => "Content",
+						'user'    => "Users",
+					);
+					foreach ( $sections as $slug => $title ):
+						$active = ( $section == $slug ? 'nav-tab-active' : '' );
+						$url = "?page=evaluate&view=metric&metric_id=$metric_id&section=$slug";
+						?>
+						<a class="nav-tab <?php echo $active; ?>" href="<?php echo $url; ?>"><?php echo $title; ?></a>
+						<?php
+					endforeach;
 				?>
-				<a class="nav-tab <?php echo $active; ?>" href="<?php echo $url; ?>"><?php echo $title; ?></a>
-			<?php endforeach; ?>
-		</h3>
+			</h3>
+			<?php $details_table->render(); ?>
+		</div>
 		<?php
-		$details_table->render();
 	}
 	
 	public static function print_metric_details( $metric_data ) {

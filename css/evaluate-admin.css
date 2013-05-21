@@ -39,3 +39,25 @@
     margin-bottom: -2px;
     margin-left: -3px;
 }
+
+#metric-details-page {
+    margin-right: 20px;
+}
+
+#metric-details-page .check-column {
+    padding: 0;
+    padding-top: 3px;
+}
+
+#metric-details-page .widefat thead .check-column, 
+#metric-details-page .widefat tfoot .check-column {
+    padding: 10px 0 0;
+}
+
+#metric-details-page .disabled {
+    color: lightgrey;
+}
+
+#metric-details-page .disabled a {
+    color: grey;
+}

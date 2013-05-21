@@ -12,12 +12,15 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 			'ajax'     => false,
 		));
 		
+		$this->process_bulk_action();
+		
 		$this->metric_id = $_GET['metric_id'];
 		$this->metric_data = Evaluate::get_data_by_id( $this->metric_id, 0 );
 	}
   
 	function get_columns() {
 		return $columns = array(
+            'cb'    => '<input type="checkbox" />',
 			'title' => __('Title'),
 			'voter' => __('Voter'),
 			'vote'  => __('Vote Value'),
@@ -35,15 +38,29 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 	}
   
 	function column_default( $item, $column ) {
-		switch ( $column ):
-		case 'title':
-			return sprintf( '<a href="%s"><strong>%s</strong></a>', $item->permalink, $item->title );
-		case 'date':
-			return sprintf( '<abbr title="%s">%s</abbr>', $item->date, date( 'D, M d', strtotime( $item->date ) ) );
-		default:
-			return $item->{$column};
-		endswitch;
+		?>
+		<span <?php echo $item->disabled == 1 ? 'class="disabled"' : ''; ?>s>
+			<?php
+			switch ( $column ):
+			case 'title':
+				return sprintf( '<a href="%s"><strong>%s</strong></a>', $item->permalink, $item->title );
+			case 'date':
+				return sprintf( '<abbr title="%s">%s</abbr>', $item->date, date( 'D, M d', strtotime( $item->date ) ) );
+			default:
+				return $item->{$column};
+			endswitch;
+			?>
+		<span>
+		<?php
 	}
+	
+	function column_cb( $item ){
+        return sprintf(
+            '<input type="checkbox" name="%1$s[]" value="%2$s" />',
+            /*$1%s*/ $this->_args['singular'],  //Let's simply repurpose the table's singular label ("movie")
+            /*$2%s*/ $item->ID                //The value of the checkbox should be the record's id
+        );
+    }
   
 	function prepare_items() {
 		global $wpdb;
@@ -60,6 +77,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		$items = array();
 		foreach ( $results as $result ):
 			$item = new stdClass();
+			$item->ID = $result->id;
 			$item->title = get_the_title( $result->content_id );
 			$item->permalink = get_permalink( $result->content_id );
 			$author = get_user_by( 'id', $result->user_id );
@@ -69,6 +87,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 			else:
 				$item->vote = $result->vote;
 			endif;
+			$item->disabled = $result->disabled;
 			$item->date = $result->date;
 			
 			$items[] = $item;
@@ -86,7 +105,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 			$filter = $wpdb->escape( $_GET['title_filter'] );
 			$items = array_filter( $items, function( $item ) use( $filter ) {
 				return strpos( $item->title, $filter ) !== false;
-			});
+			} );
 		endif;
 		
 		if ( isset( $_GET['filter_users'] ) && $_GET['filter_users'] ):
@@ -125,6 +144,37 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		</form>
 		<?php
 	}
+	
+    function get_bulk_actions() {
+        return array(
+            'undelete' => 'Enable',
+            'delete'   => 'Disable',
+        );
+    }
+	
+    function process_bulk_action() {
+		global $wpdb;
+		$index = $this->_args['singular'];
+		
+        switch ( $this->current_action() ):
+		case 'undelete':
+			foreach ( $_GET[$index] as $vote_id ):
+				$where = array( 'id' => $vote_id );
+				$data = array( 'disabled' => 0 );
+				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
+			endforeach;
+			break;
+		case 'delete':
+			foreach ( $_GET[$index] as $vote_id ):
+				$where = array( 'id' => $vote_id );
+				$data = array( 'disabled' => 1 );
+				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
+			endforeach;
+			break;
+		default:
+			break;
+        endswitch;
+    }
   
 	function extra_tablenav( $which ) {
 		if ( $which == 'top' ):
