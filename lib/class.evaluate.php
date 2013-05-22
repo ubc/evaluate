@@ -263,31 +263,32 @@ class Evaluate {
 		
 		// Check if vote exists first
 		$query = $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $user_id );
-		$prev_vote = $wpdb->get_row($query);
+		$prev_vote = $wpdb->get_row( $query );
+		
 		if ( $prev_vote ):
 			if ( $vote == $prev_vote->vote && $prev_vote->disabled == 0 ): // Same vote twice constitutes a 'toggle', remove vote
 				$query = $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE id=%d', $prev_vote->id );
-				$result = $wpdb->query($query);
+				$result = $wpdb->query( $query );
 			else: // Update vote from previous value
 				$where = array(
-					'metric_id'  => $metric_id,
-					'content_id' => $content_id,
-					'user_id'    => $data['user_id'],
+					'id' => $prev_vote->id,
 				);
 				
-				$data = array(
-					'disabled' => 0,
-				);
+				$data = array();
 				
 				if ( ! empty( $vote ) ):
 					$data['vote'] = $vote;
 				endif;
 				
+				$data['disabled'] = 0;
+				
 				if ( ! empty( $comment ) ):
 					$data['comment'] = $comment;
 				endif;
 				
+				error_log('update');
 				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
+				error_log( print_r( $wpdb->last_query, TRUE ) );
 			endif;
 		else: // Add new vote
 			$data = array(
@@ -295,11 +296,12 @@ class Evaluate {
 				'content_id' => $content_id,
 				'user_id'    => $user_id,
 				'vote'       => $vote,
+				'disabled'   => 0,
 				'comment'    => ( empty( $comment ) ? "" : $comment ),
 				'date'       => date('Y-m-d H:i:s'),
 			);
 			
-			$result = $wpdb->insert( EVAL_DB_VOTES, $data, array( '%d', '%d', '%s', '%d', '%s', '%s' ) );
+			$result = $wpdb->insert( EVAL_DB_VOTES, $data, array( '%d', '%d', '%s', '%d', '%d', '%s', '%s' ) );
 		endif;
 		
 		if ( $result ):

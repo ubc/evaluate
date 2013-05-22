@@ -238,8 +238,8 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 	
     function get_bulk_actions() {
         return array(
-            'undelete' => 'Enable All Votes',
-            'delete'   => 'Disable All Votes',
+            'delete'   => 'Delete All Votes',
+            'undelete' => 'Restore All Votes',
         );
     }
 	

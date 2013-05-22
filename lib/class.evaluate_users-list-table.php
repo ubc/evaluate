@@ -147,8 +147,8 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 	
     function get_bulk_actions() {
         return array(
-            'undelete' => 'Enable',
-            'delete'   => 'Disable',
+            'delete'   => 'Delete',
+            'undelete' => 'Restore',
         );
     }
 	
