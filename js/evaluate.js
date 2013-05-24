@@ -1,4 +1,11 @@
 var Evaluate = {
+    template: {
+        'one-way': doT.template(jQuery('#evaluate-one-way').text()),
+        'two-way': doT.template(jQuery('#evaluate-two-way').text()),
+        'range'  : doT.template(jQuery('#evaluate-range').text()),
+        'poll'   : doT.template(jQuery('#evaluate-poll').text()),
+    },
+    
     init: function() {
         if ( ! evaluate_ajax.stream_active ) {
             setInterval(Evaluate.reloadMetrics, (evaluate_ajax.frequency * 1000));
@@ -56,13 +63,6 @@ var Evaluate = {
         } );
     },
 };
-  
-var template = {
-    'one-way': doT.template(jQuery('#evaluate-one-way').text()),
-    'two-way': doT.template(jQuery('#evaluate-two-way').text()),
-    'range'  : doT.template(jQuery('#evaluate-range').text()),
-    'poll'   : doT.template(jQuery('#evaluate-poll').text()),
-};
 
 /* On page load */
 jQuery(window).load(function() {
@@ -91,7 +91,7 @@ jQuery(window).load(function() {
                         }
                     }
                         
-                    element.replaceWith(template['one-way'](data.data));
+                    element.replaceWith(Evaluate.template['one-way'](data.data));
                     break;
                 case 'two-way':
                     data.data.nonce_up = element.find('.link-up').data('nonce');
@@ -113,7 +113,7 @@ jQuery(window).load(function() {
                         }
                     }
                     
-                    element.replaceWith(template['two-way'](data.data));
+                    element.replaceWith(Evaluate.template['two-way'](data.data));
                     break;
                 case 'range':
                     for ( var i = 1; i <= data.data.length; i++ ) {
@@ -133,7 +133,7 @@ jQuery(window).load(function() {
                         }
                     }
                     
-                    element.replaceWith(template['range'](data.data));
+                    element.replaceWith(Evaluate.template['range'](data.data));
                     break;
                 case 'poll':
                     if ( data.data.user == evaluate_ajax.user ) {
@@ -143,7 +143,7 @@ jQuery(window).load(function() {
                         data.data.user_vote = element.data('user-vote');
                     }
                     
-                    element.replaceWith(template['poll'](data.data));
+                    element.replaceWith(Evaluate.template['poll'](data.data));
                     break;
                 }
             }

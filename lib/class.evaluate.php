@@ -286,9 +286,7 @@ class Evaluate {
 					$data['comment'] = $comment;
 				endif;
 				
-				error_log('update');
 				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
-				error_log( print_r( $wpdb->last_query, TRUE ) );
 			endif;
 		else: // Add new vote
 			$data = array(
@@ -365,7 +363,7 @@ class Evaluate {
 		endif;
 	}
 	
-	public static function get_data_by_id( $metric_id, $content_id ) {
+	public static function get_data_by_id( $metric_id, $content_id, $user = null ) {
 		global $wpdb, $post;
 		
 		$metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
@@ -379,13 +377,17 @@ class Evaluate {
 				$post->ID = 0;
 			endif;
 			
-			return self::get_metric_data( $metric );
+			return self::get_metric_data( $metric, $user );
 		endif;
 	}
   
 	/** Convenience function to handle any metric */
-	public static function get_metric_data( $metric ) {
+	public static function get_metric_data( $metric, $user = null ) {
 		global $wpdb, $post;
+		
+		if ( $user == null ):
+			$user = self::get_user();
+		endif;
 		
 		$data = new stdClass();
 		$data->template = false;
@@ -402,16 +404,16 @@ class Evaluate {
 		
 		switch ( $metric->type ):
 		case 'one-way':
-			$data = self::one_way_data( $metric, $data );
+			$data = self::one_way_data( $metric, $data, $user );
 			break;
 		case 'two-way':
-			$data = self::two_way_data( $metric, $data );
+			$data = self::two_way_data( $metric, $data, $user );
 			break;
 		case 'range':
-			$data = self::range_data( $metric, $data );
+			$data = self::range_data( $metric, $data, $user );
 			break;
 		case 'poll':
-			$data = self::poll_data( $metric, $data );
+			$data = self::poll_data( $metric, $data, $user );
 			break;
 		default:
 			return null;
@@ -494,7 +496,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function one_way_data( $metric, $data ) {
+	public static function one_way_data( $metric, $data, $user ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -531,7 +533,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function two_way_data( $metric, $data ) {
+	public static function two_way_data( $metric, $data, $user ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -545,6 +547,7 @@ class Evaluate {
 		else:
 			$where_content = '';
 		endif;
+		
 		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
 		$data->counter = $wpdb->get_results( $query );
 		$data->counter_up = 0;
@@ -562,7 +565,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( $data->total_votes > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -581,7 +584,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function range_data( $metric, $data ) {
+	public static function range_data( $metric, $data, $user ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -622,7 +625,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( count( $data->votes ) > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -643,7 +646,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function poll_data( $metric, $data ) {
+	public static function poll_data( $metric, $data, $user ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -668,7 +671,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( count( $data->votes ) > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $user ) );
 		else:
 			$data->user_vote = false;
 		endif;
