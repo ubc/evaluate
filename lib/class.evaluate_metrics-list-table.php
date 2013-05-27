@@ -53,7 +53,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 	function column_default($item, $column) {
 		switch ( $column ):
 			case 'nicename':
-				$name_link = sprintf( '<a href="?page=evaluate&view=metric&metric=%s"><b>%s</b></a>', $item->id, $item->nicename );
+				$name_link = sprintf( '<a href="?page=evaluate&view=metric&metric_id=%s"><b>%s</b></a>', $item->id, $item->nicename );
 				$row_actions = array(
 					'edit'   => sprintf( '<a href="?page=evaluate&view=form&metric_id=%s">Edit</a>', $item->id ),
 					'view'   => sprintf( '<a href="?page=evaluate&view=metric&metric_id=%s">View Details</a>', $item->id ),
