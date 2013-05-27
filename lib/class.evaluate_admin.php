@@ -321,18 +321,20 @@ class Evaluate_Admin {
 		
 		// Poll params
 		// Firstly get rid of any answer fields that are empty
-		$poll_answers = array_filter( $formdata['poll']['answer'] );
-		if ( $metric['type'] == 'poll' ):
-			if ( ! $formdata['poll']['question'] ):
-				throw new Exception('You must provide a question for the poll.');
+		if ( $formdata['poll']['answer'] != null ):
+			$poll_answers = array_filter( $formdata['poll']['answer'] );
+			if ( $metric['type'] == 'poll' ):
+				if ( ! $formdata['poll']['question'] ):
+					throw new Exception('You must provide a question for the poll.');
+				endif;
+				
+				if ( count( $poll_answers ) < 2 ):
+					throw new Exception('You must provide at least 2 answers for the poll.');
+				endif;
+				
+				$metric['params']['poll']['question'] = $formdata['poll']['question']; //question
+				$metric['params']['poll']['answer'] = $poll_answers; //filtered answers
 			endif;
-			
-			if ( count( $poll_answers ) < 2 ):
-				throw new Exception('You must provide at least 2 answers for the poll.');
-			endif;
-			
-			$metric['params']['poll']['question'] = $formdata['poll']['question']; //question
-			$metric['params']['poll']['answer'] = $poll_answers; //filtered answers
 		endif;
 		
 		// Content types

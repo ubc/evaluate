@@ -93,8 +93,8 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 		
 		//fetch posts
-		$posts = get_posts( array(
-			'numberposts'  => -1,
+		$posts = @get_posts( array(
+			'numberposts'  => '-1',
 			'meta_key'     => 'metric-'.$this->metric_id.'-votes',
 			'meta_compare' => '!=',
 			'meta_value'   => array( 0 => false ),
