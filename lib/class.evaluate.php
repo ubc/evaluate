@@ -634,6 +634,11 @@ class Evaluate {
 		$data->state = ( $data->user_vote ? ' selected' : '' );
 		$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / $data->length * 100;
 		
+		$data->stars = array();
+		for ( $i = 1; $i <= $data->length; $i++ ):
+			$data->stars[] = $i;
+		endfor;
+		
 		if ( $data->preview == false ):
 			$data->nonce = array();
 			$data->link = array();
@@ -771,13 +776,23 @@ class Evaluate {
 		<div class="stars">
 			<div class="rating<?php echo $data->state; ?>" style="width: <?php echo $data->width; ?>%"></div>
 			<?php if ( $data->template ): ?>
-				{{ for (var prop in it.href_link) { }}
-					<div class="starr">
-						<a {{=it.href_link[prop]}} onclick="{{=it.onclick}}" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
-				{{ } }}
-				{{ for(var prop in it.href_link) { }}
-					</div>
-				{{ } }}
+				{{? it.href_link != undefined }}
+					{{ for (var prop in it.stars) { }}
+						<div class="starr">
+							<a {{=it.href_link[prop]}} onclick="{{=it.onclick}}" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
+					{{ } }}
+					{{ for (var prop in it.stars) { }}
+						</div>
+					{{ } }}
+				{{??}}
+					{{ for (var prop in it.stars) { }}
+						<div class="starr">
+							<a class="eval-link link-{{=prop}}">&nbsp;</a>
+					{{ } }}
+					{{ for (var prop in it.stars) { }}
+						</div>
+					{{ } }}
+				{{?}}
 			<?php else: ?>
 				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Nested divs for star links 
 					$link = $data->href_link[$i];
