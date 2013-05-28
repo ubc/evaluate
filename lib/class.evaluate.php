@@ -53,6 +53,10 @@ class Evaluate {
 		
 		self::$options['EVAL_STREAM'] =  class_exists('CTLT_Stream') && is_plugin_active( 'stream/stream.php' );
 		
+		if ( self::$options['EVAL_STREAM'] ):
+			CTLT_Stream::$add_script = true;
+		endif;
+		
 		// js and css script hook
 		add_action( 'wp_enqueue_scripts',           array( __CLASS__, 'enqueue_scripts' ) );
 		add_action( 'wp_footer',                    array( __CLASS__, 'print_templates' ) ); // Prints out metric templates for doT
