@@ -51,7 +51,7 @@ class Evaluate {
 			include_once( ABSPATH.'wp-admin/includes/plugin.php' );
 		endif;
 		
-		self::$options['EVAL_STREAM'] = is_plugin_active( 'stream/stream.php' );
+		self::$options['EVAL_STREAM'] =  class_exists('CTLT_Stream') && is_plugin_active( 'stream/stream.php' );
 		
 		// js and css script hook
 		add_action( 'wp_enqueue_scripts',           array( __CLASS__, 'enqueue_scripts' ) );
@@ -135,6 +135,7 @@ class Evaluate {
 		wp_enqueue_script( 'doT' );
 		wp_enqueue_script( 'evaluate-js' );
 		
+		
 		// WP localize trick to pass params into js without direct printing
 		wp_localize_script( 'evaluate-js', 'evaluate_ajax', array(
 			'ajaxurl'       => admin_url('admin-ajax.php'),
@@ -142,6 +143,7 @@ class Evaluate {
 			'user'          => self::get_user(),
 			'frequency'     => Evaluate_Settings::get_ajax_frequency(),
 		) );
+		
 	}
   
 	/** Get id of the current user */
@@ -632,8 +634,11 @@ class Evaluate {
 		
 		// Miscelleneous Data
 		$data->state = ( $data->user_vote ? ' selected' : '' );
-		$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / $data->length * 100;
-		
+		if( $data->length > 0 ) {
+			$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / $data->length * 100;
+		} else {
+			$data->width = 0;
+		}
 		$data->stars = array();
 		for ( $i = 1; $i <= $data->length; $i++ ):
 			$data->stars[] = $i;
