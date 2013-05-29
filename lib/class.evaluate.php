@@ -638,14 +638,15 @@ class Evaluate {
 		
 		// Miscelleneous Data
 		$data->state = ( $data->user_vote ? ' selected' : '' );
-		if( $data->length > 0 ) {
+		if ( $data->length > 0 ):
 			$data->width = ( $data->user_vote ? $data->user_vote : $data->average ) / $data->length * 100;
-		} else {
+		else:
 			$data->width = 0;
-		}
+		endif;
+		
 		$data->stars = array();
 		for ( $i = 1; $i <= $data->length; $i++ ):
-			$data->stars[] = $i;
+			$data->stars[$i] = $i;
 		endfor;
 		
 		if ( $data->preview == false ):
