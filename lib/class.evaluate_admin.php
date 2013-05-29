@@ -172,7 +172,7 @@ class Evaluate_Admin {
 				<?php
 					$sections = array(
 						'content' => "Content",
-						'user'    => "Users",
+						'user'    => "Votes",
 					);
 					foreach ( $sections as $slug => $title ):
 						$active = ( $section == $slug ? 'nav-tab-active' : '' );

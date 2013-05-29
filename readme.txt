@@ -37,7 +37,7 @@ Metrics are usually associated with more than one piece of content. They are dis
 
 = Creating Metrics =
 
-To create a metric nagivate to Metrics -> Add New
+To create a metric navigate to Metrics -> Add New
 
 Metrics will have a type and style associated with them. These are:
 * One way
@@ -82,6 +82,7 @@ You can add the arguments `?evaluate=sort&sort=<sort_type>&metric_id=<metric_id>
  * user_vote, only shows posts that the user has voted on.
 Adding `order=<asc|desc>` will determine the order.
 
+
 == Screenshots ==
 
 1. Metrics displayed underneath the post
@@ -89,6 +90,7 @@ Adding `order=<asc|desc>` will determine the order.
 3. Metric list
 4. Metric details view
 5. Network Admin settings, only accessible if the plugin is network activated.
+
 
 == Changelog ==
 
