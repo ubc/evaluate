@@ -2,6 +2,10 @@
     margin-bottom: 10px;
 }
 
+.no-rating {
+    font-size: 80%;
+}
+
 /* Clear after floated elements */
 .clear {
     clear: both;
@@ -58,12 +62,6 @@
     display: inline-block;
     position: relative;
 }
-
-/*
-.stars .starr { 
-    bottom: 1px;
-}
-*/
 
 .stars .starr a {
     display: inline-block;
@@ -204,24 +202,24 @@
     font-weight: bold;
 }
 
-.rate-poll.hide-results ul .poll-answer {
+.evaluate-shell.hide-results .rate-poll ul .poll-answer {
     color: #767676;
 }
 
-.rate-poll.hide-results ul .poll-answer:hover {
+.evaluate-shell.hide-results .rate-poll ul .poll-answer:hover {
     color: #333333;
 }
 
-.rate-poll.hide-results .poll-result,
-.rate-poll.hide-results .poll-average {
+.evaluate-shell.hide-results .rate-poll .poll-result,
+.evaluate-shell.hide-results .rate-poll .poll-average {
     display: none;
 }
 
-.rate-poll.hide-results .poll-answer {
+.evaluate-shell.hide-results .rate-poll .poll-answer {
     margin: 3px 6px;
 }
 
-.rate-poll:not(.hide-results) .poll-answer input {
+.evaluate-shell:not(.hide-results) .rate-poll .poll-answer input {
     display: none;
 }
 

@@ -1,9 +1,9 @@
 var Evaluate = {
     template: {
-        'one-way': doT.template(jQuery('#evaluate-one-way').text()),
-        'two-way': doT.template(jQuery('#evaluate-two-way').text()),
-        'range'  : doT.template(jQuery('#evaluate-range').text()),
-        'poll'   : doT.template(jQuery('#evaluate-poll').text()),
+        'one-way': doT.template( jQuery('#evaluate-one-way').text() ),
+        'two-way': doT.template( jQuery('#evaluate-two-way').text() ),
+        'range'  : doT.template( jQuery('#evaluate-range').text() ),
+        'poll'   : doT.template( jQuery('#evaluate-poll').text() ),
     },
     
     init: function() {
@@ -72,9 +72,11 @@ jQuery(window).load(function() {
         CTLT_Stream.on('server-push', function (data) {
             //if data received is relevant to evaluate
             if ( 'evaluate' == data.type ) {
-                var element = jQuery('div[id^=evaluate-shell-'+data.data.metric_id+'-'+data.data.content_id+']'); //element to be changed
+                var element = jQuery('.evaluate-shell[id^=evaluate-shell-'+data.data.metric_id+'-'+data.data.content_id+']'); //element to be changed
                 
-                //check metric type and make the adjustments needed
+                console.debug(element.data());
+                
+                // Check metric type and make the adjustments needed
                 switch ( data.data.type ) {
                 case 'one-way':
                     data.data.nonce = element.find('.eval-link').data('nonce'); //re-fill nonce field
@@ -90,7 +92,7 @@ jQuery(window).load(function() {
                             data.data.state = '';
                         }
                     }
-                        
+                    
                     element.replaceWith(Evaluate.template['one-way'](data.data));
                     break;
                 case 'two-way':

@@ -406,7 +406,8 @@ class Evaluate {
 		$data->style = $metric->style;
 		$data->modified = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
 		$data->preview = $metric->preview || ( $data->require_login && ! is_user_logged_in() );
-		$data->shell_class = '';
+		$data->show_user_vote = isset( $metric->show_user_vote ) ? $metric->show_user_vote : false;
+		$data->shell_classes = "";
 		
 		switch ( $metric->type ):
 		case 'one-way':
@@ -442,8 +443,9 @@ class Evaluate {
 			$data->href_link_down = 'href="'.$data->link_down.'"';
 		endif;
 		
-		if ( $data->preview == false ):
+		if ( $data->preview == false && $data->show_user_vote == false ):
 			$data->onclick = "return Evaluate.onLinkClick(this);";
+			$data->shell_classes .= "can-vote";
 		endif;
 		
 		return $data;
@@ -483,7 +485,7 @@ class Evaluate {
 		$data->title_up = '{{=it.title_up}}';
 		$data->title_down = '{{=it.title_down}}';
 		
-		$data->shell_class = '{{=it.shell_class}}';
+		$data->shell_classes = '{{=it.shell_classes}}';
 		$data->user_vote = '{{=it.user_vote}}';
 		$data->votes = '{{=it.votes}}';
 		$data->total_votes = '{{=it.total_votes}}';
@@ -713,7 +715,7 @@ class Evaluate {
 			endforeach;
 			
 			if ( $data->hide_results == 'on' && $data->user_vote == false ):
-				$data->shell_class = 'hide-results';
+				$data->shell_classes .= " hide-results";
 			endif;
 		endif;
 		
@@ -723,43 +725,63 @@ class Evaluate {
 	//*********************************************************//
 	// Functions to display any metric, needs $data from above //
 	//*********************************************************//
-  
+	
+	static $metrics = array(
+		'one-way' => array(
+			'all'  => array( __CLASS__, 'display_one_way' ),
+			'user' => array( __CLASS__, 'display_one_way_user' ),
+		),
+		'two-way' => array(
+			'all'  => array( __CLASS__, 'display_two_way' ),
+			'user' => array( __CLASS__, 'display_two_way_user' ),
+		),
+		'range' => array(
+			'all'  => array( __CLASS__, 'display_range' ),
+			'user' => array( __CLASS__, 'display_range_user' ),
+		),
+		'poll' => array(
+			'all'  => array( __CLASS__, 'display_poll' ),
+			'user' => array( __CLASS__, 'display_poll_user' ),
+		),
+	);
+	
 	/** Convenience function to handle any metric display */
 	public static function display_metric( $data ) {
 		if ( $data->admin_only && ! current_user_can( 'administrator' ) ):
 			return;
 		endif;
 		
-		$can_vote = ( $data->preview ? '' : "can-vote" );
-		
 		ob_start();
 		?>
-		<div class="evaluate-shell <?php echo $can_vote; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
+		<div class="evaluate-shell <?php echo $data->shell_classes; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
 			<div class="rate-name"><?php echo $data->display_name; ?></div>
-			<span class="rate-div rate-<?php echo $data->type; ?> <?php echo $data->shell_class; ?>">
-				<?php
-				switch ( $data->type ):
-				case 'one-way':
-					self::display_one_way( $data );
-					break;
-				case 'two-way':
-					self::display_two_way( $data );
-					break;
-				case 'range':
-					self::display_range( $data );
-					break;
-				case 'poll':
-					self::display_poll( $data );
-					break;
-				endswitch;
-				?>
+			<span class="rate-div rate-<?php echo $data->type; ?>">
+				<?php if ( $data->template ): ?>
+					{{? it.show_user_vote == true }}
+						{{? it.user_vote != undefined }}
+							<?php call_user_func( Evaluate::$metrics[$data->type]['user'], $data ); ?>
+						{{??}}
+							<span class="no-rating">NO RATING</span>
+						{{?}}
+					{{??}}
+						<?php call_user_func( Evaluate::$metrics[$data->type]['all'], $data ); ?>
+					{{?}}
+				<?php elseif ( $data->show_user_vote ): ?>
+					<?php if ( empty( $data->user_vote ) ): ?>
+						<span class="no-rating">NO RATING</span>
+					<?php else: ?>
+						<?php call_user_func( Evaluate::$metrics[$data->type]['user'], $data ); ?>
+					<?php endif; ?>
+				<?php else: ?>
+					<?php call_user_func( Evaluate::$metrics[$data->type]['all'], $data ); ?>
+				<?php endif; ?>
 			</span>
 		</div>
 		<?php
 		
 		return ob_get_clean();
 	}
-  
+	
 	public static function display_one_way( $data ) {
 		?>
 		<span class="up-counter"><?php echo $data->counter; ?> </span>
@@ -769,12 +791,27 @@ class Evaluate {
 		<?php
 	}
   
+	public static function display_one_way_user( $data ) {
+		?>
+		<a class="rate <?php echo $data->style.$data->state; ?> eval-link" title="<?php echo $data->title ?>">
+			<span><?php echo $data->title ?></span>
+		</a>
+		<?php
+	}
+	
 	public static function display_two_way( $data ) {
 		?>
 		<span class="up-counter"><?php echo $data->counter_up; ?> </span>
 		<a <?php echo $data->href_link_up; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>" data-nonce="<?php echo $data->nonce_up; ?>">&nbsp;</a>
 		<span class="down-counter"> <?php echo $data->counter_down; ?> </span>
 		<a <?php echo $data->href_link_down; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.'-down'.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>" data-nonce="<?php echo $data->nonce_down; ?>">&nbsp;</a>
+		<?php
+	}
+	
+	public static function display_two_way_user( $data ) {
+		?>
+		<a class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>">&nbsp;</a>
+		<a class="rate <?php echo $data->style.'-down'.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>">&nbsp;</a>
 		<?php
 	}
   
@@ -786,23 +823,13 @@ class Evaluate {
 		<div class="stars">
 			<div class="rating<?php echo $data->state; ?>" style="width: <?php echo $data->width; ?>%"></div>
 			<?php if ( $data->template ): ?>
-				{{? it.href_link != undefined }}
-					{{ for (var prop in it.stars) { }}
-						<div class="starr">
-							<a {{=it.href_link[prop]}} onclick="{{=it.onclick}}" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
-					{{ } }}
-					{{ for (var prop in it.stars) { }}
-						</div>
-					{{ } }}
-				{{??}}
-					{{ for (var prop in it.stars) { }}
-						<div class="starr">
-							<a class="eval-link link-{{=prop}}">&nbsp;</a>
-					{{ } }}
-					{{ for (var prop in it.stars) { }}
-						</div>
-					{{ } }}
-				{{?}}
+				{{ for (var prop in it.stars) { }}
+					<div class="starr">
+						<a {{=it.href_link[prop]}} onclick="{{=it.onclick}}" class="eval-link link-{{=prop}}" data-nonce="{{=it.nonce[prop]}}">&nbsp;</a>
+				{{ } }}
+				{{ for (var prop in it.stars) { }}
+					</div>
+				{{ } }}
 			<?php else: ?>
 				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Nested divs for star links 
 					$link = $data->href_link[$i];
@@ -811,6 +838,32 @@ class Evaluate {
 					?>
 					<div class="starr">
 						<a <?php echo $link; ?> onclick="<?php echo $data->onclick; ?>" title="<?php echo $title; ?>" class="eval-link link-<?php echo $i; ?>" data-nonce="<?php echo $nonce; ?>">&nbsp;</a>
+				<?php endfor; ?>
+				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Close nested divs ?>
+					</div>
+				<?php endfor; ?>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+	
+	public static function display_range_user( $data ) {
+		?>
+		<div class="stars">
+			<div class="rating<?php echo $data->state; ?>" style="width: <?php echo $data->width; ?>%"></div>
+			<?php if ( $data->template ): ?>
+				{{ for (var prop in it.stars) { }}
+					<div class="starr">
+						<a class="eval-link link-{{=prop}}">&nbsp;</a>
+				{{ } }}
+				{{ for (var prop in it.stars) { }}
+					</div>
+				{{ } }}
+			<?php else: ?>
+				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Nested divs for star links
+					?>
+					<div class="starr">
+						<a class="eval-link link-<?php echo $i; ?>">&nbsp;</a>
 				<?php endfor; ?>
 				<?php for ( $i = 1; $i <= $data->length; $i++ ): // Close nested divs ?>
 					</div>
@@ -863,6 +916,20 @@ class Evaluate {
 		</ul>
 		<?php if ( ! $data->template && ! $data->preview  && $data->display_warning && $data->user_vote == null ): ?>
 			<span class="poll-warning">You have not voted.</span>
+		<?php endif; ?>
+		<?php
+	}
+  
+	/**
+	 * Chooses between form and results according to request.
+	 */
+	public static function display_poll_user( $data ) {
+		?>
+		<span class="poll-question"><?php echo $data->question; ?></span>
+		<?php if ( $data->template ): ?>
+			<span class="poll-answer">{{=it.answers[it.user_vote]}}</span>
+		<?php else: ?>
+			<span class="poll-answer"><?php echo $data->answers[$data->user_vote]; ?></span>
 		<?php endif; ?>
 		<?php
 	}
