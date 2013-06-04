@@ -775,7 +775,7 @@ class Evaluate {
 			<span class="rate-div rate-<?php echo $data->type; ?>">
 				<?php if ( $data->template ): ?>
 					{{? it.show_user_vote == true }}
-						{{? it.user_vote == undefined }}
+						{{? it.user_vote == undefined || it.user_vote == false }}
 							<span class="no-rating">NO RATING</span>
 						{{??}}
 							<?php call_user_func( Evaluate::$metrics[$data->type]['user'], $data ); ?>
@@ -827,7 +827,7 @@ class Evaluate {
 	
 	public static function display_two_way_user( $data ) {
 		?>
-		<a class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>">&nbsp;</a>
+		<a class="rate <?php echo $data->style.$data->state_up; ?> eval-link link-up" title="<?php echo $data->title_up; ?>">&nbsp;</a> 
 		<a class="rate <?php echo $data->style.'-down'.$data->state_down; ?> eval-link link-down" title="<?php echo $data->title_down; ?>">&nbsp;</a>
 		<?php
 	}
@@ -942,7 +942,7 @@ class Evaluate {
 	 */
 	public static function display_poll_user( $data ) {
 		?>
-		<span class="poll-question"><?php echo $data->question; ?></span>
+		<span class="poll-question"><?php echo $data->display_name; ?> </span>
 		<?php if ( $data->template ): ?>
 			<span class="poll-answer">{{=it.answers[it.user_vote]}}</span>
 		<?php else: ?>
