@@ -397,6 +397,7 @@ class Evaluate {
 		
 		$data = new stdClass();
 		$data->template = false;
+		$data->user = $user;
 		$data->metric_id = $metric->id;
 		$data->content_id = $post->ID;
 		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); // Check if display name is enabled
@@ -445,7 +446,6 @@ class Evaluate {
 		
 		if ( $data->preview == false && $data->show_user_vote == false ):
 			$data->onclick = "return Evaluate.onLinkClick(this);";
-			$data->shell_classes .= "can-vote";
 		endif;
 		
 		return $data;
@@ -456,6 +456,7 @@ class Evaluate {
 		$data->template = true;
 		$data->preview = false;
 		$data->admin_only = false;
+		$data->show_user_vote = '{{=it.show_user_vote}}';
 		
 		$data->metric_id = '{{=it.metric_id}}';
 		$data->content_id = '{{=it.content_id}}';
@@ -464,6 +465,7 @@ class Evaluate {
 		$data->require_login = '{{=it.require_login}}';
 		$data->style = '{{=it.style}}';
 		$data->modified = '{{=it.modified}}';
+		$data->user = '{{=it.user}}';
 		
 		$data->counter = '{{=it.counter}}';
 		$data->counter_up = '{{=it.counter_up}}';
@@ -751,17 +753,32 @@ class Evaluate {
 			return;
 		endif;
 		
+		if ( $data->template ):
+			$can_vote = "{{? it.show_user_vote == false }} can-vote{{?}}";
+		elseif ( $data->preview == false && $data->show_user_vote == false ):
+			$can_vote = " can-vote";
+		else:
+			$can_vote = "";
+		endif;
+		
 		ob_start();
 		?>
-		<div class="evaluate-shell <?php echo $data->shell_classes; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
+		<div class="evaluate-shell <?php echo $data->shell_classes.$can_vote; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>"
+			data-user="<?php echo $data->user; ?>"
+			data-user-vote="<?php echo $data->user_vote; ?>"
+			data-show-user-vote="<?php echo $data->show_user_vote; ?>"
+			data-metric-id="<?php echo $data->metric_id; ?>"
+			data-content-id="<?php echo $data->content_id; ?>"
+			data-modified="<?php echo $data->modified; ?>">
+			
 			<div class="rate-name"><?php echo $data->display_name; ?></div>
 			<span class="rate-div rate-<?php echo $data->type; ?>">
 				<?php if ( $data->template ): ?>
 					{{? it.show_user_vote == true }}
-						{{? it.user_vote != undefined }}
-							<?php call_user_func( Evaluate::$metrics[$data->type]['user'], $data ); ?>
-						{{??}}
+						{{? it.user_vote == undefined }}
 							<span class="no-rating">NO RATING</span>
+						{{??}}
+							<?php call_user_func( Evaluate::$metrics[$data->type]['user'], $data ); ?>
 						{{?}}
 					{{??}}
 						<?php call_user_func( Evaluate::$metrics[$data->type]['all'], $data ); ?>

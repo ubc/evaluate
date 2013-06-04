@@ -69,85 +69,87 @@ jQuery(window).load(function() {
     Evaluate.init();
     
     if ( typeof CTLT_Stream != "undefined" ) {
-        CTLT_Stream.on('server-push', function (data) {
-            //if data received is relevant to evaluate
-            if ( 'evaluate' == data.type ) {
-                var element = jQuery('.evaluate-shell[id^=evaluate-shell-'+data.data.metric_id+'-'+data.data.content_id+']'); //element to be changed
+        CTLT_Stream.on('server-push', function ( input ) {
+            if ( 'evaluate' == input.type ) { // Is the data received relevant to evaluate?
+                var elements = jQuery('.evaluate-shell[id^=evaluate-shell-'+input.data.metric_id+'-'+input.data.content_id+']');
                 
-                console.debug(element.data());
-                
-                // Check metric type and make the adjustments needed
-                switch ( data.data.type ) {
-                case 'one-way':
-                    data.data.nonce = element.find('.eval-link').data('nonce'); //re-fill nonce field
+                jQuery.each( elements, function( index, element ) {
+                    var data = input.data;
+                    element = jQuery(element);
                     
-                    if ( data.data.user == evaluate_ajax.user ) {
-                        element.data( 'user-vote', data.data.user_vote );
-                    } else {
-                        data.data.user_vote = element.data('user-vote');
+                    if ( element.data('user') == data.user ) {
+                        data.show_user_vote = element.data('show-user-vote') == 1;
                         
-                        if ( data.data.user_vote == 1 ) {
-                            data.data.state = '-selected';
-                        } else {
-                            data.data.state = '';
+                        // Check metric type and make the adjustments needed
+                        switch ( data.type ) {
+                        case 'one-way':
+                            data.nonce = element.find('.eval-link').data('nonce'); //re-fill nonce field
+                            
+                            if ( data.user == evaluate_ajax.user ) {
+                                element.data( 'user-vote', data.user_vote );
+                            } else {
+                                data.user_vote = element.data('user-vote');
+                                
+                                if ( data.user_vote == 1 ) {
+                                    data.state = '-selected';
+                                } else {
+                                    data.state = '';
+                                }
+                            }
+                            break;
+                        case 'two-way':
+                            data.nonce_up = element.find('.link-up').data('nonce');
+                            data.nonce_down = element.find('.link-down').data('nonce');
+                            
+                            if ( data.user == evaluate_ajax.user ) {
+                                element.data('user-vote', data.user_vote);
+                            } else {
+                                data.user_vote = element.data('user-vote');
+                                if ( data.user_vote == 1 ) {
+                                    data.state_up = '-selected';
+                                    data.state_down = '';
+                                } else if ( data.data.user_vote == -1 ) {
+                                    data.state_up = '';
+                                    data.state_down = '-selected';
+                                } else {
+                                    data.state_up = '';
+                                    data.state_down = '';
+                                }
+                            }
+                            break;
+                        case 'range':
+                            for ( var i = 1; i <= data.length; i++ ) {
+                                data.nonce[i] = element.find('.link-'+i).data('nonce');
+                            }
+                            
+                            if ( data.user == evaluate_ajax.user ) {
+                                element.data( 'user-vote', data.user_vote );
+                            } else {
+                                data.user_vote = element.data('user-vote');
+                                if ( data.user_vote ) {
+                                    data.state = '-selected';
+                                    data.width = data.user_vote / data.length * 100;
+                                } else {
+                                    data.state = '';
+                                    data.width = data.average / data.length * 100;
+                                }
+                            }
+                            break;
+                        case 'poll':
+                            if ( data.user == evaluate_ajax.user ) {
+                                element.data( 'user-vote', data.user_vote );
+                            } else {
+                                data._wpnonce = element.find('input[name="_wpnonce"]').val();
+                                data.user_vote = element.data('user-vote');
+                            }
+                            break;
                         }
+                        
+                        console.log(data);
+                        
+                        element.replaceWith( Evaluate.template[data.type]( data ) );
                     }
-                    
-                    element.replaceWith(Evaluate.template['one-way'](data.data));
-                    break;
-                case 'two-way':
-                    data.data.nonce_up = element.find('.link-up').data('nonce');
-                    data.data.nonce_down = element.find('.link-down').data('nonce');
-                    
-                    if ( data.data.user == evaluate_ajax.user ) {
-                        element.data('user-vote', data.data.user_vote);
-                    } else {
-                        data.data.user_vote = element.data('user-vote');
-                        if ( data.data.user_vote == 1 ) {
-                            data.data.state_up = '-selected';
-                            data.data.state_down = '';
-                        } else if ( data.data.user_vote == -1 ) {
-                            data.data.state_up = '';
-                            data.data.state_down = '-selected';
-                        } else {
-                            data.data.state_up = '';
-                            data.data.state_down = '';
-                        }
-                    }
-                    
-                    element.replaceWith(Evaluate.template['two-way'](data.data));
-                    break;
-                case 'range':
-                    for ( var i = 1; i <= data.data.length; i++ ) {
-                        data.data.nonce[i] = element.find('.link-'+i).data('nonce');
-                    }
-                    
-                    if ( data.data.user == evaluate_ajax.user ) {
-                        element.data('user-vote', data.data.user_vote);
-                    } else {
-                        data.data.user_vote = element.data('user-vote');
-                        if ( data.data.user_vote ) {
-                            data.data.state = '-selected';
-                            data.data.width = data.data.user_vote / data.data.length * 100;
-                        } else {
-                            data.data.state = '';
-                            data.data.width = data.data.average / data.data.length * 100;
-                        }
-                    }
-                    
-                    element.replaceWith(Evaluate.template['range'](data.data));
-                    break;
-                case 'poll':
-                    if ( data.data.user == evaluate_ajax.user ) {
-                        element.data('user-vote', data.data.user_vote);
-                    } else {
-                        data.data._wpnonce = element.find('input[name="_wpnonce"]').val();
-                        data.data.user_vote = element.data('user-vote');
-                    }
-                    
-                    element.replaceWith(Evaluate.template['poll'](data.data));
-                    break;
-                }
+                } );
             }
         } );
     }
