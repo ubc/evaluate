@@ -156,6 +156,8 @@ class Evaluate {
 		
 		if ( is_user_logged_in() && isset( $current_user->ID ) ): // Are we logged in from a legit account?
 			return $current_user->ID;
+		else:
+			return 'anon_'.$_SERVER['REMOTE_ADDR'];
 		endif;
 	}
   
