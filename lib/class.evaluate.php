@@ -65,10 +65,17 @@ class Evaluate {
 		add_action( 'wp_ajax_nopriv_evaluate-vote', array( __CLASS__, 'ajax_handler' ) );
 		
 		self::set_cookie();
-		//handle any evaluate event that occurs
+		// Handle any evaluate event that occurs
 		if ( isset( $_REQUEST['evaluate'] ) ):
 			self::event_handler();
 		endif;
+		
+		if ( get_option( 'EVAL_DB_VOTES_VER' ) < 1.1 ):
+			dbDelta( "ALTER TABLE ".EVAL_DB_VOTES." MODIFY user_id varchar(40) NOT NULL" );
+		endif;
+		
+		update_option( 'EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER );
+		update_option( 'EVAL_DB_VOTES_VER', EVAL_DB_VOTES_VER );
 	}
   
 	/**
@@ -93,7 +100,7 @@ class Evaluate {
 			modified datetime,
 			PRIMARY KEY  (id) );";
 		
-		dbDelta($sql);
+		dbDelta( $sql );
 		add_option( 'EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER );
 		
 		$votes_table = EVAL_DB_VOTES;
@@ -101,14 +108,14 @@ class Evaluate {
 			id bigint(11) NOT NULL AUTO_INCREMENT,
 			metric_id bigint(11) NOT NULL,
 			content_id bigint(11) NOT NULL,
-			user_id varchar(20) NOT NULL,
+			user_id varchar(40) NOT NULL,
 			vote int(11) NOT NULL,
 			disabled tinyint(1) NOT NULL DEFAULT '0',
 			comment tinytext NOT NULL,
 			date datetime NOT NULL,
 			PRIMARY KEY (id) );";
 		
-		dbDelta($sql);
+		dbDelta( $sql );
 		add_option( 'EVAL_DB_VOTES_VER', EVAL_DB_VOTES_VER );
 	}
   
@@ -157,7 +164,7 @@ class Evaluate {
 		if ( is_user_logged_in() && isset( $current_user->ID ) ): // Are we logged in from a legit account?
 			return $current_user->ID;
 		else:
-			return 'anon_'.$_SERVER['REMOTE_ADDR'];
+			return 'anon_'.md5( $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_USER_AGENT'] );
 		endif;
 	}
   

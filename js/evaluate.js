@@ -77,78 +77,84 @@ jQuery(window).load(function() {
                     var data = input.data;
                     element = jQuery(element);
                     
-                    if ( element.data('user') == data.user ) {
-                        data.show_user_vote = element.data('show-user-vote') == 1;
+                    if ( element.data('user') != data.user ) {
+                        console.log("users don't match");
+                        console.log(element.data('user')+" != "+data.user);
+                        data.user = element.data('user');
+                        data.user_vote = element.data('user-vote');
+                        data.width = ( data.user_vote ? data.user_vote : data.average ) / data.length * 100
+                    }
+                    
+                    data.show_user_vote = element.data('show-user-vote') == 1;
+                    
+                    // Check metric type and make the adjustments needed
+                    switch ( data.type ) {
+                    case 'one-way':
+                        data.nonce = element.find('.eval-link').data('nonce'); //re-fill nonce field
                         
-                        // Check metric type and make the adjustments needed
-                        switch ( data.type ) {
-                        case 'one-way':
-                            data.nonce = element.find('.eval-link').data('nonce'); //re-fill nonce field
+                        if ( data.user == evaluate_ajax.user ) {
+                            element.data( 'user-vote', data.user_vote );
+                        } else {
+                            data.user_vote = element.data('user-vote');
                             
-                            if ( data.user == evaluate_ajax.user ) {
-                                element.data( 'user-vote', data.user_vote );
+                            if ( data.user_vote == 1 ) {
+                                data.state = '-selected';
                             } else {
-                                data.user_vote = element.data('user-vote');
-                                
-                                if ( data.user_vote == 1 ) {
-                                    data.state = '-selected';
-                                } else {
-                                    data.state = '';
-                                }
+                                data.state = '';
                             }
-                            break;
-                        case 'two-way':
-                            data.nonce_up = element.find('.link-up').data('nonce');
-                            data.nonce_down = element.find('.link-down').data('nonce');
-                            
-                            if ( data.user == evaluate_ajax.user ) {
-                                element.data('user-vote', data.user_vote);
+                        }
+                        break;
+                    case 'two-way':
+                        data.nonce_up = element.find('.link-up').data('nonce');
+                        data.nonce_down = element.find('.link-down').data('nonce');
+                        
+                        if ( data.user == evaluate_ajax.user ) {
+                            element.data('user-vote', data.user_vote);
+                        } else {
+                            data.user_vote = element.data('user-vote');
+                            if ( data.user_vote == 1 ) {
+                                data.state_up = '-selected';
+                                data.state_down = '';
+                            } else if ( data.data.user_vote == -1 ) {
+                                data.state_up = '';
+                                data.state_down = '-selected';
                             } else {
-                                data.user_vote = element.data('user-vote');
-                                if ( data.user_vote == 1 ) {
-                                    data.state_up = '-selected';
-                                    data.state_down = '';
-                                } else if ( data.data.user_vote == -1 ) {
-                                    data.state_up = '';
-                                    data.state_down = '-selected';
-                                } else {
-                                    data.state_up = '';
-                                    data.state_down = '';
-                                }
+                                data.state_up = '';
+                                data.state_down = '';
                             }
-                            break;
-                        case 'range':
-                            for ( var i = 1; i <= data.length; i++ ) {
-                                data.nonce[i] = element.find('.link-'+i).data('nonce');
-                            }
-                            
-                            if ( data.user == evaluate_ajax.user ) {
-                                element.data( 'user-vote', data.user_vote );
-                            } else {
-                                data.user_vote = element.data('user-vote');
-                                if ( data.user_vote ) {
-                                    data.state = '-selected';
-                                    data.width = data.user_vote / data.length * 100;
-                                } else {
-                                    data.state = '';
-                                    data.width = data.average / data.length * 100;
-                                }
-                            }
-                            break;
-                        case 'poll':
-                            if ( data.user == evaluate_ajax.user ) {
-                                element.data( 'user-vote', data.user_vote );
-                            } else {
-                                data._wpnonce = element.find('input[name="_wpnonce"]').val();
-                                data.user_vote = element.data('user-vote');
-                            }
-                            break;
+                        }
+                        break;
+                    case 'range':
+                        for ( var i = 1; i <= data.length; i++ ) {
+                            data.nonce[i] = element.find('.link-'+i).data('nonce');
                         }
                         
-                        console.log(data);
-                        
-                        element.replaceWith( Evaluate.template[data.type]( data ) );
+                        if ( data.user == evaluate_ajax.user ) {
+                            element.data( 'user-vote', data.user_vote );
+                        } else {
+                            data.user_vote = element.data('user-vote');
+                            if ( data.user_vote ) {
+                                data.state = '-selected';
+                                data.width = data.user_vote / data.length * 100;
+                            } else {
+                                data.state = '';
+                                data.width = data.average / data.length * 100;
+                            }
+                        }
+                        break;
+                    case 'poll':
+                        if ( data.user == evaluate_ajax.user ) {
+                            element.data( 'user-vote', data.user_vote );
+                        } else {
+                            data._wpnonce = element.find('input[name="_wpnonce"]').val();
+                            data.user_vote = element.data('user-vote');
+                        }
+                        break;
                     }
+                    
+                    console.log(data);
+                    
+                    element.replaceWith( Evaluate.template[data.type]( data ) );
                 } );
             }
         } );

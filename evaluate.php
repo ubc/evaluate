@@ -27,7 +27,7 @@ define( 'EVAL_BASE_FILE',      __FILE__                         );
 define( 'EVAL_DB_METRICS',     $wpdb->prefix.'evaluate_metrics' );
 define( 'EVAL_DB_METRICS_VER', 1.0                              );
 define( 'EVAL_DB_VOTES',       $wpdb->prefix.'evaluate_votes'   );
-define( 'EVAL_DB_VOTES_VER',   1.0                              );
+define( 'EVAL_DB_VOTES_VER',   1.1                              );
 define( 'EVAL_OPTION',         'evaluate'                       );
 
 // Needed for WP_List_Table displays
