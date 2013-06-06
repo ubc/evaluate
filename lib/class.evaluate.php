@@ -70,9 +70,11 @@ class Evaluate {
 			self::event_handler();
 		endif;
 		
+		/*
 		if ( get_option( 'EVAL_DB_VOTES_VER' ) < 1.1 ):
 			dbDelta( "ALTER TABLE ".EVAL_DB_VOTES." MODIFY user_id varchar(40) NOT NULL" );
 		endif;
+		*/
 		
 		update_option( 'EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER );
 		update_option( 'EVAL_DB_VOTES_VER', EVAL_DB_VOTES_VER );
