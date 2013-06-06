@@ -259,3 +259,7 @@
 .poll-bar.selected { 
     background-color: #333333;
 }
+
+.error {
+    color: darkred;
+}

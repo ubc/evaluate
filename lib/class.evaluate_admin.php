@@ -527,7 +527,7 @@ class Evaluate_Admin {
 					<th>Metric Type</th>
 					<td>
 						<?php if ( $no_type_change ): ?>
-							<div style="color: darkred;"> <!-- no type change -->
+							<div class="error"> <!-- no type change -->
 								You cannot change the type of this metric because there are votes registered.
 							</div>
 						<?php endif; ?>
