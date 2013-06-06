@@ -78,8 +78,6 @@ jQuery(window).load(function() {
                     element = jQuery(element);
                     
                     if ( element.data('user') != data.user ) {
-                        console.log("users don't match");
-                        console.log(element.data('user')+" != "+data.user);
                         data.user = element.data('user');
                         data.user_vote = element.data('user-vote');
                         data.width = ( data.user_vote ? data.user_vote : data.average ) / data.length * 100
@@ -151,8 +149,6 @@ jQuery(window).load(function() {
                         }
                         break;
                     }
-                    
-                    console.log(data);
                     
                     element.replaceWith( Evaluate.template[data.type]( data ) );
                 } );
