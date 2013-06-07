@@ -61,6 +61,7 @@
     background: transparent none repeat-x left top; 
     display: inline-block;
     position: relative;
+    vertical-align: top;
 }
 
 .stars .starr a {
