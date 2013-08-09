@@ -271,8 +271,8 @@ class Evaluate_Admin {
 		endif;
 		
 		$metric['nicename'] = $formdata['name'];
-		$wpdb->escape($metric['nicename']);
-		$metric['slug'] = sanitize_title($metric['nicename']);
+		$wpdb->escape( $metric['nicename'] );
+		$metric['slug'] = sanitize_title( $metric['nicename'] );
 		
 		// Check if name is unique
 		if ( $is_update ):
@@ -309,9 +309,10 @@ class Evaluate_Admin {
 		endif;
 		$wpdb->escape($metric['style']);
 		
-		// Require_login & admin_only booleans
+		// Booleans
 		$metric['require_login'] = isset( $formdata['require_login'] ) && $formdata['require_login'];
 		$metric['admin_only'] = isset( $formdata['admin_only'] ) && $formdata['admin_only'];
+		$metric['excerpt'] = isset( $formdata['excerpt'] ) && $formdata['excerpt'];
 		
 		// Params
 		$metric['params'] = array();
@@ -448,6 +449,7 @@ class Evaluate_Admin {
 			$formdata['style']         = $metric->style;
 			$formdata['admin_only']    = $metric->admin_only;
 			$formdata['require_login'] = $metric->require_login;
+			$formdata['excerpt']       = $metric->excerpt;
 			$formdata['action']        = 'edit';
 			$formdata['view']          = 'main';
 			
@@ -471,6 +473,7 @@ class Evaluate_Admin {
 				$formdata[$type]           = ( isset( $postdata[$type] )           ? $postdata[$type]           : null );
 				$formdata['admin_only']    = ( isset( $postdata['admin_only'] )    ? $postdata['admin_only']    : null );
 				$formdata['require_login'] = ( isset( $postdata['require_login'] ) ? $postdata['require_login'] : null );
+				$formdata['excerpt']       = ( isset( $postdata['excerpt'] )       ? $postdata['excerpt']       : null );
 				$formdata['action']        = 'edit';
 				$formdata['view']          = 'main';
 				
@@ -488,6 +491,7 @@ class Evaluate_Admin {
 				$formdata['poll'] = null;
 				$formdata['admin_only'] = null;
 				$formdata['require_login'] = null;
+				$formdata['excerpt'] = null;
 				$formdata['action'] = 'new';
 				$formdata['view'] = 'main';
 				
@@ -715,6 +719,11 @@ class Evaluate_Admin {
 						<label>
 							<input type="checkbox" name="evalu_form[admin_only]" value="true" <?php checked( $formdata['admin_only'] ); ?> />
 							 Only Admins can see this metric.
+						</label>
+						<br />
+						<label>
+							<input type="checkbox" name="evalu_form[excerpt]" value="true" <?php checked( $formdata['excerpt'] ); ?> />
+							 Show this metric on excerpts
 						</label>
 					</td>
 				</tr>

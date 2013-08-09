@@ -61,6 +61,7 @@ class Evaluate {
 		add_action( 'wp_enqueue_scripts',           array( __CLASS__, 'enqueue_scripts' ) );
 		add_action( 'wp_footer',                    array( __CLASS__, 'print_templates' ) ); // Prints out metric templates for doT
 		add_filter( 'the_content',                  array( __CLASS__, 'append_metrics' ) ); // Filter for displaying metrics below content
+		add_filter( 'the_excerpt',                  array( __CLASS__, 'prepend_metrics' ) ); // Filter for displaying metrics below content
 		add_action( 'wp_ajax_evaluate-vote',        array( __CLASS__, 'ajax_handler' ) );
 		add_action( 'wp_ajax_nopriv_evaluate-vote', array( __CLASS__, 'ajax_handler' ) );
 		
@@ -97,6 +98,7 @@ class Evaluate {
 			require_login tinyint(1) NOT NULL DEFAULT '1',
 			admin_only tinyint(1) NOT NULL DEFAULT '0',
 			display_name tinyint(1) NOT NULL DEFAULT '1',
+			excerpt tinyint(1) NOT NULL DEFAULT '0',
 			params longtext,
 			created datetime,
 			modified datetime,
@@ -204,7 +206,7 @@ class Evaluate {
 			break;
 		case 'sort':
 			// Hook for changing post query
-			add_action( 'pre_get_posts', array( __CLASS__, 'pre_query' ) );
+			add_action( 'pre_get_posts', array( __CLASS__, 'modify_query' ) );
 			break;
 		endswitch;
 	}
@@ -236,8 +238,42 @@ class Evaluate {
 	public static function append_metrics( $content ) {
 		global $wpdb, $post;
 		
+		if ( is_single() ) {
+			// Get all metrics, then filter out excluded ones
+			$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS );
+			$excluded = get_post_meta( $post->ID, 'metric' );
+			
+			ob_start();
+			?>
+			<div class="evaluate-metrics-wrapper">
+				<?php
+				foreach ( $metrics as $metric ):
+					$params = unserialize( $metric->params );
+					
+					if ( ! array_key_exists( 'content_types', $params ) ):
+						continue; // Metric has no association, move on..
+					endif;
+					
+					$content_types = $params['content_types'];
+					if ( ! in_array( $metric->id, $excluded ) && in_array( $post->post_type, $content_types ) ): //not excluded
+						echo self::display_metric( self::get_metric_data( $metric ) );
+					endif;
+				endforeach;
+				?>
+			</div>
+			<?php
+			
+			$content .= ob_get_clean();
+		}
+		
+		return $content;
+	}
+	
+	public static function prepend_metrics( $excerpt ) {
+		global $wpdb, $post;
+		
 		// Get all metrics, then filter out excluded ones
-		$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS );
+		$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE excerpt = "1"' );
 		$excluded = get_post_meta( $post->ID, 'metric' );
 		
 		ob_start();
@@ -253,14 +289,19 @@ class Evaluate {
 				
 				$content_types = $params['content_types'];
 				if ( ! in_array( $metric->id, $excluded ) && in_array( $post->post_type, $content_types ) ): //not excluded
-					echo self::display_metric( self::get_metric_data( $metric ) );
+					$data = self::get_metric_data( $metric );
+					$data->preview = true;
+					$data->display_name = "";
+					$data->show_user_vote = false;
+					echo self::display_metric( $data );
 				endif;
 			endforeach;
 			?>
 		</div>
 		<?php
 		
-		return $content.ob_get_clean();
+		
+		return ob_get_clean() . $excerpt;
 	}
   
 	//**************************//
@@ -407,19 +448,19 @@ class Evaluate {
 		endif;
 		
 		$data = new stdClass();
-		$data->template = false;
-		$data->user = $user;
-		$data->metric_id = $metric->id;
-		$data->content_id = $post->ID;
-		$data->display_name = ( $metric->display_name ? $metric->nicename : '' ); // Check if display name is enabled
-		$data->type = $metric->type;
-		$data->admin_only = $metric->admin_only;
-		$data->require_login = $metric->require_login;
-		$data->style = $metric->style;
-		$data->modified = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
-		$data->preview = $metric->preview || ( $data->require_login && ! is_user_logged_in() );
+		$data->template       = false;
+		$data->user           = $user;
+		$data->metric_id      = $metric->id;
+		$data->content_id     = $post->ID;
+		$data->display_name   = ( $metric->display_name ? $metric->nicename : '' ); // Check if display name is enabled
+		$data->type           = $metric->type;
+		$data->admin_only     = $metric->admin_only;
+		$data->require_login  = $metric->require_login;
+		$data->style          = $metric->style;
+		$data->modified       = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
+		$data->preview        = $metric->preview || ( $data->require_login && ! is_user_logged_in() );
 		$data->show_user_vote = isset( $metric->show_user_vote ) ? $metric->show_user_vote : false;
-		$data->shell_classes = "";
+		$data->shell_classes  = "";
 		
 		switch ( $metric->type ):
 		case 'one-way':
@@ -440,9 +481,11 @@ class Evaluate {
 		
 		if ( ! empty( $data->link ) ):
 			if ( is_array( $data->link ) ):
-				$data->href_link = array_map( function( $link ) {
+				$func = function( $link ) {
 					return 'href="'.$link.'"';
-				}, $data->link );
+				};
+				
+				$data->href_link = array_map( $func, $data->link );
 			else:
 				$data->href_link = 'href="'.$data->link.'"';
 			endif;
@@ -451,6 +494,7 @@ class Evaluate {
 		if ( ! empty( $data->link_up ) ):
 			$data->href_link_up = 'href="'.$data->link_up.'"';
 		endif;
+		
 		if ( ! empty( $data->link_down ) ):
 			$data->href_link_down = 'href="'.$data->link_down.'"';
 		endif;
@@ -984,7 +1028,7 @@ class Evaluate {
 	}
 
 	/** Modifies the wordpress query to sort pulses. */
-	public static function pre_query( $query ) {
+	public static function modify_query( $query ) {
 		if ( $query->is_home() && $query->is_main_query() ):
 			global $wpdb;
 			
