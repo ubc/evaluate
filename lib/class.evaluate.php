@@ -71,11 +71,10 @@ class Evaluate {
 			self::event_handler();
 		endif;
 		
-		/*
-		if ( get_option( 'EVAL_DB_VOTES_VER' ) < 1.1 ):
-			dbDelta( "ALTER TABLE ".EVAL_DB_VOTES." MODIFY user_id varchar(40) NOT NULL" );
+		
+		if ( get_option( 'EVAL_DB_VOTES_VER' ) < 1.2 ):
+			dbDelta( "ALTER TABLE ".EVAL_DB_VOTES." ADD excerpt tinyint(1) NOT NULL DEFAULT '0'" );
 		endif;
-		*/
 		
 		update_option( 'EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER );
 		update_option( 'EVAL_DB_VOTES_VER', EVAL_DB_VOTES_VER );
@@ -102,7 +101,7 @@ class Evaluate {
 			params longtext,
 			created datetime,
 			modified datetime,
-			PRIMARY KEY  (id) );";
+			PRIMARY KEY (id) );";
 		
 		dbDelta( $sql );
 		add_option( 'EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER );
@@ -149,7 +148,6 @@ class Evaluate {
 		wp_register_script( 'evaluate-js', EVAL_DIR_URL.'/js/evaluate.js', array( 'jquery', 'doT' ), false, true );
 		wp_enqueue_script( 'doT' );
 		wp_enqueue_script( 'evaluate-js' );
-		
 		
 		// WP localize trick to pass params into js without direct printing
 		wp_localize_script( 'evaluate-js', 'evaluate_ajax', array(
@@ -289,10 +287,13 @@ class Evaluate {
 				
 				$content_types = $params['content_types'];
 				if ( ! in_array( $metric->id, $excluded ) && in_array( $post->post_type, $content_types ) ): //not excluded
-					$data = self::get_metric_data( $metric );
-					$data->preview = true;
+					$metric->preview = true;
+					$metric->show_user_vote = false;
+					
+					$data = self::get_metric_data( $metric, false );
 					$data->display_name = "";
-					$data->show_user_vote = false;
+					$data->average_display = "";
+					
 					echo self::display_metric( $data );
 				endif;
 			endforeach;
@@ -421,7 +422,7 @@ class Evaluate {
 		endif;
 	}
 	
-	public static function get_data_by_id( $metric_id, $content_id, $user = null ) {
+	public static function get_data_by_id( $metric_id, $content_id, $user_id = null ) {
 		global $wpdb, $post;
 		
 		$metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
@@ -435,21 +436,21 @@ class Evaluate {
 				$post->ID = 0;
 			endif;
 			
-			return self::get_metric_data( $metric, $user );
+			return self::get_metric_data( $metric, $user_id );
 		endif;
 	}
   
 	/** Convenience function to handle any metric */
-	public static function get_metric_data( $metric, $user = null ) {
+	public static function get_metric_data( $metric, $user_id = null ) {
 		global $wpdb, $post;
 		
-		if ( $user == null ):
-			$user = self::get_user();
+		if ( $user_id === null ):
+			$user_id = self::get_user();
 		endif;
 		
 		$data = new stdClass();
 		$data->template       = false;
-		$data->user           = $user;
+		$data->user           = $user_id;
 		$data->metric_id      = $metric->id;
 		$data->content_id     = $post->ID;
 		$data->display_name   = ( $metric->display_name ? $metric->nicename : '' ); // Check if display name is enabled
@@ -464,16 +465,16 @@ class Evaluate {
 		
 		switch ( $metric->type ):
 		case 'one-way':
-			$data = self::one_way_data( $metric, $data, $user );
+			$data = self::one_way_data( $metric, $data );
 			break;
 		case 'two-way':
-			$data = self::two_way_data( $metric, $data, $user );
+			$data = self::two_way_data( $metric, $data );
 			break;
 		case 'range':
-			$data = self::range_data( $metric, $data, $user );
+			$data = self::range_data( $metric, $data );
 			break;
 		case 'poll':
-			$data = self::poll_data( $metric, $data, $user );
+			$data = self::poll_data( $metric, $data );
 			break;
 		default:
 			return null;
@@ -561,7 +562,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function one_way_data( $metric, $data, $user ) {
+	public static function one_way_data( $metric, $data ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -581,8 +582,8 @@ class Evaluate {
 		$data->total_votes = print_r( $data->counter, TRUE );
 		
 		// Get the current user's vote, if it exists
-		if ( $data->counter > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, self::get_user() ) );
+		if ( $data->counter > 0 && ! empty( $data->user ) ):
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -591,14 +592,14 @@ class Evaluate {
 		$data->state = ( $data->user_vote && $data->user_vote == 1 ? ' selected' : '' ); // Set state of the link
 		
 		if ( $data->preview == false ):
-			$data->nonce = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
+			$data->nonce = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.$data->user );
 			$data->link = self::get_vote_url( $metric, $post->ID, 1, $data->nonce ); //upvote link
 		endif;
 		
 		return $data;
 	}
   
-	public static function two_way_data( $metric, $data, $user ) {
+	public static function two_way_data( $metric, $data ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -629,8 +630,8 @@ class Evaluate {
 		$data->total_votes = $data->counter_up + $data->counter_down;
 		
 		// Get the current user's vote, if it exists
-		if ( $data->total_votes > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $user ) );
+		if ( $data->total_votes > 0 && ! empty( $data->user ) ):
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -649,7 +650,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function range_data( $metric, $data, $user ) {
+	public static function range_data( $metric, $data ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -689,8 +690,8 @@ class Evaluate {
 		endif;
 		
 		// Get the current user's vote, if it exists
-		if ( count( $data->votes ) > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $user ) );
+		if ( $data->total_votes > 0 && ! empty( $data->user ) ):
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -720,7 +721,7 @@ class Evaluate {
 		return $data;
 	}
   
-	public static function poll_data( $metric, $data, $user ) {
+	public static function poll_data( $metric, $data ) {
 		global $wpdb, $post;
 		
 		// Get the type parameters
@@ -736,6 +737,7 @@ class Evaluate {
 		else:
 			$where_content = '';
 		endif;
+		
 		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
 		$data->votes = $wpdb->get_results( $query, OBJECT_K ); // Returned array will have vote value for keys
 		$data->total_votes = 0;
@@ -744,8 +746,8 @@ class Evaluate {
 		endforeach;
 		
 		// Get the current user's vote, if it exists
-		if ( count( $data->votes ) > 0 ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $user ) );
+		if ( $data->total_votes > 0 && ! empty( $data->user ) ):
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -889,9 +891,19 @@ class Evaluate {
   
 	public static function display_range( $data ) {
 		?>
-		<div class="rating-text">
-			Average: <?php echo $data->average_display; ?>
-		</div>
+		<?php if ( $data->template ): ?>
+			{{? it.average_display != ""}}
+				<div class="rating-text">
+					Average: {{=it.average_display}}
+				</div>
+			{{?}}
+		<?php else: ?>
+			<?php if ( ! empty( $data->average_display ) ): ?>
+				<div class="rating-text">
+					Average: <?php echo $data->average_display; ?>
+				</div>
+			<?php endif; ?>
+		<?php endif; ?>
 		<div class="stars">
 			<div class="rating<?php echo $data->state; ?>" style="width: <?php echo $data->width; ?>%"></div>
 			<?php if ( $data->template ): ?>
@@ -960,9 +972,9 @@ class Evaluate {
 						<strong>{{=it.answers[prop]}}</strong><span class="poll-average">: {{=it.averages[prop]}}% ({{=it.answer_votes[prop]}} votes)</span>
 						<div class="poll-result">
 							{{? it.user_vote == prop }}
-							<div class="poll-bar selected" style="width:{{=it.averages[prop]}}%"></div>
+								<div class="poll-bar selected" style="width:{{=it.averages[prop]}}%"></div>
 							{{??}}
-							<div class="poll-bar" style="width:{{=it.averages[prop]}}%"></div>
+								<div class="poll-bar" style="width:{{=it.averages[prop]}}%"></div>
 							{{?}}
 						</div>
 					</li>
@@ -1160,4 +1172,5 @@ class Evaluate {
 	}
 }
 
-add_action( 'init', array( 'Evaluate', 'init' ), 15 ); //priority parameters MUST be > than CTLT_Stream priority otherwise post requests don't work
+//priority parameters MUST be > than CTLT_Stream priority otherwise post requests don't work
+add_action( 'init', array( 'Evaluate', 'init' ), 15 ); 
