@@ -241,27 +241,32 @@ class Evaluate {
 			$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS );
 			$excluded = get_post_meta( $post->ID, 'metric' );
 			
-			ob_start();
-			?>
-			<div class="evaluate-metrics-wrapper">
-				<?php
-				foreach ( $metrics as $metric ):
-					$params = unserialize( $metric->params );
-					
-					if ( ! array_key_exists( 'content_types', $params ) ):
-						continue; // Metric has no association, move on..
-					endif;
-					
-					$content_types = $params['content_types'];
-					if ( ! in_array( $metric->id, $excluded ) && in_array( $post->post_type, $content_types ) ): //not excluded
-						echo self::display_metric( self::get_metric_data( $metric ) );
-					endif;
-				endforeach;
-				?>
-			</div>
-			<?php
+			foreach ( $metrics as $index => $metric ):
+				$params = unserialize( $metric->params );
+				
+				if ( array_key_exists( 'content_types', $params )
+					&& ! in_array( $metric->id, $excluded )
+					&& in_array( $post->post_type, $params['content_types'] ) ): //not excluded
+					continue;
+				else:
+					unset( $metrics[$index] );
+				endif;
+			endforeach;
 			
-			$content .= ob_get_clean();
+			if ( ! empty( $metrics ) ):
+				ob_start();
+				?>
+				<div class="evaluate-metrics-wrapper">
+					<?php
+					foreach ( $metrics as $metric ):
+						echo self::display_metric( self::get_metric_data( $metric ) );
+					endforeach;
+					?>
+				</div>
+				<?php
+				
+				$content .= ob_get_clean();
+			endif;
 		}
 		
 		return $content;
@@ -274,19 +279,24 @@ class Evaluate {
 		$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE excerpt = "1"' );
 		$excluded = get_post_meta( $post->ID, 'metric' );
 		
-		ob_start();
-		?>
-		<div class="evaluate-metrics-wrapper">
-			<?php
-			foreach ( $metrics as $metric ):
-				$params = unserialize( $metric->params );
-				
-				if ( ! array_key_exists( 'content_types', $params ) ):
-					continue; // Metric has no association, move on..
-				endif;
-				
-				$content_types = $params['content_types'];
-				if ( ! in_array( $metric->id, $excluded ) && in_array( $post->post_type, $content_types ) ): //not excluded
+		foreach ( $metrics as $index => $metric ):
+			$params = unserialize( $metric->params );
+			
+			if ( array_key_exists( 'content_types', $params )
+				&& ! in_array( $metric->id, $excluded )
+				&& in_array( $post->post_type, $params['content_types'] ) ): //not excluded
+				continue;
+			else:
+				unset( $metrics[$index] );
+			endif;
+		endforeach;
+		
+		if ( ! empty( $metrics ) ):
+			ob_start();
+			?>
+			<div class="evaluate-metrics-wrapper">
+				<?php
+				foreach ( $metrics as $metric ):
 					$metric->preview = true;
 					$metric->show_user_vote = false;
 					
@@ -295,14 +305,14 @@ class Evaluate {
 					$data->average_display = "";
 					
 					echo self::display_metric( $data );
-				endif;
-			endforeach;
-			?>
-		</div>
-		<?php
+				endforeach;
+				?>
+			</div>
+			<?php
+			$excerpt = ob_get_clean() . $excerpt;
+		endif;
 		
-		
-		return ob_get_clean() . $excerpt;
+		return $excerpt;
 	}
   
 	//**************************//
