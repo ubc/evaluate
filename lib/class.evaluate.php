@@ -492,11 +492,7 @@ class Evaluate {
 		
 		if ( ! empty( $data->link ) ):
 			if ( is_array( $data->link ) ):
-				$func = function( $link ) {
-					return 'href="'.$link.'"';
-				};
-				
-				$data->href_link = array_map( $func, $data->link );
+				$data->href_link = array_map( array( __CLASS__, 'wrap_link' ), $data->link );
 			else:
 				$data->href_link = 'href="'.$data->link.'"';
 			endif;
@@ -515,6 +511,10 @@ class Evaluate {
 		endif;
 		
 		return $data;
+	}
+	
+	private static function wrap_link( $link ) {
+		return 'href="'.$link.'"';
 	}
 	
 	public static function get_metric_data_js() {

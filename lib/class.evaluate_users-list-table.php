@@ -4,6 +4,8 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 	public $sortable_columns = array();
 	public $metric_id;
 	public $metric_data;
+	
+	private $filter;
   
 	function __construct() {
 		parent::__construct(array(
@@ -95,24 +97,16 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		endforeach;
 		
 		//sort it by the given order
-		usort( $items, function( $a, $b ) {
-			$orderby = ( isset( $_GET['orderby'] ) ? $_GET['orderby'] : 'date' );
-			$order = ( isset( $_GET['order'] ) && $_GET['order'] == 'asc' ? 1 : -1 ); //multiplier to enable reverse sorting
-			return $order * strcmp( $a->{$orderby}, $b->{$orderby} ); //strcmp returns {-1,0,1} so multiplying this by -1 just reverses the order
-		} );
+		usort( $items, array( __CLASS__, 'sort' ) );
 		
 		if ( isset( $_GET['title_filter'] ) && $_GET['title_filter'] ):
-			$filter = $wpdb->escape( $_GET['title_filter'] );
-			$items = array_filter( $items, function( $item ) use( $filter ) {
-				return strpos( $item->title, $filter ) !== false;
-			} );
+			self::$filter = $wpdb->escape( $_GET['title_filter'] );
+			$items = array_filter( $items, array( __CLASS__, 'filter_title' ) );
 		endif;
 		
 		if ( isset( $_GET['filter_users'] ) && $_GET['filter_users'] ):
-			$filter = $wpdb->escape( $_GET['filter_users'] );
-			$items = array_filter( $items, function( $item ) use( $filter ) {
-				return $item->voter == $filter;
-			} );
+			self::$filter = $wpdb->escape( $_GET['filter_users'] );
+			$items = array_filter( $items, array( __CLASS__, 'filter_user' ) );
 		endif;
 		
 		//pagination arguments
@@ -127,6 +121,20 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 			
 		$start = ( $current_page - 1 ) * $per_page; //slice start index
 		$this->items = array_slice( $items, $start, $per_page );
+	}
+	
+	private static function sort( $a, $b ) {
+		$orderby = ( isset( $_GET['orderby'] ) ? $_GET['orderby'] : 'date' );
+		$order = ( isset( $_GET['order'] ) && $_GET['order'] == 'asc' ? 1 : -1 ); //multiplier to enable reverse sorting
+		return $order * strcmp( $a->{$orderby}, $b->{$orderby} ); //strcmp returns {-1,0,1} so multiplying this by -1 just reverses the order
+	}
+	
+	private static function filter_title( $item ) {
+		return strpos( $item->title, self::$filter ) !== false;
+	}
+	
+	private static function filter_user( $item ) {
+		return $item->voter == self::$filter;
 	}
 	
 	public function render() {

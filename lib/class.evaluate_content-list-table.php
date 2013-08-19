@@ -5,7 +5,9 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 	public $sortable_columns = array();
 	public $metric_id;
 	public $metric_data;
-  
+	
+	private $filter;
+	
 	function __construct() {
 		parent::__construct( array(
 			'singular' => 'metric', //used when passing actions etc.
@@ -158,51 +160,27 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		
 		//because we have to do a little preprocessing to the list
 		//sort it by the given order
-		usort( $items, function( $a, $b ) {
-			$orderby = ( isset( $_GET['orderby'] ) ? $_GET['orderby'] : 'date' );
-			$order = ( isset( $_GET['order'] ) && $_GET['order'] == 'asc' ? 1 : -1 ); //multiplier to enable reverse sorting
-			return $order * strcmp( $a->{$orderby}, $b->{$orderby} ); //strcmp returns {-1,0,1} so multiplying this by -1 just reverses the order
-		} );
+		usort( $items, array( __CLASS__, 'sort' ) );
 		
 		//apply filters to results
 		if ( ! empty( $_GET['filter_content_type'] ) ):
-			$filter = $wpdb->escape($_GET['filter_content_type']);
-			$items = array_filter( $items, function( $item ) use( $filter ) {
-				return $item->type == $filter;
-			} );
+			self::$filter = $wpdb->escape($_GET['filter_content_type']);
+			$items = array_filter( $items, array( __CLASS__, 'filter_type' ) );
 		endif;
 		
 		if ( isset( $_GET['cat'] ) && $_GET['cat'] ):
-			$filter = $wpdb->escape($_GET['cat']);
-			$items = array_filter( $items, function( $item ) use( $filter ) {
-				return array_key_exists($filter, $item->categories);
-			} );
+			self::$filter = $wpdb->escape($_GET['cat']);
+			$items = array_filter( $items, array( __CLASS__, 'filter_cat' ) );
 		endif;
 		
 		if ( isset( $_GET['filter_users'] ) && $_GET['filter_users'] ):
-			$filter = $wpdb->escape($_GET['filter_users']);
-			$items = array_filter($items, function( $item ) use( $filter ) {
-				return $item->author == $filter;
-			});
+			self::$filter = $wpdb->escape($_GET['filter_users']);
+			$items = array_filter( $items, array( __CLASS__, 'filter_user' ) );
 		endif;
 		
 		if ( isset( $_GET['m'] ) && $_GET['m'] ):
-			$filter = $wpdb->escape($_GET['m']);
-			$items = array_filter( $items, function( $item ) use( $filter ) {
-				$item_date = new DateTime( $item->date );
-				$filter .= '01';
-				$month = new DateTime( $filter );
-				if ( ! $item_date->diff($month)->invert ):
-					return false;
-				endif;
-				
-				$month->add( new DateInterval('P1M') ); //get start of next month
-				if ( $item_date->diff($month)->invert ):
-					return false;
-				endif;
-				
-				return true;
-			} );
+			self::$filter = $wpdb->escape($_GET['m']);
+			$items = array_filter( $items, array( __CLASS__, 'filter_month' ) );
 		endif;
 		
 		// Pagination arguments
@@ -213,11 +191,45 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		$this->set_pagination_args( array(
 			'total_items' => $total_items,
 			'per_page'    => $per_page,
-		));
+		) );
 		
 		$start = ( $current_page - 1 ) * $per_page; //slice start index
 		
 		$this->items = array_slice( $items, $start, $per_page );
+	}
+	
+	private static function sort( $a, $b ) {
+		$orderby = ( isset( $_GET['orderby'] ) ? $_GET['orderby'] : 'date' );
+		$order = ( isset( $_GET['order'] ) && $_GET['order'] == 'asc' ? 1 : -1 ); //multiplier to enable reverse sorting
+		return $order * strcmp( $a->{$orderby}, $b->{$orderby} ); //strcmp returns {-1,0,1} so multiplying this by -1 just reverses the order
+	}
+	
+	private static function filter_type( $item ) {
+		return $item->type == self::$filter;
+	}
+	
+	private static function filter_cat( $item ) {
+		return array_key_exists( self::$filter, $item->categories );
+	}
+	
+	private static function filter_user( $item ) {
+		return $item->author == self::$filter;
+	}
+	
+	private static function filter_month( $item ) {
+		$item_date = new DateTime( $item->date );
+		self::$filter .= '01';
+		$month = new DateTime( self::$filter );
+		if ( ! $item_date->diff($month)->invert ):
+			return false;
+		endif;
+		
+		$month->add( new DateInterval('P1M') ); //get start of next month
+		if ( $item_date->diff($month)->invert ):
+			return false;
+		endif;
+		
+		return true;
 	}
   
 	public function render() {
