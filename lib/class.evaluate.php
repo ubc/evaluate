@@ -236,7 +236,7 @@ class Evaluate {
 	public static function append_metrics( $content ) {
 		global $wpdb, $post;
 		
-		if ( is_single() || is_page() ) {
+		if ( is_singular() ) {
 			// Get all metrics, then filter out excluded ones
 			$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS );
 			$excluded = get_post_meta( $post->ID, 'metric' );
