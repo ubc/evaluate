@@ -85,6 +85,10 @@ var Evaluate_Admin = {
 			// Do nothing, maybe display a warning?
 		}
 	},
+	
+	confirmDeletion: function() {
+		return confirm("Are you sure you want to delete this metric?");
+	},
 };
 
 /**

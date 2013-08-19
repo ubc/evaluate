@@ -57,7 +57,7 @@ class Evaluate_Admin {
 				self::add_metric();
 				self::alert( 'Metric saved!', 'updated' );
 			} catch ( Exception $e ) {
-				self::alert( $e->getMessage(), 'error' );
+				self::alert( "Failed to save metric; ".$e->getMessage()."<br />".print_r( $e->getMessage(), TRUE ), 'error' );
 				self::metric_form();
 				return;
 			}
@@ -75,7 +75,7 @@ class Evaluate_Admin {
 					self::delete_metric( $metric_for_deletion );
 					self::alert( "Metric deleted.", 'updated' );
 				} catch ( Exception $e ) {
-					self::alert( $e->getMessage(), 'error' );
+					self::alert( "Failed to delete metric; ".$e->getMessage(), 'error' );
 				}
 			endforeach;
 			break;
@@ -89,7 +89,7 @@ class Evaluate_Admin {
 			try {
 				self::details_table();
 			} catch ( Exception $e ) {
-				self::alert( $e->getMessage(), 'error' );
+				self::alert( "Failed to view metric; ".$e->getMessage(), 'error' );
 			}
 			break;
 		case 'main':
