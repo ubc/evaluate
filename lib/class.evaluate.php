@@ -463,7 +463,7 @@ class Evaluate {
 		$data->user           = $user_id;
 		$data->metric_id      = $metric->id;
 		$data->content_id     = $post->ID;
-		$data->display_name   = ( $metric->display_name ? $metric->nicename : '' ); // Check if display name is enabled
+		$data->display_name   = wp_unslash( ( $metric->display_name ? $metric->nicename : '' ) ); // Check if display name is enabled
 		$data->type           = $metric->type;
 		$data->admin_only     = $metric->admin_only;
 		$data->require_login  = $metric->require_login;
@@ -767,6 +767,7 @@ class Evaluate {
 		$data->averages = array();
 		$data->answer_votes = array();
 		foreach ( $data->answers as $key => $answer ):
+			$answer = wp_unslash( $answer);
 			$value = ( $data->total_votes > 0 && isset( $data->votes[$key] ) ? round( $data->votes[$key]->count / $data->total_votes * 100, 1 ) : 0 );
 			$data->averages[$key] = $value;
 			$data->answer_votes[$key] = ( isset( $data->votes[$key] ) ? $data->votes[$key]->count : 0 );
@@ -838,7 +839,7 @@ class Evaluate {
 			data-content-id="<?php echo $data->content_id; ?>"
 			data-modified="<?php echo $data->modified; ?>">
 			
-			<div class="rate-name"><?php echo $data->display_name; ?></div>
+			<div class="rate-name"><?php echo wp_unslash( $data->display_name ); ?></div>
 			<span class="rate-div rate-<?php echo $data->type; ?>">
 				<?php if ( $data->template ): ?>
 					{{? it.show_user_vote == true }}
@@ -977,9 +978,10 @@ class Evaluate {
 	 * Chooses between form and results according to request.
 	 */
 	public static function display_poll( $data ) {
+		 
 		?>
 		<ul class="poll-list">
-			<li class="poll-question"><?php echo $data->question; ?></li>
+			<li class="poll-question"><?php echo wp_unslash( $data->question ); ?></li>
 			<?php if ( $data->template ): ?>
 				{{ for(prop in it.answers) { }}
 				<a {{=it.href_link[prop]}} class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="{{=it.nonce[prop]}}">
@@ -1005,7 +1007,7 @@ class Evaluate {
 					<a <?php echo $data->href_link[$key]; ?> class="eval-link" onclick="<?php echo $data->onclick; ?>" data-nonce="<?php echo $data->nonce[$key]; ?>">
 						<li class="poll-answer">
 							<input type="radio" />
-							<strong><?php echo $answer; ?></strong><span class="poll-average">: <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)</span>
+							<strong><?php echo wp_unslash( $answer ); ?></strong><span class="poll-average">: <?php echo $average; ?>% (<?php echo $answer_votes; ?> votes)</span>
 							<div class="poll-result">
 								<div class="poll-bar <?php echo $selected; ?>" style="width: <?php echo $average; ?>%"></div>
 							</div>

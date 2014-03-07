@@ -162,7 +162,7 @@ class Evaluate_Admin {
 						</tr>
 						<tr>
 							<td><strong>Display Name:</strong> </td>
-							<td><?php echo $metric_data->display_name; ?></td>
+							<td><?php echo wp_unslash( $metric_data->display_name ); ?></td>
 						</tr>
 						<tr>
 							<td><strong>Total Votes:</strong> </td>
@@ -223,8 +223,8 @@ class Evaluate_Admin {
 			</tr>
 			<?php foreach( $metric_data->answers as $index => $answer ): ?>
 			<tr>
-				<td><?php echo $answer; ?>: </td>
-				<td><?php echo $metric_data->answer_votes[$index]; ?> (<?php echo $metric_data->averages[$index]; ?>%)</td>
+				<td><?php echo wp_unslash( $answer ); ?>: </td>
+				<td><?php echo  $metric_data->answer_votes[$index]; ?> (<?php echo $metric_data->averages[$index]; ?>%)</td>
 			</tr>
 			<?php endforeach;
 			break;
@@ -447,8 +447,8 @@ class Evaluate_Admin {
 			endif;
 			
 			$formdata['metric_id']     = $metric->id;
-			$formdata['name']          = $metric->nicename;
-			$formdata['display_name']  = $metric->display_name;
+			$formdata['name']          = wp_unslash( $metric->nicename );
+			$formdata['display_name']  = wp_unslash( $metric->display_name) ;
 			$formdata['type']          = $metric->type;
 			$formdata['style']         = $metric->style;
 			$formdata['admin_only']    = $metric->admin_only;
@@ -457,7 +457,7 @@ class Evaluate_Admin {
 			$formdata['action']        = 'edit';
 			$formdata['view']          = 'main';
 			
-			$params = unserialize( $metric->params );
+			$params = wp_unslash( unserialize( $metric->params ) );
 			
 			if ( isset( $params['content_types'] ) ):
 				foreach ($params['content_types'] as $content_type):
