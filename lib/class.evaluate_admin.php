@@ -106,9 +106,10 @@ class Evaluate_Admin {
 		?>
 		<div class="wrap">
 			<div id="icon-generic" class="icon32"></div>
-			<h2>
-				Evaluate
-			</h2>
+			<h2>Evaluate <a class="add-new-h2" href="<?php echo esc_url( admin_url('admin.php?page=evaluate-new') );?>">Add New</a></h2>
+			<h3>
+				All Metrics 
+			</h3>
 		
 		<?php
 		$metrics_table = new Evaluate_Metrics_List_Table();
