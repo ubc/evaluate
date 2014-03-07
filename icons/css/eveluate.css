@@ -1,0 +1,89 @@
+@font-face {
+  font-family: 'eveluate';
+  src: url('../font/eveluate.eot?8651955');
+  src: url('../font/eveluate.eot?8651955#iefix') format('embedded-opentype'),
+       url('../font/eveluate.woff?8651955') format('woff'),
+       url('../font/eveluate.ttf?8651955') format('truetype'),
+       url('../font/eveluate.svg?8651955#eveluate') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+/* Chrome hack: SVG is rendered more smooth in Windozze. 100% magic, uncomment if you need it. */
+/* Note, that will break hinting! In other OS-es font will be not as sharp as it could be */
+/*
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  @font-face {
+    font-family: 'eveluate';
+    src: url('../font/eveluate.svg?8651955#eveluate') format('svg');
+  }
+}
+*/
+ 
+ [class^="icon-evaluate-"]:before, [class*=" icon-evaluate-"]:before {
+  font-family: "eveluate";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+ 
+  display: inline-block;
+  text-decoration: inherit;
+  width: 1em;
+  margin-right: .2em;
+  text-align: center;
+  /* opacity: .8; */
+ 
+  /* For safety - reset parent styles, that can break glyph codes*/
+  font-variant: normal;
+  text-transform: none;
+     
+  /* fix buttons height, for twitter bootstrap */
+  line-height: 1em;
+ 
+  /* Animation center compensation - margins should be symmetric */
+  /* remove if not needed */
+  margin-left: .2em;
+ 
+  /* you can be more comfortable with increased icons size */
+  /* font-size: 120%; */
+ 
+  /* Uncomment for 3D effect */
+  /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
+}
+ 
+.icon-evaluate-heart:before { content: '\e809'; } /* '' */
+.icon-evaluate-meh:before { content: '\e810'; } /* '' */
+.icon-evaluate-star:before { content: '\e80a'; } /* '' */
+.icon-evaluate-star-empty:before { content: '\e80b'; } /* '' */
+.icon-evaluate-star-half:before { content: '\e80c'; } /* '' */
+.icon-evaluate-star-half-alt:before { content: '\e80d'; } /* '' */
+.icon-evaluate-users:before { content: '\e81a'; } /* '' */
+.icon-evaluate-ok:before { content: '\e821'; } /* '' */
+.icon-evaluate-help-circled:before { content: '\e822'; } /* '' */
+.icon-evaluate-info-circled:before { content: '\e824'; } /* '' */
+.icon-evaluate-bookmark:before { content: '\e806'; } /* '' */
+.icon-evaluate-bookmark-empty:before { content: '\e807'; } /* '' */
+.icon-evaluate-thumbs-up:before { content: '\e800'; } /* '' */
+.icon-evaluate-thumbs-down:before { content: '\e801'; } /* '' */
+.icon-evaluate-thumbs-up-alt:before { content: '\e802'; } /* '' */
+.icon-evaluate-thumbs-down-alt:before { content: '\e803'; } /* '' */
+.icon-evaluate-chat:before { content: '\e819'; } /* '' */
+.icon-evaluate-attention:before { content: '\e820'; } /* '' */
+.icon-evaluate-heart-empty:before { content: '\e808'; } /* '' */
+.icon-evaluate-down-open:before { content: '\e805'; } /* '' */
+.icon-evaluate-up-open:before { content: '\e804'; } /* '' */
+.icon-evaluate-angle-up:before { content: '\e811'; } /* '' */
+.icon-evaluate-angle-down:before { content: '\e812'; } /* '' */
+.icon-evaluate-list-bullet:before { content: '\e818'; } /* '' */
+.icon-evaluate-certificate:before { content: '\e81b'; } /* '' */
+.icon-evaluate-tasks:before { content: '\e813'; } /* '' */
+.icon-evaluate-filter:before { content: '\e81c'; } /* '' */
+.icon-evaluate-sort:before { content: '\e81f'; } /* '' */
+.icon-evaluate-sort-down:before { content: '\e81d'; } /* '' */
+.icon-evaluate-sort-up:before { content: '\e81e'; } /* '' */
+.icon-evaluate-sort-alt-up:before { content: '\e817'; } /* '' */
+.icon-evaluate-sort-alt-down:before { content: '\e816'; } /* '' */
+.icon-evaluate-sort-number-up:before { content: '\e814'; } /* '' */
+.icon-evaluate-sort-number-down:before { content: '\e815'; } /* '' */
+.icon-evaluate-smile:before { content: '\e80e'; } /* '' */
+.icon-evaluate-frown:before { content: '\e80f'; } /* '' */
+.icon-evaluate-trash:before { content: '\e823'; } /* '' */

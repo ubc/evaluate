@@ -1,12 +1,12 @@
 <?php
 /**
-  Plugin Name: Evaluate
-  Plugin URI: https://github.com/ubc/evaluate
-  Version: 1.1
-  Description: An evaluation plugin which can handle one-way (Like), two-way (Up/Down), star rating and polls.
-  Author: Bugra Firat, Devindra Payment, CTLT, UBC
-  Author URI: http://ctlt.ubc.ca
-  License: GPLv2
+ * Plugin Name: Evaluate
+ * Plugin URI: https://github.com/ubc/evaluate
+ * Version: 1.1
+ * Description: An evaluation plugin which can handle one-way (Like), two-way (Up/Down), star rating and polls.
+ * Author: Bugra Firat, Devindra Payment, CTLT, UBC
+ * Author URI: http://ctlt.ubc.ca
+ * License: GPLv2
  */
 
 if ( ! defined('ABSPATH') )

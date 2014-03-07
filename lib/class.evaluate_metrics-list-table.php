@@ -22,7 +22,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 			'cb'        => '<input type="checkbox" />',
 			'nicename'  => __('Name'),
 			'type'      => __('Type'),
-			'style'     => __('Style'),
+		
 			'post_type' => __('Post Types'),
 			'created'   => __('Created')
 		);
@@ -32,7 +32,6 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 		return $sortable_columns = array(
 			'nicename' => array( 'nicename', false ),
 			'type'     => array( 'type', false ),
-			'style'    => array( 'style', false ),
 			'created'  => array( 'created', true ),
 		);
 	}
@@ -68,6 +67,12 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 				else:
 					return sprintf( 'No content type.' );
 				endif;
+			case 'style':
+				return sprintf( '<i class="icon-evaluate-%s"></i> %s ', $item->{$column} , ucfirst( $item->{$column} ) );
+			break;
+			case 'type':
+				return sprintf( '<i class="icon-evaluate-%s"></i> %s ', $item->style , str_replace( '-', ' ', ucfirst( $item->{$column} ) )." <small>( ".$item->style." )</small> " );
+			break;
 			case 'created':
 				return sprintf( '<abbr title="%s">%s</abbr>', $item->created, date( 'D, M d', strtotime( $item->created ) ) );
 			default:

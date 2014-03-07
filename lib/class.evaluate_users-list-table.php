@@ -5,7 +5,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 	public $metric_id;
 	public $metric_data;
 	
-	private $filter;
+	private static $filter;
   
 	function __construct() {
 		parent::__construct(array(

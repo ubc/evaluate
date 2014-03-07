@@ -21,7 +21,7 @@ class Evaluate_Admin {
 	 * Displays the admin menu link in wp-admin.
 	 */
 	public static function admin_menu() {
-		add_menu_page( "Metrics", "Metrics", 'manage_options', "evaluate", array( __CLASS__, 'page' ), '', '58.9' );
+		add_menu_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( __CLASS__, 'page' ), 'dashicons-chart-line', '58.9' );
 		add_submenu_page( 'evaluate', 'All Metrics', 'All Metrics', 'manage_options', 'evaluate', array( __CLASS__, 'page' ) );
 		add_submenu_page( 'evaluate', 'Add New', 'Add New', 'manage_options', 'evaluate-new', array( __CLASS__, 'metric_form' ) );
 	}
@@ -109,10 +109,13 @@ class Evaluate_Admin {
 			<h2>
 				Evaluate
 			</h2>
-		</div>
+		
 		<?php
 		$metrics_table = new Evaluate_Metrics_List_Table();
 		$metrics_table->render();
+		?>
+		</div>
+		<?php
 	}
 	
 	/**
@@ -236,7 +239,7 @@ class Evaluate_Admin {
 	 */
 	public static function alert( $message, $type ) {
 		?>
-		<div class="<?php echo $type; ?>"><?php echo $message; ?></div>
+		<div class="<?php echo $type; ?>"><p><?php echo $message; ?></p></div>
 		<?php
 	}
 	
@@ -247,7 +250,7 @@ class Evaluate_Admin {
 		global $wpdb;
 		
 		// Try to get form data from the request
-		$formdata = ( isset( $_REQUEST['evalu_form'] ) ? $_REQUEST['evalu_form'] : false );
+		$formdata = ( isset( $_REQUEST['evaluate_form'] ) ? $_REQUEST['evaluate_form'] : false );
 		if ( ! $formdata ):
 			throw new Exception( 'No form data found!' );
 		endif;
@@ -416,12 +419,12 @@ class Evaluate_Admin {
 	 */
 	public static function ajax_metric_preview() {
 		$metric = new stdClass();
-		$metric->nicename = $_REQUEST['evalu_form']['name'];
-		$metric->display_name = $_REQUEST['evalu_form']['display_name'];
-		$metric->type = $_REQUEST['evalu_form']['type'];
-		$metric->style = ( $metric->type == 'poll' ? 'poll' : $_REQUEST['evalu_form']['style'] );
-		$metric->params = serialize( array( $metric->type => $_REQUEST['evalu_form'][$metric->type] ) );
-		$metric->preview = TRUE;
+		$metric->nicename 		= $_REQUEST['evaluate_form']['name'];
+		$metric->display_name 	= $_REQUEST['evaluate_form']['display_name'];
+		$metric->type 			= $_REQUEST['evaluate_form']['type'];
+		$metric->style 			= ( $metric->type == 'poll' ? 'poll' : $_REQUEST['evaluate_form']['style'] );
+		$metric->params 		= serialize( array( $metric->type => $_REQUEST['evaluate_form'][$metric->type] ) );
+		$metric->preview 		= TRUE;
 		
 		echo Evaluate::display_metric( Evaluate::get_metric_data( $metric ) );
 		die();
@@ -463,8 +466,8 @@ class Evaluate_Admin {
 			
 			$formdata[$formdata['type']] = ( isset( $params[$formdata['type']] ) ? $params[$formdata['type']] : null );
 		else:
-			if ( isset( $_POST['evalu_form'] ) ):
-				$postdata = $_POST['evalu_form'];
+			if ( isset( $_POST['evaluate_form'] ) ):
+				$postdata = $_POST['evaluate_form'];
 				$type = $formdata['type'];
 				$formdata['name']          = ( isset( $postdata['name'] )          ? $postdata['name']          : null );
 				$formdata['display_name']  = ( isset( $postdata['display_name'] )  ? $postdata['display_name']  : null );
@@ -520,10 +523,10 @@ class Evaluate_Admin {
 		<form method="post" action="?page=evaluate&view=form" id="metric_form">
 			<table class="form-table">
 				<tr>
-					<th><label for="evalu_form[name]">Name</label></th>
+					<th><label for="evaluate_form[name]">Name</label></th>
 					<td>
-						<input name="evalu_form[name]" type="text" class="regular-text preview-trigger" value="<?php echo $formdata['name']; ?>" /><br/>
-						<label><input type="checkbox" name="evalu_form[display_name]" value="true" <?php checked( $formdata['display_name'] ); ?> /> Display metric name above evaluation</label>
+						<input name="evaluate_form[name]" type="text" class="regular-text preview-trigger" value="<?php echo $formdata['name']; ?>" /><br/>
+						<label><input type="checkbox" name="evaluate_form[display_name]" value="true" <?php checked( $formdata['display_name'] ); ?> /> Display metric name above evaluation</label>
 					</td>
 				</tr>
 				
@@ -532,7 +535,7 @@ class Evaluate_Admin {
 					<td>
 						<?php if ( $no_type_change ): ?>
 							<div class="error"> <!-- no type change -->
-								You cannot change the type of this metric because there are votes registered.
+								<p>You cannot change the type of this metric because there are votes registered.</p>
 							</div>
 						<?php endif; ?>
 						<ul class="type_options">
@@ -542,16 +545,16 @@ class Evaluate_Admin {
 							<?php if ( ! $no_type_change || $selected ): ?>
 							<li class="options-one-way">
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="one-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
+									<input type="radio" name="evaluate_form[type]" value="one-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									One-way Voting
 								</label>
 								<div class="context-options indent">
 									<ul> <!-- one way style -->
-										<?php $styles = array( "thumb", "arrow", "heart", "star", "banner" ); ?>
+										<?php $styles = array( "thumb", "vote", "heart", "star", "bookmark" ); ?>
 										<?php foreach ( $styles as $style ): ?>
 											<li>
 												<label>
-													<input type="radio" name="evalu_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?> />
+													<input type="radio" name="evaluate_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?> />
 													0 <a class="rate <?php echo $style; ?>" title="<?php echo Evaluate::$titles[$style]['up']; ?>"><?php echo Evaluate::$titles[$style]['up']; ?></a>
 												</label>
 											</li>
@@ -560,7 +563,7 @@ class Evaluate_Admin {
 									<label>
 										Title
 										<br />
-										<input type="text" name="evalu_form[one-way][title]" value="<?php echo $formdata['one-way']['title']; ?>" />
+										<input type="text" name="evaluate_form[one-way][title]" value="<?php echo $formdata['one-way']['title']; ?>" />
 										<br />
 										<small>The text to display next to this metric. Leave blank to use the default.</small>
 									</label>
@@ -574,16 +577,16 @@ class Evaluate_Admin {
 							<?php if ( ! $no_type_change || $selected ): ?>
 							<li class="options-two-way">
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="two-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
+									<input type="radio" name="evaluate_form[type]" value="two-way" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									Two-way Voting
 								</label>
 								<div class="context-options indent">
 									<ul> <!-- two way style -->
-										<?php $styles = array( "thumb", "arrow" ); ?>
+										<?php $styles = array( "thumb", "vote" ); ?>
 										<?php foreach ( $styles as $style ): ?>
 											<li>
 												<label>
-													<input type="radio" name="evalu_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?>/>
+													<input type="radio" name="evaluate_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?>/>
 													0 <a class="rate <?php echo $style; ?>" title="<?php echo Evaluate::$titles[$style]['up']; ?>">&nbsp;</a>
 													0 <a class="rate <?php echo $style; ?>-down" title="<?php echo Evaluate::$titles[$style]['down']; ?>">&nbsp;</a>
 												</label>
@@ -593,8 +596,8 @@ class Evaluate_Admin {
 									<label>
 										Title Up/Down
 										<br />
-										<input type="text" name="evalu_form[two-way][title_up]" value="<?php echo $formdata['two-way']['title_up']; ?>" />
-										<input type="text" name="evalu_form[two-way][title_down]" value="<?php echo $formdata['two-way']['title_down']; ?>" />
+										<input type="text" name="evaluate_form[two-way][title_up]" value="<?php echo $formdata['two-way']['title_up']; ?>" />
+										<input type="text" name="evaluate_form[two-way][title_down]" value="<?php echo $formdata['two-way']['title_down']; ?>" />
 										<br />
 										<small>The text to display when the user hover's over the voting buttons. Leave blank to use the defaults.</small>
 									</label>
@@ -608,7 +611,7 @@ class Evaluate_Admin {
 							<?php if ( ! $no_type_change || $selected ): ?>
 							<li class="options-range">
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php hidden( $no_type_change ); ?> />
+									<input type="radio" name="evaluate_form[type]" value="range" <?php checked( $formdata['type'] == 'range' ); ?> <?php hidden( $no_type_change ); ?> />
 									Range
 								</label>
 								<div class="context-options indent">
@@ -621,7 +624,7 @@ class Evaluate_Admin {
 										<?php foreach ( $styles as $style ): ?>
 											<li>
 												<label>
-													<input type="radio" name="evalu_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?>/>
+													<input type="radio" name="evaluate_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?>/>
 													<?php for ( $i = 1; $i <= 5; $i++ ): ?>
 														<a class="rate <?php echo $style; ?>"></a>
 													<?php endfor; ?>
@@ -638,13 +641,13 @@ class Evaluate_Admin {
 												$title = 'title="Cannot be changed because there are votes registered."';
 											endif;
 										?>
-										<input type="number" name="evalu_form[range][length]" type="number" min="3" max="10" value="<?php echo ( empty( $formdata['range']['length'] ) ? 5 : $formdata['range']['length'] ); ?>" <?php echo $title; ?> <?php readonly( $no_type_change ); ?>/>
+										<input type="number" name="evaluate_form[range][length]" type="number" min="3" max="10" value="<?php echo ( empty( $formdata['range']['length'] ) ? 5 : $formdata['range']['length'] ); ?>" <?php echo $title; ?> <?php readonly( $no_type_change ); ?>/>
 										<br />
 										<small>The number of stars in this range.</small>
 									</label>
 									<br />
 									<label>
-										<input type="checkbox" name="evalu_form[range][percentage]" <?php checked( $formdata['range']['percentage'] == "on" ); ?> />
+										<input type="checkbox" name="evaluate_form[range][percentage]" <?php checked( $formdata['range']['percentage'] == "on" ); ?> />
 										 Display average as percentage.
 									</label>
 								</div>
@@ -657,22 +660,22 @@ class Evaluate_Admin {
 							<?php if ( ! $no_type_change || $selected ): ?>
 							<li class="options-poll">
 								<label class="type_label">
-									<input type="radio" name="evalu_form[type]" value="poll" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
+									<input type="radio" name="evaluate_form[type]" value="poll" <?php checked( $selected ); ?> <?php hidden( $no_type_change ); ?> />
 									Poll
 								</label>
 								<div class="context-options indent">
 									<a href="javascript:Evaluate_Admin.addNewAnswer()" style="text-decoration: none" title="Add New Answer">[+] Add New Answer</a>
 									<a href="javascript:Evaluate_Admin.removeLastAnswer()" style="text-decoration: none" title="Remove Last Answer">[-] Remove Last Answer</a>
-									<label>Question: <input type="text" class="regular-text" name="evalu_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
-									<label>Answer 1: <input type="text" class="regular-text" name="evalu_form[poll][answer][1]" value="<?php echo $formdata['poll']['answer'][1]; ?>" /></label>
-									<label>Answer 2: <input type="text" class="regular-text" name="evalu_form[poll][answer][2]" value="<?php echo $formdata['poll']['answer'][2]; ?>" /></label>
+									<label>Question: <input type="text" class="regular-text" name="evaluate_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
+									<label>Answer 1: <input type="text" class="regular-text" name="evaluate_form[poll][answer][1]" value="<?php echo $formdata['poll']['answer'][1]; ?>" /></label>
+									<label>Answer 2: <input type="text" class="regular-text" name="evaluate_form[poll][answer][2]" value="<?php echo $formdata['poll']['answer'][2]; ?>" /></label>
 									<?php
 									if ( count( $formdata['poll']['answer'] ) > 2 ):
 										for ( $i = 3; $i <= count( $formdata['poll']['answer'] ); $i++ ):
 											?>
 											<label>
 												Answer <?php echo $i; ?>:
-												<input type="text" class="regular-text" name="evalu_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" />
+												<input type="text" class="regular-text" name="evaluate_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" />
 											</label>
 											<?php
 										endfor;
@@ -680,11 +683,11 @@ class Evaluate_Admin {
 									?>
 									
 									<label>
-										<input type="checkbox" name="evalu_form[poll][hide_results]" <?php checked( $formdata['poll']['hide_results'] == "on" ); ?> />
+										<input type="checkbox" name="evaluate_form[poll][hide_results]" <?php checked( $formdata['poll']['hide_results'] == "on" ); ?> />
 										 Hide results before voting.
 									</label>
 									<label>
-										<input type="checkbox" name="evalu_form[poll][display_warning]" <?php checked( ! $editing || $formdata['poll']['display_warning'] == "on" ); ?> />
+										<input type="checkbox" name="evaluate_form[poll][display_warning]" <?php checked( ! $editing || $formdata['poll']['display_warning'] == "on" ); ?> />
 										 Display a warning if the user hasn't voted. This option has no effect if results are hidden before voting.
 									</label>
 								</div>
@@ -693,15 +696,21 @@ class Evaluate_Admin {
 						</ul>
 					</td>
 				</tr>
-				
+				<tr class="metric-preview">
+					<th>Preview</th>
+					<td>
+						<div id="metric_preview"></div>
+					</td>
+				</tr>
 				<tr>
 					<th>Content Types</th>
-					<td>
+					<td class="">
+						<p>Select the Content Type where you want the metric to appear by default</p>
 						<?php foreach ( $content_types as $content_type ): ?>
 							<div>
 								<label>
-									<input type="checkbox" name="evalu_form[content_type][<?php echo $content_type; ?>]" value="true" <?php checked( isset( $formdata['content_type'][$content_type] ) ); ?> />
-									 <?php echo $content_type; ?>
+									<input type="checkbox" name="evaluate_form[content_type][<?php echo $content_type; ?>]" value="true" <?php checked( isset( $formdata['content_type'][$content_type] ) ); ?> />
+									 <?php echo str_replace("-", " ", ucfirst( $content_type ) ); ?>
 								</label>
 							</div>
 						<?php endforeach; ?>
@@ -712,28 +721,23 @@ class Evaluate_Admin {
 					<th>Display Options</th>
 					<td>
 						<label>
-							<input type="checkbox" name="evalu_form[require_login]" value="true" <?php checked( $formdata['require_login'] ); ?> />
+							<input type="checkbox" name="evaluate_form[require_login]" value="true" <?php checked( $formdata['require_login'] ); ?> />
 							 Users have to be logged in to vote.
 						</label>
 						<br />
 						<label>
-							<input type="checkbox" name="evalu_form[admin_only]" value="true" <?php checked( $formdata['admin_only'] ); ?> />
+							<input type="checkbox" name="evaluate_form[admin_only]" value="true" <?php checked( $formdata['admin_only'] ); ?> />
 							 Only Admins can see this metric.
 						</label>
 						<br />
 						<label>
-							<input type="checkbox" name="evalu_form[excerpt]" value="true" <?php checked( $formdata['excerpt'] ); ?> />
+							<input type="checkbox" name="evaluate_form[excerpt]" value="true" <?php checked( $formdata['excerpt'] ); ?> />
 							 Show this metric on excerpts
 						</label>
 					</td>
 				</tr>
 				
-				<tr class="metric-preview">
-					<th>Preview</th>
-					<td>
-						<div id="metric_preview"></div>
-					</td>
-				</tr>
+				
 			</table>
 			<input type="hidden" name="view" value="<?php echo $formdata['view']; ?>" />
 			<input type="hidden" name="eval_action" value="<?php echo $formdata['action']; ?>" />

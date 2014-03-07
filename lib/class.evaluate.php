@@ -9,7 +9,7 @@ class Evaluate {
 			'up'   => 'Thumbs Up!',
 			'down' => 'Thumbs Down!',
 		),
-		'arrow' => array(
+		'vote' => array(
 			'up'   => 'Vote Up!',
 			'down' => 'Vote Down!',
 		),
@@ -19,7 +19,7 @@ class Evaluate {
 		'star'  => array(
 			'up' => 'Star!',
 		),
-		'banner'  => array(
+		'bookmark'  => array(
 			'up' => 'Bookmark',
 		),
 		'range' => ' Stars'
@@ -857,7 +857,13 @@ class Evaluate {
 						<?php call_user_func( Evaluate::$metrics[$data->type]['user'], $data ); ?>
 					<?php endif; ?>
 				<?php else: ?>
-					<?php call_user_func( Evaluate::$metrics[$data->type]['all'], $data ); ?>
+					<?php
+					if( isset( Evaluate::$metrics[$data->type]['all'] ) && isset( $data ) ){
+						call_user_func( Evaluate::$metrics[$data->type]['all'], $data );
+
+					}
+				
+					  ?>
 				<?php endif; ?>
 			</span>
 		</div>

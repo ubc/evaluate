@@ -1,3 +1,14 @@
+@font-face {
+  font-family: 'eveluate';
+  src: url('../icons/font/eveluate.eot?8651955');
+  src: url('../icons/font/eveluate.eot?8651955#iefix') format('embedded-opentype'),
+       url('../icons/font/eveluate.woff?8651955') format('woff'),
+       url('../icons/font/eveluate.ttf?8651955') format('truetype'),
+       url('../icons/font/eveluate.svg?8651955#eveluate') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
 .evaluate-shell {
     margin-bottom: 10px;
 }
@@ -6,7 +17,10 @@
     font-size: 80%;
 }
 
-/* Clear after floated elements */
+/**
+ * Clear after floated elements
+ * ==============================================================================
+ */
 .clear {
     clear: both;
 }
@@ -26,10 +40,14 @@
 
 .evaluate-shell.can-vote .rate-div a.selected,
 .evaluate-shell.can-vote .rate-div a:hover {
-    color: #333333;
+    color: #333;
 }
 
-/* Range (star) rating */
+
+/**
+ * Range (star) rating
+ * ==============================================================================
+ */
 .rate-range {
     display: block;
     margin-top: 1px;
@@ -103,11 +121,13 @@
     display: none;
 }
 
-/* One and Two-way displays */
+/**
+ * One and Two-way displays
+ * ==============================================================================
+ */
+.down-counter,
+.up-counter,
 .rate {
-    background: url(../img/sprite.gif);
-    background-repeat: no-repeat;
-    padding-left: 17px; /* space between icon and link text */
     display: inline-block; /* make sure it sticks to rate-count on the same line */
     height: 16px; /* height of the icon */
     text-decoration: none;
@@ -117,78 +137,86 @@
 
 .rate > span {
     position: relative;
-    bottom: 2px;
 }
 
-/* Background positions for rating sprite */
-.heart {
-    background-position: 0px 0px;
+/**
+ * Background positions for rating sprite 
+ * ==============================================================================
+ */
+.heart:before{
+    content: '\e808';
+}
+.heart:before{
+    content: '\e808';
+}
+.thumb:before{
+     content: '\e800';
+}
+.thumb.selected:before{
+     content: '\e802';
+}
+.thumb-down:before{
+    content: '\e801'; 
+}
+.thumb-down.selected:before{
+    content: '\e803'; 
+}
+.star:before {
+    content: '\e80b'    
+}
+.star.selected:before {
+    content: '\e80a'    
+}
+.star-faded:before {
+   content: '\e801'; 
+}
+.vote:before {
+    content: '\e811';
+}
+.vote.selected:before {
+    content: '\e804';
 }
 
+.vote-down:before {
+   content: '\e812'; 
+}
+.vote-down.selected:before {
+   content: '\e805'; 
+}
+.bookmark:before {
+    content: '\e807'; 
+}
+.bookmark.selected:before {
+    content: '\e806'; 
+}
+
+.heart.selected,
 .evaluate-shell.can-vote .heart:hover,
-.heart.selected {
-    background-position: 0px -16px;
-}
 
-.thumb {
-    background-position: 0px -32px;
-}
-
+.thumb.selected,
 .evaluate-shell.can-vote .thumb:hover,
-.thumb.selected {
-    background-position: 0px -48px;
-}
 
-.thumb-down {
-    background-position: 0px -64px;
-}
-
+.thumb-down.selected,
 .evaluate-shell.can-vote .thumb-down:hover,
-.thumb-down.selected {
-    background-position: 0px -80px;
-}
-
-.star {
-    background-position: 0px -96px;
-}
-
-.star-faded {
-    background-position: 0px -112px;
-}
 
 .star.selected,
-.evaluate-shell.can-vote .star:hover {
-    background-position: 0px -128px;
+.evaluate-shell.can-vote .star:hover,
+
+.vote.selected,
+.evaluate-shell.can-vote .vote:hover,
+
+.vote-down.selected,
+.evaluate-shell.can-vote .vote-down:hover,
+
+.bookmark.selected,
+.evaluate-shell.can-vote .bookmark:hover {
+    color:red;
 }
 
-.arrow {
-    background-position: 0px -144px;
-}
-
-.evaluate-shell.can-vote .arrow:hover,
-.arrow.selected {
-    background-position: 0px -160px;
-}
-
-.arrow-down {
-    background-position: 0px -176px;
-}
-
-.evaluate-shell.can-vote .arrow-down:hover,
-.arrow-down.selected {
-    background-position: 0px -192px;
-}
-
-.banner {
-    background-position: 0px -208px;
-}
-
-.evaluate-shell.can-vote .banner:hover,
-.banner.selected {
-    background-position: 0px -224px;
-}
-
-/* Poll */
+/**
+ * Poll
+ * ==============================================================================
+ */
 .poll-list {
     margin: 0;
     padding: 0;
@@ -264,3 +292,86 @@
 .error {
     color: darkred;
 }
+
+
+/**
+ * Icons
+ * ==============================================================================
+ */
+.rate:before,
+[class^="icon-evaluate-"]:before, [class*=" icon-evaluate-"]:before {
+  font-family: "eveluate";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+ 
+  display: inline-block;
+  text-decoration: inherit;
+  width: 1em;
+  margin-right: .2em;
+  text-align: center;
+  /* opacity: .8; */
+ 
+  /* For safety - reset parent styles, that can break glyph codes*/
+  font-variant: normal;
+  text-transform: none;
+     
+  /* fix buttons height, for twitter bootstrap */
+  line-height: 1em;
+ 
+  /* Animation center compensation - margins should be symmetric */
+  /* remove if not needed */
+  margin-left: .2em;
+ 
+  /* you can be more comfortable with increased icons size */
+  /* font-size: 120%; */
+ 
+  /* Uncomment for 3D effect */
+  /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
+}
+
+ 
+.icon-evaluate-heart:before { content: '\e809'; } /* '' */
+.icon-evaluate-meh:before { content: '\e810'; } /* '' */
+.icon-evaluate-star:before { content: '\e80a'; } /* '' */
+.icon-evaluate-star-empty:before { content: '\e80b'; } /* '' */
+.icon-evaluate-star-half:before { content: '\e80c'; } /* '' */
+.icon-evaluate-star-half-alt:before { content: '\e80d'; } /* '' */
+.icon-evaluate-users:before { content: '\e81a'; } /* '' */
+.icon-evaluate-ok:before { content: '\e821'; } /* '' */
+.icon-evaluate-help-circled:before { content: '\e822'; } /* '' */
+.icon-evaluate-info-circled:before { content: '\e824'; } /* '' */
+.icon-evaluate-bookmark:before,
+.icon-evaluate-bookmark:before { content: '\e806'; } /* '' */
+.icon-evaluate-bookmark-empty:before { content: '\e807'; } /* '' */
+
+.icon-evaluate-thumbs-up:before { content: '\e800'; } /* '' */
+.icon-evaluate-thumbs-down:before { content: '\e801'; } /* '' */
+.icon-evaluate-thumb:before,
+.icon-evaluate-thumbs-up-alt:before { content: '\e802'; } /* '' */
+.icon-evaluate-thumbs-down-alt:before { content: '\e803'; } /* '' */
+.icon-evaluate-chat:before { content: '\e819'; } /* '' */
+.icon-evaluate-attention:before { content: '\e820'; } /* '' */
+.icon-evaluate-heart-empty:before { content: '\e808'; } /* '' */
+.icon-evaluate-down-open:before { content: '\e805'; } /* '' */
+.icon-evaluate-up-open:before { content: '\e804'; } /* '' */
+.icon-evaluate-angle-up:before { content: '\e811'; } /* '' */
+.icon-evaluate-angle-down:before { content: '\e812'; } /* '' */
+.icon-evaluate-list-bullet:before,
+.icon-evaluate-poll:before
+ { content: '\e818'; } /* '' */
+.icon-evaluate-certificate:before { content: '\e81b'; } /* '' */
+.icon-evaluate-tasks:before { content: '\e813'; } /* '' */
+.icon-evaluate-filter:before { content: '\e81c'; } /* '' */
+.icon-evaluate-sort:before,
+.icon-evaluate-two-way:before { content: '\e81f'; } /* '' */
+.icon-evaluate-sort-down:before { content: '\e81d'; } /* '' */
+.icon-evaluate-sort-up:before,
+.icon-evaluate-one-way:before { content: '\e81e'; } /* '' */
+.icon-evaluate-sort-alt-up:before { content: '\e817'; } /* '' */
+.icon-evaluate-sort-alt-down:before { content: '\e816'; } /* '' */
+.icon-evaluate-sort-number-up:before { content: '\e814'; } /* '' */
+.icon-evaluate-sort-number-down:before { content: '\e815'; } /* '' */
+.icon-evaluate-smile:before { content: '\e80e'; } /* '' */
+.icon-evaluate-frown:before { content: '\e80f'; } /* '' */
+.icon-evaluate-trash:before { content: '\e823'; } /* '' */
