@@ -146,9 +146,10 @@
 .heart:before{
     content: '\e808';
 }
-.heart:before{
-    content: '\e808';
+.heart.selected:before{
+    content: '\e809';
 }
+
 .thumb:before{
      content: '\e800';
 }
@@ -330,7 +331,7 @@
   /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
 }
 
- 
+.icon-evaluate-vote:before { content: '\e804'; } /* '' */
 .icon-evaluate-heart:before { content: '\e809'; } /* '' */
 .icon-evaluate-meh:before { content: '\e810'; } /* '' */
 .icon-evaluate-star:before { content: '\e80a'; } /* '' */
@@ -344,6 +345,7 @@
 .icon-evaluate-bookmark:before,
 .icon-evaluate-bookmark:before { content: '\e806'; } /* '' */
 .icon-evaluate-bookmark-empty:before { content: '\e807'; } /* '' */
+
 
 .icon-evaluate-thumbs-up:before { content: '\e800'; } /* '' */
 .icon-evaluate-thumbs-down:before { content: '\e801'; } /* '' */
