@@ -556,7 +556,7 @@ class Evaluate_Admin {
 											<li>
 												<label>
 													<input type="radio" name="evaluate_form[style]" value="<?php echo $style; ?>" <?php checked( $selected && $formdata['style'] == $style ); ?> />
-													0 <a class="rate <?php echo $style; ?>" title="<?php echo Evaluate::$titles[$style]['up']; ?>"><?php echo Evaluate::$titles[$style]['up']; ?></a>
+													<?php if( "bookmark" != $style) { ?>0 <?php } ?> <a class="rate <?php echo $style; ?>" title="<?php echo Evaluate::$titles[$style]['up']; ?>"><?php echo Evaluate::$titles[$style]['up']; ?></a>
 												</label>
 											</li>
 										<?php endforeach; ?>

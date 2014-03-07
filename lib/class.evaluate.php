@@ -874,8 +874,10 @@ class Evaluate {
 	}
 	
 	public static function display_one_way( $data ) {
-		?>
+		
+		if( !in_array( $data->style,  array( 'bookmark' )) ) { ?> 
 		<span class="up-counter"><?php echo $data->counter; ?> </span>
+		<?php } ?>
 		<a <?php echo $data->href_link; ?> onclick="<?php echo $data->onclick; ?>" class="rate <?php echo $data->style.$data->state; ?> eval-link" title="<?php echo $data->title ?>" data-nonce="<?php echo $data->nonce; ?>">
 			<span><?php echo $data->title ?></span>
 		</a>
