@@ -665,24 +665,26 @@ class Evaluate_Admin {
 									Poll
 								</label>
 								<div class="context-options indent">
-									<a href="javascript:Evaluate_Admin.addNewAnswer()" style="text-decoration: none" title="Add New Answer">[+] Add New Answer</a>
-									<a href="javascript:Evaluate_Admin.removeLastAnswer()" style="text-decoration: none" title="Remove Last Answer">[-] Remove Last Answer</a>
-									<label>Question: <input type="text" class="regular-text" name="evaluate_form[poll][question]" value="<?php echo $formdata['poll']['question']; ?>" /></label>
-									<label>Answer 1: <input type="text" class="regular-text" name="evaluate_form[poll][answer][1]" value="<?php echo $formdata['poll']['answer'][1]; ?>" /></label>
-									<label>Answer 2: <input type="text" class="regular-text" name="evaluate_form[poll][answer][2]" value="<?php echo $formdata['poll']['answer'][2]; ?>" /></label>
+									<p class="">
+										<a href="javascript:Evaluate_Admin.addNewAnswer()" class="button" title="Add New Answer"> Add New Answer</a>
+										
+									</p>
+									<label>Question: <input type="text" class="regular-text" name="evaluate_form[poll][question]" value="<?php echo esc_attr( $formdata['poll']['question'] ); ?>" /></label>
+									<label>Answer 1: <input type="text" class="regular-text" name="evaluate_form[poll][answer][1]" value="<?php echo esc_attr( $formdata['poll']['answer'][1] ); ?>" /></label>
+									<label>Answer 2: <input type="text" class="regular-text" name="evaluate_form[poll][answer][2]" value="<?php echo esc_attr( $formdata['poll']['answer'][2] ); ?>" /></label>
 									<?php
 									if ( count( $formdata['poll']['answer'] ) > 2 ):
 										for ( $i = 3; $i <= count( $formdata['poll']['answer'] ); $i++ ):
 											?>
 											<label>
 												Answer <?php echo $i; ?>:
-												<input type="text" class="regular-text" name="evaluate_form[poll][answer][<?php echo $i; ?>]" value="<?php echo $formdata['poll']['answer'][$i]; ?>" />
+												<input type="text" class="regular-text" name="evaluate_form[poll][answer][<?php echo $i; ?>]" value="<?php echo esc_attr( $formdata['poll']['answer'][$i] ); ?>" />
 											</label>
 											<?php
 										endfor;
 									endif;
 									?>
-									
+									<a href="javascript:Evaluate_Admin.removeLastAnswer()" class="button remove-last" title="Remove Last Answer">Remove Last Answer</a>
 									<label>
 										<input type="checkbox" name="evaluate_form[poll][hide_results]" <?php checked( $formdata['poll']['hide_results'] == "on" ); ?> />
 										 Hide results before voting.

@@ -69,7 +69,7 @@ class Evaluate_Content_List_Table extends WP_List_Table {
 		case 'categories':
 			return implode( ', ', $item->categories );
 		case 'score':
-			return $item->score;
+			return wp_unslash( $item->score );
 		case 'date':
 			return sprintf( '<abbr title="%s">%s</abbr>', $item->date, date( 'D, M d', strtotime($item->date) ) );
 		default:

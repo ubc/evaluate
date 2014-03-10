@@ -25,7 +25,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
             'cb'    => '<input type="checkbox" />',
 			'title' => __('Title'),
 			'voter' => __('Voter'),
-			'vote'  => __('Vote Value'),
+			'votes'  => __('Vote Value'),
 			'date'  => __('Date')
 		);
 	}
@@ -34,7 +34,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 		return $sortable_columns = array(
 			'title' => array( 'title', false ),
 			'voter' => array( 'voter', false ),
-			'vote'  => array( 'vote', false ),
+			'votes'  => array( 'votes', false ),
 			'date'  => array( 'date', true ),
 		);
 	}
@@ -49,7 +49,7 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 			case 'date':
 				return sprintf( '<abbr title="%s">%s</abbr>', $item->date, date( 'D, M d', strtotime( $item->date ) ) );
 			default:
-				return $item->{$column};
+				return wp_unslash( $item->{$column} ) . ' '.$column;
 			endswitch;
 			?>
 		<span>
@@ -85,9 +85,9 @@ class Evaluate_Users_List_Table extends WP_List_Table {
 			$author = get_user_by( 'id', $result->user_id );
 			$item->voter = ( $author ? $author->data->user_nicename : 'Anonymous' );
 			if ( $this->metric_data->type == 'poll' ):
-				$item->vote = $this->metric_data->answers[$result->vote];
+				$item->votes = $this->metric_data->answers[$result->vote];
 			else:
-				$item->vote = $result->vote;
+				$item->votes = $result->vote;
 			endif;
 			$item->disabled = $result->disabled;
 			$item->date = $result->date;

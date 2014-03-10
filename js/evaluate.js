@@ -1,3 +1,4 @@
+var Evaluate_clicked = false;
 var Evaluate = {
     template: {
         'one-way': doT.template( jQuery('#evaluate-one-way').text() ),
@@ -22,8 +23,14 @@ var Evaluate = {
     },
     
     onLinkClick: function( element ) {
+        
         element = jQuery(element);
         
+        if( Evaluate_clicked )
+            return false;
+        element.addClass('evaluate-update');
+        if( !element.hasClass('rate' ) )
+            element.addClass('rate');
         var args = Evaluate.parseUrl( element.attr('href') );
         args['_wpnonce'] = element.data('nonce');
         
@@ -31,10 +38,13 @@ var Evaluate = {
             action: 'evaluate-vote',
             data: args,
         }
-        
+        Evaluate_clicked = true;
+
         jQuery.post( evaluate_ajax.ajaxurl, data, function( response ) {
             if ( ! evaluate_ajax.stream_active ) {
                 element.closest('.evaluate-shell').replaceWith(response);
+                Evaluate_clicked = false;
+                element.removeClass('evaluate-update');
             } //else client will receive the update from socketio
         } );
         
