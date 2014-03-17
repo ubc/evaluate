@@ -5,7 +5,17 @@
 .metric_preview {
     display: none;
 }
-
+.metric-preview-shell{
+    border:1px solid #CCC;
+    padding: 10px;
+    background: #FFF;
+    position: absolute;
+    top:0;
+    right: 0;
+}
+#metric-details-page{
+    position: relative;
+}
 .metric-details {
     padding: 0px !important;
     margin: 0px !important;

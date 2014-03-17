@@ -22,7 +22,7 @@ class Evaluate_Admin {
 	 */
 	public static function admin_menu() {
 		add_menu_page( "Evaluate", "Evaluate", 'manage_options', "evaluate", array( __CLASS__, 'page' ), 'dashicons-chart-line', '58.9' );
-		add_submenu_page( 'evaluate', 'All Metrics', 'All Metrics', 'manage_options', 'evaluate', array( __CLASS__, 'page' ) );
+		add_submenu_page( 'evaluate', 'Evaluate', 'All Metrics', 'manage_options', 'evaluate', array( __CLASS__, 'page' ) );
 		add_submenu_page( 'evaluate', 'Add New', 'Add New', 'manage_options', 'evaluate-new', array( __CLASS__, 'metric_form' ) );
 	}
 	
@@ -144,15 +144,29 @@ class Evaluate_Admin {
 			break;
 		endswitch;
 		
-		$metric_data = Evaluate::get_data_by_id( $metric_id, 0 );
+		$metric_data = Evaluate::get_metric_data_by_id( $metric_id, 0 );
 		?>
 		<div id="metric-details-page">
 			<div class="wrap">
 				<div id="icon-generic" class="icon32"></div>
 				<h2>
-					Metric Details <a href="admin.php?page=evaluate&view=form&metric_id=<?php echo $metric_id; ?>" class="add-new-h2" title="Edit Metric">Edit</a>
+					Metric Details: <?php echo esc_html( wp_unslash( $metric_data->nicename ) ); ?>  <a href="admin.php?page=evaluate&view=form&metric_id=<?php echo $metric_id; ?>" class="add-new-h2" title="Edit Metric">Edit</a>
 				</h2>
 			</div>
+			<?php //var_dump( $metric_data ); ?>
+			<h3><i class="icon-evaluate-<?php echo $metric_data->style; ?>"></i>
+				<?php echo ucfirst ($metric_data->type); ?>
+				<?php  if( $metric_data->type != $metric_data->style) { ?>
+			 		<small>( <?php echo $metric_data->style; ?> )</small>
+				<?php } ?>
+			</h3>
+			<div class=" metric-preview-shell">
+			<em>Preview</em>
+			<?php 
+			$metric_data->preview = TRUE;
+			echo Evaluate::display_metric( Evaluate::get_metric_data( $metric_data ) ); ?>
+			</div>
+			<?php /*
 			<div class="postbox metric-details">
 				<table class="metric-details-inner">
 					<tbody>
@@ -165,13 +179,14 @@ class Evaluate_Admin {
 							<td><?php echo wp_unslash( $metric_data->display_name ); ?></td>
 						</tr>
 						<tr>
-							<td><strong>Total Votes:</strong> </td>
+							<td><strong>Total Evaluations:</strong> </td>
 							<td><?php echo $metric_data->total_votes; ?></td>
 						</tr>
 						<?php self::print_metric_details( $metric_data ); ?>
 					</tbody>
 				</table>
-			</div>
+			</div> 
+			*/ ?>
 			<h3 class="nav-tab-wrapper">
 				<?php
 					$sections = array(
@@ -265,7 +280,8 @@ class Evaluate_Admin {
 		// Get current record if this is an update
 		if ( $is_update ):
 			$metric_id = $_REQUEST['metric_id'];
-			$current_data = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
+
+			$current_data = self::get_metric_data_by_id($metric_id) ;//  $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
 		endif;
 	  
 		$metric = array(); //to hold the data
@@ -795,7 +811,7 @@ class Evaluate_Admin {
 							<input type="hidden" name="evaluate_cb[<?php echo $metric->id; ?>]" value="0" />
 							<label>
 								<input type="checkbox" name="evaluate_cb[<?php echo $metric->id; ?>]" <?php checked( in_array( $metric->id, $post_meta ) ); ?> />
-								<?php echo $metric->nicename.' ('.$metric->type.', '.$metric->style.')'; ?>
+								<?php echo wp_unslash( $metric->nicename ).' ('.$metric->type.', '.$metric->style.')'; ?>
 							</label>
 						</div>
 						<?php

@@ -435,7 +435,7 @@ class Evaluate {
 	public static function get_data_by_id( $metric_id, $content_id, $user_id = null ) {
 		global $wpdb, $post;
 		
-		$metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
+		$metric = self::get_metric_data_by_id( $metric_id );
 		if ( $metric ):
 			// Force specific post data
 			$post = get_post( $content_id );
@@ -448,6 +448,12 @@ class Evaluate {
 			
 			return self::get_metric_data( $metric, $user_id );
 		endif;
+	}
+
+	public static function get_metric_data_by_id( $metric_id ){
+		global $wpdb;
+		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
+
 	}
   
 	/** Convenience function to handle any metric */
