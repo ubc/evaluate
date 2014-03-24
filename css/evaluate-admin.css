@@ -13,6 +13,53 @@
     top:0;
     right: 0;
 }
+.stats-wrap{
+    position: relative;
+    overflow: hidden;
+}
+.third-shell{
+    -moz-box-sizing: border-box;
+       box-sizing: border-box;
+    width: 32%;
+    margin-right:2%;
+    float: left;
+    background: #FFF;
+    border:1px solid #E5E5E5;
+    padding:10px 15px;
+}
+.third-shell h3 small{
+    color:#AAA;
+}
+.third-shell-last{
+    margin-right: 0;
+}
+.third-shell h3{
+    font-size: 16px;
+    font-weight: normal;
+    border-bottom:1px solid #E5E5E5;
+    padding: 10px 15px 5px;
+    margin: 0 -15px 10px;
+}
+.third-shell h3.inner{
+    border-top:1px solid #E5E5E5;
+}
+.display-posts .score{
+    float: right;
+    color:#333;
+}
+.display-posts{
+    margin-left: 1em;
+}
+.display-posts li:nth-child(2n+1){
+    background: #F9F9F9;
+}
+.display-posts li{
+    padding: 5px;
+}
+.display-posts a{
+    text-decoration: none;
+}
+
 #metric-details-page{
     position: relative;
 }

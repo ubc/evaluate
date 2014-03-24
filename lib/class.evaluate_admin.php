@@ -132,19 +132,28 @@ class Evaluate_Admin {
 		
 		$section = ( isset( $_GET['section'] ) ? $_GET['section'] : 'content' );
 		$content_is_active = true;
+
+
+		$metric_data = Evaluate::get_metric_data_by_id( $metric_id, 0 );
+
 		switch ( $section ):
-		case 'user':
-			$content_is_active = false;
-			$details_table = new Evaluate_Users_List_Table();
-			break;
-		case 'content':
-		default:
-			$content_is_active = true;
-			$details_table = new Evaluate_Content_List_Table();
-			break;
+			case 'user':
+				$content_is_active = false;
+				$details_table = new Evaluate_Users_List_Table();
+				break;
+			case 'content':
+			default:
+				$content_is_active = true;
+				$details_table = new Evaluate_Content_List_Table();
+				break;
+			case 'overview':
+				ob_start();
+				Evaluate::show_metric_data_stats( $metric_id, $metric_data->type );
+				$details_table = ob_get_contents();
+				ob_end_clean();
+				break;
 		endswitch;
 		
-		$metric_data = Evaluate::get_metric_data_by_id( $metric_id, 0 );
 		?>
 		<div id="metric-details-page">
 			<div class="wrap">
@@ -152,7 +161,7 @@ class Evaluate_Admin {
 				<h2>
 					Metric Details: <?php echo esc_html( wp_unslash( $metric_data->nicename ) ); ?>  <a href="admin.php?page=evaluate&view=form&metric_id=<?php echo $metric_id; ?>" class="add-new-h2" title="Edit Metric">Edit</a>
 				</h2>
-			</div>
+			
 			<?php //var_dump( $metric_data ); ?>
 			<h3><i class="icon-evaluate-<?php echo $metric_data->style; ?>"></i>
 				<?php echo ucfirst ($metric_data->type); ?>
@@ -160,39 +169,42 @@ class Evaluate_Admin {
 			 		<small>( <?php echo $metric_data->style; ?> )</small>
 				<?php } ?>
 			</h3>
+
 			<div class=" metric-preview-shell">
-			<em>Preview</em>
-			<?php 
-			$metric_data->preview = TRUE;
-			echo Evaluate::display_metric( Evaluate::get_metric_data( $metric_data ) ); ?>
+				<em>Preview</em>
+				<?php 
+				$metric_data->preview = TRUE;
+				Evaluate::display_metric( Evaluate::get_metric_data( $metric_data ) ); 
+				?>
 			</div>
-			<?php /*
-			<div class="postbox metric-details">
-				<table class="metric-details-inner">
-					<tbody>
-						<tr>
-							<td><strong>Metric ID:</strong> </td>
-							<td><?php echo $metric_data->metric_id; ?></td>
-						</tr>
-						<tr>
-							<td><strong>Display Name:</strong> </td>
-							<td><?php echo wp_unslash( $metric_data->display_name ); ?></td>
-						</tr>
-						<tr>
-							<td><strong>Total Evaluations:</strong> </td>
-							<td><?php echo $metric_data->total_votes; ?></td>
-						</tr>
-						<?php self::print_metric_details( $metric_data ); ?>
-					</tbody>
-				</table>
-			</div> 
-			*/ ?>
-			<h3 class="nav-tab-wrapper">
-				<?php
+			<?php switch( $metric_data->type ){
+				case 'poll':
+					
 					$sections = array(
 						'content' => "Content",
 						'user'    => "Votes",
 					);
+
+				break;
+
+				case 'one-way':
+				case 'two-way':
+				case 'range':
+					
+					$sections = array(
+						
+						'content' => "Content",
+						'user'    => "Votes",
+						'overview'=> "Overview",
+					);
+					
+				break;
+
+			} ?>
+			
+			<h3 class="nav-tab-wrapper">
+				<?php
+					
 					foreach ( $sections as $slug => $title ):
 						$active = ( $section == $slug ? 'nav-tab-active' : '' );
 						$url = "?page=evaluate&view=metric&metric_id=$metric_id&section=$slug";
@@ -202,7 +214,14 @@ class Evaluate_Admin {
 					endforeach;
 				?>
 			</h3>
-			<?php $details_table->render(); ?>
+			<?php
+
+			if( is_string( $details_table ) )
+				echo $details_table;
+			else
+				$details_table->render(); 
+
+			?>
 		</div>
 		<?php
 	}

@@ -409,6 +409,79 @@ class Evaluate {
 		
 		return '?evaluate=vote&metric_id='.$metric->id.'&content_id='.$content_id.'&vote='.$vote.'&_wpnonce='.$nonce;
 	}
+
+	/**
+	 * 
+	 */
+	public static function show_metric_data_stats( $metric_id, $type ) { ?>
+
+			<div class="stats-wrap">
+				<div class="third-shell">
+				
+					<h3>Top 5<br /><small>The content with the highest score.</small></h3>
+					<?php 
+					
+					$top_posts = Evaluate::get_posts( $metric_id ); 
+					Evaluate::display_posts( $top_posts ); 
+					
+					?>
+					<h3 class="inner">Bottom 5<br /><small>The content with the lowest score.</small></h3>
+					<?php
+
+					$bottom_posts = Evaluate::get_posts( $metric_id, 5, 'ASC' ); 
+					Evaluate::display_posts( $bottom_posts );
+					
+					?>
+				</div>
+				
+				<div class="third-shell">
+				<?php 
+				$number_of_controversial_posts = 10;
+				$class = '';
+				if($type != 'one-way'){  ?>
+					<h3>Most Votes<br /><small>Most votes with score close to zero</small></h3>
+					<?php 
+					
+					$most_votes_posts = Evaluate::get_posts( $metric_id, 5, 'DESC', 'votes' ); 
+					Evaluate::display_posts( $most_votes_posts );
+					$number_of_controversial_posts = 5;
+					$class = 'class="inner"'; 
+				} ?>
+
+					<h3 <?php echo $class; ?>>Most Controversial <br /><small>Most votes with score close to zero</small></h3>
+					<?php 
+					
+					$most_controversial_posts = Evaluate::get_posts( $metric_id, $number_of_controversial_posts, 'DESC', 'controversy' ); 
+					Evaluate::display_posts( $most_controversial_posts );
+					
+					?>
+					
+				</div>
+				<?php /* @todo
+				<div class="third-shell third-shell-last">
+					<h3>User that have voted the most</h3>
+
+					<ol >
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+						<li>Posr 1</li>
+					</ol>
+
+				</div>
+				*/ ?>
+
+			</div>
+			
+		</div>
+		<?php
+	}
   
 	//********************************************************//
 	// Data functions to get all required data about a metric //
@@ -1138,6 +1211,111 @@ class Evaluate {
 		
 		return ( empty( $score ) ? 0 : $score );
 	}
+	/**
+	 * [get_top_posts description]
+	 * 
+	 * @param  [type]  $metric_id [description]
+	 * @param  integer $limit     [description]
+	 * @return [type]             [description]
+	 */
+	function get_posts( $metric_id, $limit = 5, $order = 'DESC', $score = 'score' ) {
+
+			/**
+			 * The WordPress Query class.
+			 * @link http://codex.wordpress.org/Function_Reference/WP_Query
+			 *
+			 */
+			$args = array(
+				
+				//Type & Status Parameters
+				'post_type'   => 'any',
+				'post_status' => 'any',
+				'post_status' => array(
+					'publish',
+					),
+				//Order & Orderby Parameters
+				'order'               => $order,
+				'orderby'             => 'meta_value',
+				//Pagination Parameters
+				'posts_per_page'      => $limit,
+				//Custom Field Parameters
+				'meta_key'       => 'metric-'.$metric_id.'-'.$score,
+				
+			);
+			
+			$posts = array();
+			$the_query = new WP_Query( $args );
+			
+			// The Loop
+			if ( $the_query->have_posts() ) {
+			     
+				while ( $the_query->have_posts() ) {
+					$the_query->the_post();
+					
+					$posts[] = array(
+						'title'	=> get_the_title(),
+						'id'	=> get_the_id(),
+						'score'	=> get_post_meta( get_the_id() , 'metric-'.$metric_id.'-score' , true ),
+						'total' => get_post_meta( get_the_id() , 'metric-'.$metric_id.'-votes' , true ),
+						'author'=> get_the_author( ),
+						'post_type'	=> get_post_type( )
+					);
+				}
+			} else {
+				// no posts found
+			}
+			/* Restore original Post Data */
+			wp_reset_postdata();
+		return $posts;	
+	}
+	/**
+	 * [get_bottom_posts description]
+	 * 
+	 * @param  [type]  $metric_id [description]
+	 * @param  integer $limit     [description]
+	 * @return [type]             [description]
+	 */
+	function get_bottom_posts( $metric_id, $limit = 5  ) {
+		return array();	
+	}
+	/**
+	 * [get_most_votes_posts description]
+	 * 
+	 * @param  [type]  $metric_id [description]
+	 * @param  integer $limit     [description]
+	 * @return [type]             [description]
+	 */
+	function get_most_votes_posts( $metric_id, $limit = 5  ) {
+		return array();	
+	}
+	/**
+	 * [get_most_cobtroversial_posts description]
+	 * 
+	 * @param  [type]  $metric_id [description]
+	 * @param  integer $limit     [description]
+	 * @return [type]             [description]
+	 */
+	function get_most_cobtroversial_posts( $metric_id, $limit = 5  ) {
+		return array();	
+	}
+
+	function display_posts( $posts ){
+
+		if( !empty( $posts ) ){ ?>
+		<ol class="display-posts">
+		<?php
+			foreach( $posts as $post ) { 
+				// var_dump($post);
+				?>
+				<li><a href="<?php echo admin_url( 'post.php?post='.$post['id'].'&action=edit&post_type='.$post['post_type'] ); ?>"><?php echo $post['title']; ?> <span class="score"><?php echo round( $post['score'], 1 ); ?></span></a></li>
+		<?php } ?>
+		</ol>
+		<?php 
+		}
+
+	}
+	
+
   
 	/**
 	 * Assumes score inherently tends towards 50%. ie. the bayesian prior is 50%
