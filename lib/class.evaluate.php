@@ -321,14 +321,20 @@ class Evaluate {
   
 	/** Process incoming votes for deletion, update or insert */
 	public static function vote( $metric_id, $content_id, $vote, $nonce, $comment = null ) {
-		global $wpdb;
-		$user_id = self::get_user();
+
+		// Sanitize the args
+		$metric_id 	= sanitize_text_field( $metric_id );
+		$content_id = sanitize_text_field( $content_id );
+		$vote 		= sanitize_text_field( $vote );
 		
 		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() ) ):
 			if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
 				throw new Exception( "Nonce check failed. Did you mean to do this action?" );
 			endif;
 		endif;
+
+		global $wpdb;
+		$user_id = self::get_user();
 		
 		// Check if vote exists first
 		$query = $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $user_id );
