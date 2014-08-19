@@ -326,7 +326,8 @@ class Evaluate {
 		
 		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() ) ):
 			if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
-				throw new Exception( "Nonce check failed. Did you mean to do this action?" );
+				// throw new Exception( "Nonce check failed. Did you mean to do this action?" );
+				return false;
 			endif;
 		endif;
 		
