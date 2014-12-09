@@ -917,13 +917,7 @@ class Evaluate {
 		
 		ob_start();
 		?>
-		<div class="evaluate-shell <?php echo $data->shell_classes.$can_vote; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>"
-			data-user="<?php echo $data->user; ?>"
-			data-user-vote="<?php echo $data->user_vote; ?>"
-			data-show-user-vote="<?php echo $data->show_user_vote; ?>"
-			data-metric-id="<?php echo $data->metric_id; ?>"
-			data-content-id="<?php echo $data->content_id; ?>"
-			data-modified="<?php echo $data->modified; ?>">
+		<div class="evaluate-shell <?php echo $data->shell_classes.$can_vote; ?>" id="evaluate-shell-<?php echo $data->metric_id; ?>-<?php echo $data->content_id; ?>" data-user="<?php echo $data->user; ?>" data-user-vote="<?php echo $data->user_vote; ?>" data-show-user-vote="<?php echo $data->show_user_vote; ?>" data-metric-id="<?php echo $data->metric_id; ?>" data-content-id="<?php echo $data->content_id; ?>" data-modified="<?php echo $data->modified; ?>">
 			
 			<div class="rate-name"><?php echo wp_unslash( $data->display_name ); ?></div>
 			<span class="rate-div rate-<?php echo $data->type; ?>">

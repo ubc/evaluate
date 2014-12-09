@@ -73,6 +73,10 @@
     height: 16px;
 }
 
+.stars p{
+  display: none;
+}
+
 .stars .starr { 
     height: 16px;
     padding-left: 16px;
