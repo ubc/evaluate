@@ -300,7 +300,7 @@ class Evaluate_Admin {
 		if ( $is_update ):
 			$metric_id = $_REQUEST['metric_id'];
 
-			$current_data = self::get_metric_data_by_id($metric_id) ;//  $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
+			$current_data = Evaluate::get_metric_data_by_id($metric_id) ;//  $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
 		endif;
 	  
 		$metric = array(); //to hold the data
