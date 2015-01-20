@@ -342,9 +342,18 @@ class Evaluate {
 		$prev_vote = $wpdb->get_row( $query );
 		
 		if ( $prev_vote ):
+
+			do_action( 'evaluate_before_update_vote', $metric_id, $content_id, $vote, $prev_vote );
+
 			if ( $vote == $prev_vote->vote && $prev_vote->disabled == 0 ): // Same vote twice constitutes a 'toggle', remove vote
+				
+				do_action( 'evaluate_before_delete_vote', $metric_id, $content_id, $vote, $prev_vote );
+
 				$query = $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE id=%d', $prev_vote->id );
 				$result = $wpdb->query( $query );
+
+				do_action( 'evaluate_after_delete_vote', $metric_id, $content_id, $vote, $prev_vote, $result );
+
 			else: // Update vote from previous value
 				$where = array(
 					'id' => $prev_vote->id,
@@ -361,9 +370,17 @@ class Evaluate {
 				if ( ! empty( $comment ) ):
 					$data['comment'] = $comment;
 				endif;
+
+				do_action( 'evaluate_before_change_vote', $metric_id, $content_id, $vote, $prev_vote, $data );
 				
 				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
+
+				do_action( 'evaluate_after_change_vote', $metric_id, $content_id, $vote, $prev_vote, $data, $result );
+
 			endif;
+
+			do_action( 'evaluate_after_update_vote', $metric_id, $content_id, $vote, $prev_vote, $result );
+
 		else: // Add new vote
 			$data = array(
 				'metric_id'  => $metric_id,
@@ -374,8 +391,13 @@ class Evaluate {
 				'comment'    => ( empty( $comment ) ? "" : $comment ),
 				'date'       => date('Y-m-d H:i:s'),
 			);
-			
+
+			do_action( 'evaluate_before_add_vote', $data );
+
 			$result = $wpdb->insert( EVAL_DB_VOTES, $data, array( '%d', '%d', '%s', '%d', '%d', '%s', '%s' ) );
+
+			do_action( 'evaluate_after_add_vote', $data, $result );
+
 		endif;
 		
 		if ( $result ):
