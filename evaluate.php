@@ -19,6 +19,7 @@ if ( ! empty($_GET['_wp_http_referer']) && $_REQUEST['page'] == 'evaluate' ) {
 }
 
 global $wpdb; //reference to wpdb object
+define( 'EVALUATE_INSTALLED',  true );
 define( 'EVAL_DIR_PATH',       plugin_dir_path( __FILE__ )      );
 define( 'EVAL_BASENAME',       plugin_basename( __FILE__ )      );
 define( 'EVAL_DIR_URL',        plugins_url( '', EVAL_BASENAME ) );

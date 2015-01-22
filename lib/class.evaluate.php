@@ -338,22 +338,13 @@ class Evaluate {
 		$user_id = self::get_user();
 		
 		// Check if vote exists first
-		$query = $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $user_id );
+		$query = $wpdb->prepare( 'SELECT * FROM ' . EVAL_DB_VOTES . ' WHERE metric_id=%s AND content_id=%s AND user_id=%s', $metric_id, $content_id, $user_id );
 		$prev_vote = $wpdb->get_row( $query );
 		
 		if ( $prev_vote ):
-
-			do_action( 'evaluate_before_update_vote', $metric_id, $content_id, $vote, $prev_vote );
-
 			if ( $vote == $prev_vote->vote && $prev_vote->disabled == 0 ): // Same vote twice constitutes a 'toggle', remove vote
-				
-				do_action( 'evaluate_before_delete_vote', $metric_id, $content_id, $vote, $prev_vote );
-
-				$query = $wpdb->prepare( 'DELETE FROM '.EVAL_DB_VOTES.' WHERE id=%d', $prev_vote->id );
+				$query = $wpdb->prepare( 'DELETE FROM ' . EVAL_DB_VOTES . ' WHERE id=%d', $prev_vote->id );
 				$result = $wpdb->query( $query );
-
-				do_action( 'evaluate_after_delete_vote', $metric_id, $content_id, $vote, $prev_vote, $result );
-
 			else: // Update vote from previous value
 				$where = array(
 					'id' => $prev_vote->id,
@@ -371,16 +362,8 @@ class Evaluate {
 					$data['comment'] = $comment;
 				endif;
 
-				do_action( 'evaluate_before_change_vote', $metric_id, $content_id, $vote, $prev_vote, $data );
-				
 				$result = $wpdb->update( EVAL_DB_VOTES, $data, $where );
-
-				do_action( 'evaluate_after_change_vote', $metric_id, $content_id, $vote, $prev_vote, $data, $result );
-
 			endif;
-
-			do_action( 'evaluate_after_update_vote', $metric_id, $content_id, $vote, $prev_vote, $result );
-
 		else: // Add new vote
 			$data = array(
 				'metric_id'  => $metric_id,
@@ -392,17 +375,15 @@ class Evaluate {
 				'date'       => date('Y-m-d H:i:s'),
 			);
 
-			do_action( 'evaluate_before_add_vote', $data );
-
 			$result = $wpdb->insert( EVAL_DB_VOTES, $data, array( '%d', '%d', '%s', '%d', '%d', '%s', '%s' ) );
-
-			do_action( 'evaluate_after_add_vote', $data, $result );
-
 		endif;
 		
 		if ( $result ):
 			$metric_data = self::get_data_by_id( $metric_id, $content_id );
 			$metric_data->user = self::get_user();
+
+			do_action( 'evaluate_set_metric_vote', $metric_data );
+
 			if ( self::$options['EVAL_STREAM'] && CTLT_Stream::is_node_active() ):
 				CTLT_Stream::send( 'evaluate', $metric_data, 'vote' );
 			endif;
@@ -552,10 +533,9 @@ class Evaluate {
 		endif;
 	}
 
-	public static function get_metric_data_by_id( $metric_id ){
+	public static function get_metric_data_by_id( $metric_id ) {
 		global $wpdb;
 		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
-
 	}
   
 	/** Convenience function to handle any metric */

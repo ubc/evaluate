@@ -41,14 +41,14 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 			'delete' => 'Delete',
 		);
 	}
-  
+
 	/**
 	 * extra column for the checkbox next to each row
 	 */
 	function column_cb($item) {
 		return sprintf( '<input type="checkbox" name="metric[]" value="%s" />', $item->id );
 	}
-  
+
 	function column_default( $item, $column ) {
 		switch ( $column ):
 			case 'nicename':
@@ -79,7 +79,7 @@ class Evaluate_Metrics_List_Table extends WP_List_Table {
 				return sprintf( '%s', $item->{$column} );
 		endswitch;
 	}
-  
+
 	function extra_tablenav( $which ) {
 		if ( $which == 'top' ):
 			// echo 'before navigation';
