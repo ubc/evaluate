@@ -1201,23 +1201,23 @@ class Evaluate {
 		$data = self::get_data_by_id( $metric_id, $content_id );
 		
 		switch ( $data->type ):
-			case 'one-way':
-				$score = $data->counter;
-				break;
-			case 'two-way':
-				if ( $dumb ) {
-					$score = $data->counter_up - $data->counter_down
-				} else {
-					$score = self::calculate_wilson_score( $data->counter_up, $data->counter_total );
-				}
-				break;
-			case 'range':
-				if ( $dumb ) {
-					$score = $data->average
-				} else {
-					$score = self::calculate_bayesian_score( $data->average, $data->total_votes, $data->length );
-				}
-				break;
+		case 'one-way':
+			$score = $data->counter;
+			break;
+		case 'two-way':
+			if ( $dumb ):
+				$score = $data->counter_up - $data->counter_down;
+			else:
+				$score = self::calculate_wilson_score( $data->counter_up, $data->counter_total );
+			endif;
+			break;
+		case 'range':
+			if ( $dumb ):
+				$score = $data->average;
+			else:
+				$score = self::calculate_bayesian_score( $data->average, $data->total_votes, $data->length );
+			endif;
+			break;
 		endswitch;
 		
 		return ( empty( $score ) ? 0 : $score );
