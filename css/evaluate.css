@@ -18,6 +18,14 @@
 }
 
 /**
+ * Default formatting for comments
+ * ==============================================================================
+ */
+.comment .evaluate-metrics-wrapper {
+  float: right;
+}
+
+/**
  * Clear after floated elements
  * ==============================================================================
  */

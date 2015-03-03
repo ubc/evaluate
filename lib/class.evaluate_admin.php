@@ -277,6 +277,13 @@ class Evaluate_Admin {
 		<div class="<?php echo $type; ?>"><p><?php echo $message; ?></p></div>
 		<?php
 	}
+
+	public static function get_post_types() {
+		$types = get_post_types( array( 'public' => true ) );
+		$types[] = 'comment';
+
+		return $types;
+	}
 	
 	/**
 	 * Add or update metric after form entry
@@ -378,9 +385,9 @@ class Evaluate_Admin {
 		endif;
 		
 		// Content types
-		$content_types = get_post_types( array( 'public' => true ) );
+		$content_types = self::get_post_types();
 		foreach ( $content_types as $content_type ):
-			if ( isset( $formdata['content_type'][$content_type] ) ):
+			if ( isset( $formdata['content_type'][ $content_type ] ) ):
 				$metric['params']['content_types'][] = $content_type;
 			endif;
 		endforeach;
@@ -471,7 +478,7 @@ class Evaluate_Admin {
 	 */
 	public static function metric_form() {
 		$metric_id = ( isset( $_REQUEST['metric_id'] ) ? $_REQUEST['metric_id'] : null );
-		$content_types = get_post_types( array( 'public' => true ) );
+		$content_types = self::get_post_types();
 		
 		if ( isset( $metric_id ) ):
 			global $wpdb;
@@ -802,7 +809,7 @@ class Evaluate_Admin {
 	/** Callback to construct the meta box in post edit pages */
 	public static function meta_box_add() {
 		// We need one for every type of post we want the metabox to appear in
-		$post_types = get_post_types( array( 'public' => true ) );
+		$post_types = self::get_post_types();
 		foreach ( $post_types as $post_type ):
 			add_meta_box( 'evaluate-post-meta', __( 'Evaluate', 'Metrics' ), array( __CLASS__, 'evaluate_meta_box' ), $post_type, 'side', 'default' );
 		endforeach;
@@ -811,7 +818,7 @@ class Evaluate_Admin {
 	/** Callback to construct contents of the meta box */
 	public static function evaluate_meta_box( $object, $box ) {
 		?>
-		<p>Check any available metric to <strong>not</strong> display it with this post.</p>
+		<p>Select any of these metrics to <strong>not</strong> display them alongside this post or it's comments.</p>
 		<?php
 		global $wpdb;
 	  

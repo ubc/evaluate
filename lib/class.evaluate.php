@@ -61,7 +61,8 @@ class Evaluate {
 		add_action( 'wp_enqueue_scripts',           array( __CLASS__, 'enqueue_scripts' ) );
 		add_action( 'wp_footer',                    array( __CLASS__, 'print_templates' ) ); // Prints out metric templates for doT
 		add_filter( 'the_content',                  array( __CLASS__, 'append_metrics' ) ); // Filter for displaying metrics below content
-		add_filter( 'the_excerpt',                  array( __CLASS__, 'prepend_metrics' ) ); // Filter for displaying metrics below content
+		add_filter( 'the_excerpt',                  array( __CLASS__, 'prepend_metrics' ) ); // Filter for displaying metrics above content
+		add_filter( 'comment_text',                 array( __CLASS__, 'add_metrics_to_comment' ) ); // Filter for displaying metrics on comment
 		add_action( 'wp_ajax_evaluate-vote',        array( __CLASS__, 'ajax_handler' ) );
 		add_action( 'wp_ajax_nopriv_evaluate-vote', array( __CLASS__, 'ajax_handler' ) );
 		
@@ -314,6 +315,44 @@ class Evaluate {
 		
 		return $excerpt;
 	}
+	
+	public static function add_metrics_to_comment( $content ) {
+		global $wpdb, $post, $comment;
+
+		// Get all metrics, then filter out excluded ones
+		$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS );
+		$excluded = get_post_meta( $post->ID, 'metric' );
+		
+		foreach ( $metrics as $index => $metric ):
+			$params = unserialize( $metric->params );
+			
+			if ( array_key_exists( 'content_types', $params )
+				&& ! in_array( $metric->id, $excluded )
+				&& in_array( 'comment', $params['content_types'] ) ): //not excluded
+				continue;
+			else:
+				unset( $metrics[$index] );
+			endif;
+		endforeach;
+		
+		if ( ! empty( $metrics ) ):
+			ob_start();
+			?>
+			<div class="evaluate-metrics-wrapper">
+				<?php
+				foreach ( $metrics as $metric ):
+					echo self::display_metric( self::get_data_for_comment( $metric, $comment ) );
+				endforeach;
+				?>
+			</div>
+			<?php
+			
+			//$content .= ob_get_clean();
+			echo ob_get_clean();
+		endif;
+		
+		return $content;
+	}
   
 	//**************************//
 	// Voting related functions //
@@ -423,8 +462,8 @@ class Evaluate {
 	/**
 	 * 
 	 */
-	public static function show_metric_data_stats( $metric_id, $type ) { ?>
-
+	public static function show_metric_data_stats( $metric_id, $type ) {
+		?>
 			<div class="stats-wrap">
 				<div class="third-shell">
 				
@@ -533,6 +572,15 @@ class Evaluate {
 		endif;
 	}
 
+	public static function get_data_for_comment( $metric, $comment, $user_id = null ) {
+		global $post;
+
+		$post = new stdClass();
+		$post->ID = $comment->comment_ID;
+
+		return self::get_metric_data( $metric, $user_id );
+	}
+
 	public static function get_metric_data_by_id( $metric_id ) {
 		global $wpdb;
 		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE id=%s', $metric_id ) );
@@ -541,7 +589,7 @@ class Evaluate {
 	/** Convenience function to handle any metric */
 	public static function get_metric_data( $metric, $user_id = null ) {
 		global $wpdb, $post;
-		
+
 		if ( $user_id === null ):
 			$user_id = self::get_user();
 		endif;
