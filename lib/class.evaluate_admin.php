@@ -359,6 +359,7 @@ class Evaluate_Admin {
 		$metric['require_login'] = isset( $formdata['require_login'] ) && $formdata['require_login'];
 		$metric['admin_only'] = isset( $formdata['admin_only'] ) && $formdata['admin_only'];
 		$metric['excerpt'] = isset( $formdata['excerpt'] ) && $formdata['excerpt'];
+		$metric['associated'] = isset( $formdata['associated'] ) && $formdata['associated'];
 		
 		// Params
 		$metric['params'] = array();
@@ -496,6 +497,7 @@ class Evaluate_Admin {
 			$formdata['admin_only']    = $metric->admin_only;
 			$formdata['require_login'] = $metric->require_login;
 			$formdata['excerpt']       = $metric->excerpt;
+			$formdata['associated']    = $metric->associated;
 			$formdata['action']        = 'edit';
 			$formdata['view']          = 'main';
 			
@@ -520,6 +522,7 @@ class Evaluate_Admin {
 				$formdata['admin_only']    = ( isset( $postdata['admin_only'] )    ? $postdata['admin_only']    : null );
 				$formdata['require_login'] = ( isset( $postdata['require_login'] ) ? $postdata['require_login'] : null );
 				$formdata['excerpt']       = ( isset( $postdata['excerpt'] )       ? $postdata['excerpt']       : null );
+				$formdata['associated']    = ( isset( $postdata['associated'] )    ? $postdata['associated']    : null );
 				$formdata['action']        = 'edit';
 				$formdata['view']          = 'main';
 				
@@ -538,6 +541,7 @@ class Evaluate_Admin {
 				$formdata['admin_only'] = null;
 				$formdata['require_login'] = null;
 				$formdata['excerpt'] = null;
+				$formdata['associated'] = null;
 				$formdata['action'] = 'new';
 				$formdata['view'] = 'main';
 				
@@ -778,6 +782,13 @@ class Evaluate_Admin {
 						<label>
 							<input type="checkbox" name="evaluate_form[excerpt]" value="true" <?php checked( $formdata['excerpt'] ); ?> />
 							 Show this metric on excerpts
+						</label>
+						<br />
+						<label>
+							<input type="checkbox" name="evaluate_form[associated]" value="true" <?php checked( $formdata['associated'] ); ?> />
+							 Associate comments with this metric.
+							<br>
+							<small>When a user comments on a post, it will show the rating that user gave on their comment.</small>
 						</label>
 					</td>
 				</tr>

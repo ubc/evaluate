@@ -57,12 +57,15 @@ class Evaluate {
 			CTLT_Stream::$add_script = true;
 		endif;
 		
-		// js and css script hook
-		add_action( 'wp_enqueue_scripts',           array( __CLASS__, 'enqueue_scripts' ) );
-		add_action( 'wp_footer',                    array( __CLASS__, 'print_templates' ) ); // Prints out metric templates for doT
-		add_filter( 'the_content',                  array( __CLASS__, 'append_metrics' ) ); // Filter for displaying metrics below content
-		add_filter( 'the_excerpt',                  array( __CLASS__, 'prepend_metrics' ) ); // Filter for displaying metrics above content
-		add_filter( 'comment_text',                 array( __CLASS__, 'add_metrics_to_comment' ) ); // Filter for displaying metrics on comment
+		if ( ! is_admin() ):
+			// js and css script hook
+			add_action( 'wp_enqueue_scripts',           array( __CLASS__, 'enqueue_scripts' ) );
+			add_action( 'wp_footer',                    array( __CLASS__, 'print_templates' ) ); // Prints out metric templates for doT
+			add_filter( 'the_content',                  array( __CLASS__, 'append_metrics' ) ); // Filter for displaying metrics below content
+			add_filter( 'the_excerpt',                  array( __CLASS__, 'prepend_metrics' ) ); // Filter for displaying metrics above content
+			add_filter( 'comment_text',                 array( __CLASS__, 'add_metrics_to_comment' ) ); // Filter for displaying metrics on comment
+		endif;
+
 		add_action( 'wp_ajax_evaluate-vote',        array( __CLASS__, 'ajax_handler' ) );
 		add_action( 'wp_ajax_nopriv_evaluate-vote', array( __CLASS__, 'ajax_handler' ) );
 		
@@ -72,13 +75,18 @@ class Evaluate {
 			self::event_handler();
 		endif;
 		
-		
-		if ( get_option( 'EVAL_DB_VOTES_VER' ) < 1.2 ):
-			dbDelta( "ALTER TABLE ".EVAL_DB_VOTES." ADD excerpt tinyint(1) NOT NULL DEFAULT '0'" );
+		if ( get_option( 'EVAL_DB_METRICS_VER' ) != EVAL_DB_METRICS_VER ):
+			if ( get_option( 'EVAL_DB_METRICS_VER' ) < 1.1 ):
+				dbDelta( "ALTER TABLE ".EVAL_DB_METRICS." ADD excerpt tinyint(1) NOT NULL DEFAULT '0'" );
+				dbDelta( "ALTER TABLE ".EVAL_DB_METRICS." ADD excerpt tinyint(1) NOT NULL DEFAULT '0'" );
+			endif;
+
+			update_option( 'EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER );
 		endif;
-		
-		update_option( 'EVAL_DB_METRICS_VER', EVAL_DB_METRICS_VER );
-		update_option( 'EVAL_DB_VOTES_VER', EVAL_DB_VOTES_VER );
+
+		if ( get_option( 'EVAL_DB_METRICS_VER' ) < EVAL_DB_VOTES_VER ):
+			update_option( 'EVAL_DB_VOTES_VER', EVAL_DB_VOTES_VER );
+		endif;
 	}
   
 	/**
@@ -99,6 +107,7 @@ class Evaluate {
 			admin_only tinyint(1) NOT NULL DEFAULT '0',
 			display_name tinyint(1) NOT NULL DEFAULT '1',
 			excerpt tinyint(1) NOT NULL DEFAULT '0',
+			associated tinyint(1) NOT NULL DEFAULT '0',
 			params longtext,
 			created datetime,
 			modified datetime,
@@ -340,8 +349,10 @@ class Evaluate {
 			?>
 			<div class="evaluate-metrics-wrapper">
 				<?php
+				self::display_comment_associated_rating( $excluded );
+
 				foreach ( $metrics as $metric ):
-					echo self::display_metric( self::get_data_for_comment( $metric, $comment ) );
+					echo self::display_metric( self::get_metric_data( $metric, null, $comment->comment_ID ) );
 				endforeach;
 				?>
 			</div>
@@ -353,6 +364,36 @@ class Evaluate {
 		
 		return $content;
 	}
+	
+	public static function display_comment_associated_rating( $excluded ) {
+		global $wpdb, $post, $comment;
+
+		// Get all metrics, then filter out excluded ones
+		$metrics = $wpdb->get_results( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE associated = "1"' );
+		
+		foreach ( $metrics as $index => $metric ):
+			$params = unserialize( $metric->params );
+			
+			if ( array_key_exists( 'content_types', $params )
+				&& ! in_array( $metric->id, $excluded )
+				&& in_array( $post->post_type, $params['content_types'] ) ): //not excluded
+				continue;
+			else:
+				unset( $metrics[$index] );
+			endif;
+		endforeach;
+		
+		foreach ( $metrics as $metric ):
+			$metric->preview = true;
+			$metric->show_user_vote = true;
+			
+			$data = self::get_metric_data( $metric, $comment->user_id );
+			$data->display_name = "";
+			$data->average_display = "";
+			
+			echo self::display_metric( $data );
+		endforeach;
+	}
   
 	//**************************//
 	// Voting related functions //
@@ -360,15 +401,15 @@ class Evaluate {
   
 	/** Process incoming votes for deletion, update or insert */
 	public static function vote( $metric_id, $content_id, $vote, $nonce, $comment = null ) {
-
 		// Sanitize the args
 		$metric_id 	= sanitize_text_field( $metric_id );
 		$content_id = sanitize_text_field( $content_id );
 		$vote 		= sanitize_text_field( $vote );
-		
+
 		if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-'.$metric_id.'-'.$content_id.'-'.$vote.'-'.self::get_user() ) ):
 			if ( ! wp_verify_nonce( $nonce, 'evaluate-vote-poll-'.$metric_id.'-'.$content_id.'-'.self::get_user() ) ):
 				// throw new Exception( "Nonce check failed. Did you mean to do this action?" );
+				error_log( "Nonce check failed for evaluate. class.evaluate.php, Line 412" );
 				return false;
 			endif;
 		endif;
@@ -537,48 +578,23 @@ class Evaluate {
 	//********************************************************//
 	
 	public static function get_data_by_slug( $metric_slug, $content_id = 0 ) {
-		global $wpdb, $post;
+		global $wpdb;
 		
 		$metric = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM '.EVAL_DB_METRICS.' WHERE slug=%s', $metric_slug ) );
+
 		if ( $metric ):
-			// Force specific post data
-			$post = get_post( $content_id );
-			if ( isset( $post ) ):
-				setup_postdata( $post );
-			else: // No post id set, avoid warnings
-				$post = new stdClass();
-				$post->ID = 0;
-			endif;
-			
-			return self::get_metric_data( $metric );
+			return self::get_metric_data( $metric, null, $content_id );
 		endif;
 	}
 	
 	public static function get_data_by_id( $metric_id, $content_id, $user_id = null ) {
-		global $wpdb, $post;
+		global $wpdb;
 		
 		$metric = self::get_metric_data_by_id( $metric_id );
+
 		if ( $metric ):
-			// Force specific post data
-			$post = get_post( $content_id );
-			if ( isset( $post ) ):
-				setup_postdata( $post );
-			else: // No post id set, avoid warnings
-				$post = new stdClass();
-				$post->ID = 0;
-			endif;
-			
-			return self::get_metric_data( $metric, $user_id );
+			return self::get_metric_data( $metric, $user_id, $content_id );
 		endif;
-	}
-
-	public static function get_data_for_comment( $metric, $comment, $user_id = null ) {
-		global $post;
-
-		$post = new stdClass();
-		$post->ID = $comment->comment_ID;
-
-		return self::get_metric_data( $metric, $user_id );
 	}
 
 	public static function get_metric_data_by_id( $metric_id ) {
@@ -587,24 +603,32 @@ class Evaluate {
 	}
   
 	/** Convenience function to handle any metric */
-	public static function get_metric_data( $metric, $user_id = null ) {
+	public static function get_metric_data( $metric, $user_id = null, $content_id = null ) {
 		global $wpdb, $post;
 
 		if ( $user_id === null ):
 			$user_id = self::get_user();
+		endif;
+
+		if ( $content_id === null ):
+			if ( isset( $post->ID ) ):
+				$content_id = $post->ID;
+			else:
+				$content_id = 0;
+			endif;
 		endif;
 		
 		$data = new stdClass();
 		$data->template       = false;
 		$data->user           = $user_id;
 		$data->metric_id      = $metric->id;
-		$data->content_id     = $post->ID;
+		$data->content_id     = $content_id;
 		$data->display_name   = wp_unslash( ( $metric->display_name ? $metric->nicename : '' ) ); // Check if display name is enabled
 		$data->type           = $metric->type;
 		$data->admin_only     = $metric->admin_only;
 		$data->require_login  = $metric->require_login;
 		$data->style          = $metric->style;
-		$data->modified       = get_post_meta( $post->ID, 'metric-'.$metric->id.'-modified', true );
+		$data->modified       = get_post_meta( $content_id, 'metric-'.$metric->id.'-modified', true );
 		$data->preview        = $metric->preview || ( $data->require_login && ! is_user_logged_in() );
 		$data->show_user_vote = isset( $metric->show_user_vote ) ? $metric->show_user_vote : false;
 		$data->shell_classes  = "";
@@ -709,19 +733,20 @@ class Evaluate {
 	}
   
 	public static function one_way_data( $metric, $data ) {
-		global $wpdb, $post;
+		global $wpdb;
 		
 		// Get the type parameters
 		$params = unserialize( $metric->params );
 		$data->title = ( empty( $params['one-way']['title'] ) ? self::$titles[$metric->style]['up'] : $params['one-way']['title'] );
 		
 		// Tally the votes
-		if ( isset( $post->ID ) && $post->ID != 0 ):
-			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		if ( $data->content_id != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $data->content_id );
 		else:
 			$where_content = '';
 		endif;
-		$query = $wpdb->prepare( 'SELECT COUNT(*) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
+
+		$query = $wpdb->prepare( 'SELECT COUNT(*) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $data->content_id );
 		$data->counter = $wpdb->get_results( $query );
 		$data->counter = $data->counter[0]->count;
 		$data->counter = ( $data->counter ? $data->counter : 0 );
@@ -729,7 +754,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( $data->counter > 0 && ! empty( $data->user ) ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $data->content_id, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -739,14 +764,14 @@ class Evaluate {
 		
 		if ( $data->preview == false ):
 			$data->nonce = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.$data->user );
-			$data->link = self::get_vote_url( $metric, $post->ID, 1, $data->nonce ); //upvote link
+			$data->link = self::get_vote_url( $metric, $data->content_id, 1, $data->nonce ); //upvote link
 		endif;
 		
 		return $data;
 	}
   
 	public static function two_way_data( $metric, $data ) {
-		global $wpdb, $post;
+		global $wpdb;
 		
 		// Get the type parameters
 		$params = unserialize( $metric->params );
@@ -754,13 +779,13 @@ class Evaluate {
 		$data->title_down = ( empty( $params['two-way']['title_down'] ) ? self::$titles[$metric->style]['down'] : $params['two-way']['title_down'] );
 		
 		// Tally the votes
-		if ( isset( $post->ID ) && $post->ID != 0 ):
-			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		if ( $data->content_id != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $data->content_id );
 		else:
 			$where_content = '';
 		endif;
 		
-		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $data->content_id );
 		$data->counter = $wpdb->get_results( $query );
 		$data->counter_up = 0;
 		$data->counter_down = 0;
@@ -777,7 +802,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( $data->total_votes > 0 && ! empty( $data->user ) ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare('SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $data->content_id, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -789,28 +814,28 @@ class Evaluate {
 		if ( $data->preview == false ):
 			$data->nonce_up = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-1-'.self::get_user() );
 			$data->nonce_down = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'--1-'.self::get_user() );
-			$data->link_up = self::get_vote_url( $metric, $post->ID, 1, $data->nonce_up );
-			$data->link_down = self::get_vote_url( $metric, $post->ID, -1, $data->nonce_down );
+			$data->link_up = self::get_vote_url( $metric, $data->content_id, 1, $data->nonce_up );
+			$data->link_down = self::get_vote_url( $metric, $data->content_id, -1, $data->nonce_down );
 		endif;
 		
 		return $data;
 	}
   
 	public static function range_data( $metric, $data ) {
-		global $wpdb, $post;
+		global $wpdb;
 		
 		// Get the type parameters
 		$params = unserialize( $metric->params );
 		$data->length = $params['range']['length'];
 		
 		// Tally the votes
-		if ( isset( $post->ID ) && $post->ID != 0 ):
-			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		if ( $data->content_id != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $data->content_id );
 		else:
 			$where_content = '';
 		endif;
 		
-		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $data->content_id );
 		$data->votes = $wpdb->get_results( $query, OBJECT_K ); //returned array will have vote value for keys
 		
 		$data->average = 0;
@@ -837,7 +862,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( $data->total_votes > 0 && ! empty( $data->user ) ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $data->content_id, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -860,7 +885,7 @@ class Evaluate {
 			$data->link = array();
 			for ( $i = 1; $i <= $data->length; $i++ ):
 				$data->nonce[$i] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$i.'-'.self::get_user() );
-				$data->link[$i] = self::get_vote_url( $metric, $post->ID, $i, $data->nonce[$i] );
+				$data->link[$i] = self::get_vote_url( $metric, $data->content_id, $i, $data->nonce[$i] );
 			endfor;
 		endif;
 		
@@ -868,7 +893,7 @@ class Evaluate {
 	}
   
 	public static function poll_data( $metric, $data ) {
-		global $wpdb, $post;
+		global $wpdb;
 		
 		// Get the type parameters
 		$params = unserialize( $metric->params );
@@ -878,13 +903,13 @@ class Evaluate {
 		$data->display_warning = $params['poll']['display_warning'];
 		
 		// Tally the votes
-		if ( isset( $post->ID ) && $post->ID != 0 ):
-			$where_content = $wpdb->prepare( ' AND content_id=%s', $post->ID );
+		if ( $data->content_id != 0 ):
+			$where_content = $wpdb->prepare( ' AND content_id=%s', $data->content_id );
 		else:
 			$where_content = '';
 		endif;
 		
-		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $post->ID );
+		$query = $wpdb->prepare( 'SELECT vote, COUNT(vote) as count FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s'.$where_content.' AND disabled=0 GROUP BY vote', $metric->id, $data->content_id );
 		$data->votes = $wpdb->get_results( $query, OBJECT_K ); // Returned array will have vote value for keys
 		$data->total_votes = 0;
 		foreach ( $data->votes as $vote ):
@@ -893,7 +918,7 @@ class Evaluate {
 		
 		// Get the current user's vote, if it exists
 		if ( $data->total_votes > 0 && ! empty( $data->user ) ):
-			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $post->ID, $data->user ) );
+			$data->user_vote = $wpdb->get_var( $wpdb->prepare( 'SELECT vote FROM '.EVAL_DB_VOTES.' WHERE metric_id=%s AND content_id=%s AND user_id=%s AND disabled=0', $metric->id, $data->content_id, $data->user ) );
 		else:
 			$data->user_vote = false;
 		endif;
@@ -917,7 +942,7 @@ class Evaluate {
 			$data->link = array();
 			foreach ( $data->answers as $key => $answer ):
 				$data->nonce[$key] = wp_create_nonce( 'evaluate-vote-'.$data->metric_id.'-'.$data->content_id.'-'.$key.'-'.self::get_user() );
-				$data->link[$key] = self::get_vote_url( $metric, $post->ID, $key, $data->nonce[$key] );
+				$data->link[$key] = self::get_vote_url( $metric, $data->content_id, $key, $data->nonce[$key] );
 			endforeach;
 			
 			if ( $data->hide_results == 'on' && $data->user_vote == false ):
