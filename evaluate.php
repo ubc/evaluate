@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Evaluate
  * Plugin URI: https://github.com/ubc/evaluate
- * Version: 1.1
+ * Version: 1.1.1
  * Description: An evaluation plugin which can handle one-way (Like), two-way (Up/Down), star rating and polls.
  * Author: Bugra Firat, Devindra Payment, CTLT, UBC
  * Author URI: http://ctlt.ubc.ca
@@ -47,4 +47,3 @@ require( 'lib/class.evaluate_users-list-table.php' );
 register_activation_hook(   __FILE__, array( 'Evaluate', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'Evaluate', 'deactivate' ) );
 register_uninstall_hook(    __FILE__, array( 'Evaluate', 'uninstall' ) );
-
