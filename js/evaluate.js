@@ -6,26 +6,46 @@ var Evaluate = {
         'range'  : doT.template( jQuery('#evaluate-range').text() ),
         'poll'   : doT.template( jQuery('#evaluate-poll').text() ),
     },
-    
+
     init: function() {
-        if ( ! evaluate_ajax.stream_active ) {
-            setInterval(Evaluate.reloadMetrics, (evaluate_ajax.frequency * 1000));
+
+        if ( evaluate_ajax.stream_active ) {
+            return;
         }
+
+        var ajax_frequency = evaluate_ajax.frequency;
+
+        // Check that ajax_frequency is an integer and is at least 10
+        if ( ! Evaluate.isInt( ajax_frequency ) ) {
+            console.log( 'Stream plugin not active, but ajax_frequency is not an integer' );
+            return;
+        }
+
+        if ( ajax_frequency < 10 ) {
+            ajax_frequency = 10;
+        }
+
+        setInterval( Evaluate.reloadMetrics, ( ajax_frequency * 1000 ) );
+
     },
-    
+
+    isInt: function( value ) {
+        return ! isNaN( value ) && ( function(x) { return (x | 0) === x; })(parseFloat(value))
+    },
+
     parseUrl: function( string ) {
         var vars = {};
         var parts = string.replace( /[?&]+([^=&]+)=([^&]*)/gi, function( m, key, value ) {
             vars[key] = value;
         } );
-        
+
         return vars;
     },
-    
+
     onLinkClick: function( element ) {
-        
+
         element = jQuery(element);
-        
+
         if( Evaluate_clicked )
             return false;
         element.addClass('evaluate-update');
